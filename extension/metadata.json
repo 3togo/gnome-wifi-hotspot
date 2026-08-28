@@ -1,0 +1,14 @@
+{
+  "name": "Wi-Fi Hotspot",
+  "description": "Native Quick Settings Wi-Fi Hotspot toggle with AP+STA concurrent sharing and auto-switch.",
+  "uuid": "wifi-hotspot@erhanzeyrek",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "url": "https://github.com/erhanzeyrek/gnome-wifi-hotspot"
+}

@@ -1,0 +1,5 @@
+/* Wi-Fi Hotspot Quick Settings styles */
+.hotspot-status-active {
+    color: #3584e4;
+    font-weight: bold;
+}

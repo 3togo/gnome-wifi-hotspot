@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.erhanzeyrek.WifiHotspot</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Wi-Fi Hotspot</name>
+  <summary>Native GNOME Shell Wi-Fi Hotspot with simultaneous AP+STA support</summary>
+  <description>
+    <p>
+      Share your Wi-Fi internet connection like in Windows 10/11 directly from GNOME Shell Quick Settings.
+      Supports concurrent Wi-Fi reception and Access Point broadcasting (AP+STA mode), automatic 2.4GHz/5GHz
+      band detection, and automatic firewall configuration.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.erhanzeyrek.WifiHotspot.desktop</launchable>
+  <categories>
+    <category>Network</category>
+    <category>Settings</category>
+  </categories>
+  <developer_name>Erhan Zeyrek</developer_name>
+</component>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>GNOME Wi-Fi Hotspot</vendor>
+  <vendor_url>https://github.com/erhanzeyrek/gnome-wifi-hotspot</vendor_url>
+
+  <action id="io.github.erhanzeyrek.WifiHotspot.manage">
+    <description>Manage Wi-Fi Hotspot</description>
+    <message>Authentication is required to start, stop, or configure Wi-Fi Hotspot</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

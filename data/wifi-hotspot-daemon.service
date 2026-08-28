@@ -1,0 +1,13 @@
+[Unit]
+Description=GNOME Wi-Fi Hotspot D-Bus Daemon
+After=network.target
+
+[Service]
+Type=dbus
+BusName=io.github.erhanzeyrek.WifiHotspot
+ExecStart=/usr/libexec/wifi-hotspot-daemon/wifi-hotspot-daemon.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
