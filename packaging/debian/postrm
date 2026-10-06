@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload >/dev/null || true
+    systemctl --system reload dbus.service >/dev/null 2>&1 || true
+fi
+if [ "$1" = purge ]; then
+    deb-systemd-helper purge wifi-hotspot-daemon.service >/dev/null || true
+    deb-systemd-helper unmask wifi-hotspot-daemon.service >/dev/null || true
+fi

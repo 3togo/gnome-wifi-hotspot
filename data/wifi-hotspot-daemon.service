@@ -1,5 +1,5 @@
 [Unit]
-Description=GNOME Wi-Fi Hotspot D-Bus Daemon
+Description=Wi-Fi Relay D-Bus Daemon
 After=network.target
 
 [Service]

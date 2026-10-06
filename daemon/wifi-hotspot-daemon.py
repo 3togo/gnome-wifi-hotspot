@@ -11,6 +11,8 @@ import json
 import subprocess
 import shutil
 import re
+import ipaddress
+import tempfile
 import gi
 
 gi.require_version("GLib", "2.0")
@@ -20,6 +22,77 @@ from gi.repository import GLib, Gio
 BUS_NAME = "io.github.erhanzeyrek.WifiHotspot"
 OBJECT_PATH = "/io/github/erhanzeyrek/WifiHotspot"
 INTERFACE_NAME = "io.github.erhanzeyrek.WifiHotspot"
+MANAGE_ACTION = INTERFACE_NAME + ".manage"
+PROTECTED_METHODS = frozenset({"Start", "Stop", "SetConfig", "GetConfig",
+                               "SwitchBandAndReconnect", "PrepareFirewall"})
+CONFIG_DEFAULTS = {
+    "WIFI_IFACE": "wlan0", "INTERNET_IFACE": "wlan0", "SSID": "Hotspot",
+    "PASSPHRASE": "12345678", "FREQ_BAND": "auto", "CHANNEL": "default",
+    "GATEWAY": "192.168.12.1", "WPA_VERSION": "2", "ETC_HOSTS": "0",
+    "DHCP_DNS": "gateway", "NO_DNS": "0", "NO_DNSMASQ": "0", "HIDDEN": "0",
+    "MAC_FILTER": "0", "MAC_FILTER_ACCEPT": "/etc/hostapd/hostapd.accept",
+    "ISOLATE_CLIENTS": "0", "SHARE_METHOD": "nat", "IEEE80211N": "0",
+    "IEEE80211AC": "0", "IEEE80211AX": "0", "NO_VIRT": "0", "USE_PSK": "0",
+}
+CONFIG_FLAGS = frozenset({"ETC_HOSTS", "NO_DNS", "NO_DNSMASQ", "HIDDEN", "MAC_FILTER",
+                          "ISOLATE_CLIENTS", "IEEE80211N", "IEEE80211AC", "IEEE80211AX",
+                          "NO_VIRT", "USE_PSK"})
+
+
+def validate_config(conf, partial=False):
+    """Accept only supported, single-line values before persisting or starting."""
+    if not isinstance(conf, dict):
+        raise ValueError("Configuration must be a JSON object.")
+    allowed = set(CONFIG_DEFAULTS) | {"COUNTRY"}
+    for key, value in conf.items():
+        if key not in allowed:
+            raise ValueError("Unsupported configuration key.")
+        if not isinstance(value, str) or len(value) > 4096 or not value.isprintable():
+            raise ValueError(f"{key} must contain printable text on a single line.")
+    if partial:
+        return conf
+    result = {**CONFIG_DEFAULTS, **conf}
+    for key in CONFIG_FLAGS:
+        if result[key] not in {"0", "1"}:
+            raise ValueError(f"{key} must be 0 or 1.")
+    for key in ("WIFI_IFACE", "INTERNET_IFACE"):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,14}", result[key]):
+            raise ValueError(f"{key} must be a valid interface name (1–15 characters).")
+    if not 1 <= len(result["SSID"].encode("utf-8")) <= 32:
+        raise ValueError("SSID must be 1–32 bytes in UTF-8.")
+    password = result["PASSPHRASE"]
+    if result["USE_PSK"] == "1":
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", password):
+            raise ValueError("PASSPHRASE must be a 64-digit hexadecimal PSK.")
+    elif not password.isascii() or not 8 <= len(password) <= 63:
+        raise ValueError("PASSPHRASE must be 8–63 printable ASCII characters.")
+    if result["FREQ_BAND"] not in {"auto", "2.4", "5"}:
+        raise ValueError("FREQ_BAND must be auto, 2.4, or 5.")
+    channel = result["CHANNEL"]
+    if channel != "default" and not (re.fullmatch(r"[0-9]{1,3}", channel) and 1 <= int(channel) <= 196):
+        raise ValueError("CHANNEL must be default or a number from 1 to 196.")
+    if result["WPA_VERSION"] not in {"1", "2", "3"}:
+        raise ValueError("WPA_VERSION must be 1, 2, or 3.")
+    if result["SHARE_METHOD"] not in {"nat", "bridge", "none"}:
+        raise ValueError("SHARE_METHOD must be nat, bridge, or none.")
+    try:
+        gateway = ipaddress.IPv4Address(result["GATEWAY"])
+        if gateway.is_multicast or gateway.is_unspecified or gateway.is_loopback or (int(gateway) & 255) in (0, 255):
+            raise ValueError()
+    except ValueError:
+        raise ValueError("GATEWAY must be a usable IPv4 host address in a /24 subnet.") from None
+    if result["DHCP_DNS"] != "gateway":
+        try:
+            for address in result["DHCP_DNS"].split(","):
+                ipaddress.IPv4Address(address)
+        except ValueError:
+            raise ValueError("DHCP_DNS must be gateway or comma-separated IPv4 addresses.") from None
+    path = result["MAC_FILTER_ACCEPT"]
+    if not re.fullmatch(r"/etc/hostapd/[A-Za-z0-9_./-]+", path) or ".." in path.split("/"):
+        raise ValueError("MAC_FILTER_ACCEPT must be a path inside /etc/hostapd.")
+    if "COUNTRY" in result and not re.fullmatch(r"[A-Z]{2}", result["COUNTRY"]):
+        raise ValueError("COUNTRY must be a two-letter uppercase country code.")
+    return result
 
 # Config file paths
 SYSTEM_CONFIG = "/etc/wifi-hotspot.conf"
@@ -202,10 +275,10 @@ class WifiHotspotDaemon:
 
     # ------------------ Wi-Fi & System Helpers ------------------ #
 
-    def _run_cmd(self, args):
+    def _run_cmd(self, args, timeout=10):
         try:
             res = subprocess.run(
-                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10
+                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout, env={**os.environ, "LC_ALL": "C"}
             )
             return res.returncode, res.stdout.strip(), res.stderr.strip()
         except Exception as e:
@@ -226,18 +299,13 @@ class WifiHotspotDaemon:
                     virt_iface = m.group(1)
 
             config = self._read_config_dict()
-            actual_band = config.get("FREQ_BAND", "2.4")
-            if actual_band == "auto" or not actual_band:
-                code_i, out_i, _ = self._run_cmd(["iw", "dev", virt_iface, "info"])
-                if "MHz" in out_i:
-                    m_freq = re.search(r"\((\d+)\s*MHz\)", out_i)
-                    if m_freq:
-                        freq_val = int(m_freq.group(1))
-                        actual_band = "5" if freq_val > 3000 else "2.4"
-                    else:
-                        actual_band = "2.4"
-                else:
-                    actual_band = "2.4"
+            # Report the actual AP band, including runtime fallback from a 5 GHz preference.
+            actual_band = ""
+            code_i, out_i, _ = self._run_cmd(["iw", "dev", virt_iface, "info"])
+            if code_i == 0:
+                match = re.search(r"\((\d+(?:\.\d+)?)\s*MHz\)", out_i)
+                if match:
+                    actual_band = self._frequency_band(float(match[1]))
 
             return {
                 "active": True,
@@ -343,24 +411,39 @@ class WifiHotspotDaemon:
         if os.path.exists(path):
             with open(path, "r") as f:
                 for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
+                    line = line.rstrip("\r\n")
+                    if line and not line.lstrip().startswith("#") and "=" in line:
                         k, v = line.split("=", 1)
-                        conf[k.strip()] = v.strip().strip("\"'")
+                        conf[k.strip()] = v
         return conf
 
     def _write_config_dict(self, conf):
+        # Treat updates as patches, retaining settings absent from the UI.
+        validate_config(conf, partial=True)
+        merged = {**self._read_config_dict(), **conf}
+        config = validate_config(merged)
         path = get_config_path(for_write=True)
-        lines = ["# Wi-Fi Hotspot Configuration\n"]
-        for k, v in conf.items():
-            lines.append(f"{k}={v}\n")
-        with open(path, "w") as f:
-            f.writelines(lines)
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(path),
+                                             prefix=".wifi-hotspot-", delete=False) as handle:
+                temp_path = handle.name
+                os.fchmod(handle.fileno(), 0o600)
+                handle.write("# Wi-Fi Hotspot Configuration\n")
+                for key, value in config.items():
+                    handle.write(f"{key}={value}\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temp_path, path)
+            temp_path = None
+        finally:
+            if temp_path is not None:
+                os.unlink(temp_path)
         return True
 
     def prepare_firewall(self):
-        """Auto-configure firewalld for DHCP/DNS and kill leftover dnsmasq instances."""
-        print("[*] Preparing firewall rules and cleaning dnsmasq...")
+        """Auto-configure firewalld for DHCP/DNS; create_ap owns its dnsmasq lifecycle."""
+        print("[*] Preparing firewall rules...")
         # Check if firewalld is running
         code, out, _ = self._run_cmd(["firewall-cmd", "--state"])
         if code == 0 and "running" in out:
@@ -368,105 +451,205 @@ class WifiHotspotDaemon:
             self._run_cmd(["firewall-cmd", "--add-service=dns", "--permanent"])
             self._run_cmd(["firewall-cmd", "--reload"])
 
-        # Kill conflicting orphaned dnsmasq instances
-        self._run_cmd(["killall", "-q", "dnsmasq"])
         return True
 
+    @staticmethod
+    def _frequency_band(freq):
+        if 2400 <= freq < 2500:
+            return "2.4"
+        if 4900 <= freq < 5925:
+            return "5"
+        return ""
+
+    @staticmethod
+    def _split_nmcli_row(line):
+        """Decode nmcli terse fields, including escaped colons in SSIDs/BSSIDs."""
+        fields, field, escaped = [], [], False
+        for char in line:
+            if escaped:
+                field.append(char)
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == ":":
+                fields.append("".join(field))
+                field = []
+            else:
+                field.append(char)
+        fields.append("".join(field))
+        return fields
+
+    @staticmethod
+    def _parse_phy_capabilities(output):
+        """Only allow channels usable without DFS/CAC by this backend."""
+        mode_section = re.search(
+            r"Supported interface modes:\n((?:[ \t]+\*[^\n]*\n)+)", output
+        )
+        has_ap = bool(mode_section and re.search(r"\* AP\s*$", mode_section[1], re.M))
+        channels = {"2.4": [], "5": []}
+        if has_ap:
+            for match in re.finditer(r"\* (\d+(?:\.\d+)?) MHz \[(\d+)\]([^\n]*)", output):
+                freq, channel, flags = float(match[1]), int(match[2]), match[3].lower()
+                band = WifiHotspotDaemon._frequency_band(freq)
+                if band and not any(flag in flags for flag in (
+                    "disabled", "no ir", "no-ir", "passive scanning", "radar detection"
+                )):
+                    channels[band].append({"frequency": int(freq), "channel": channel})
+
+        concurrent = False
+        section = re.search(r"valid interface combinations:\n((?:[ \t]+[^\n]*\n)+)", output)
+        if section:
+            for combination in re.split(r"\n?\s*\* ", section[1]):
+                limits = [(set(t.strip() for t in types.split(",")), int(limit))
+                          for types, limit in re.findall(r"#\{([^}]+)\} <= (\d+)", combination)]
+                total = re.search(r"total <= (\d+)", combination)
+                # A shared {managed, AP} group needs room for both interfaces.
+                if (total and int(total[1]) >= 2
+                        and any("managed" in types for types, _ in limits)
+                        and any("AP" in types for types, _ in limits)
+                        and all(len(types & {"managed", "AP"}) <= limit for types, limit in limits)):
+                    concurrent = has_ap
+        return channels, concurrent
+
     def get_capabilities(self):
-        """Analyze Wi-Fi adapter capabilities (2.4GHz / 5GHz AP support and current STA band)."""
-        config = self._read_config_dict()
-        wifi_iface = config.get("WIFI_IFACE", "wlan0")
+        """Read regulatory/channel restrictions from the configured adapter's PHY."""
+        wifi_iface = self._read_config_dict().get("WIFI_IFACE", "wlan0")
+        channels, concurrent = {"2.4": [], "5": []}, False
+        code, info, _ = self._run_cmd(["iw", "dev", wifi_iface, "info"])
+        phy = re.search(r"\bwiphy (\d+)", info) if code == 0 else None
+        if phy:
+            code, output, _ = self._run_cmd(["iw", "phy", "phy" + phy[1], "info"])
+            if code == 0:
+                channels, concurrent = self._parse_phy_capabilities(output)
 
-        ap_2ghz = True
-        ap_5ghz = False
-        ap_sta_concurrent = True
-        current_sta_band = ""
-        current_sta_ssid = ""
-
-        # Check iw list for AP mode on 5GHz frequencies (band 2)
-        code, out, _ = self._run_cmd(["iw", "list"])
-        if code == 0:
-            if "Band 2:" in out and "AP" in out:
-                # Basic check: if Band 2 exists and Supported interface modes has AP
-                if "Supported interface modes:" in out and "* AP" in out:
-                    ap_5ghz = True
-
-        # 1. Direct kernel nl80211 check via `iw dev <wifi_iface> link`
-        code, out, _ = self._run_cmd(["iw", "dev", wifi_iface, "link"])
-        if code == 0 and "Connected to" in out:
-            for line in out.split("\n"):
+        ssid, frequency, bssid = "", 0, ""
+        code, link, _ = self._run_cmd(["iw", "dev", wifi_iface, "link"])
+        if code == 0 and "Connected to" in link:
+            for line in link.splitlines():
                 line = line.strip()
                 if line.startswith("SSID:"):
-                    current_sta_ssid = line.split("SSID:", 1)[1].strip()
+                    ssid = line.split(":", 1)[1].strip()
                 elif line.startswith("freq:"):
-                    freq_part = line.split("freq:", 1)[1].strip().split()[0]
-                    if freq_part.isdigit():
-                        freq = int(freq_part)
-                        current_sta_band = "5" if freq >= 4900 else "2.4"
-
-        # 2. Fallback via nmcli
-        if not current_sta_band or not current_sta_ssid:
-            code, out, _ = self._run_cmd(["nmcli", "-t", "-f", "ACTIVE,SSID,FREQ,DEVICE", "dev", "wifi"])
-            if code == 0 and out:
-                for line in out.split("\n"):
-                    if line.startswith("yes:"):
-                        parts = line.split(":")
-                        if len(parts) >= 3:
-                            if not current_sta_ssid:
-                                current_sta_ssid = parts[1].strip()
-                            freq_match = re.search(r"(\d+)", parts[2])
-                            if freq_match:
-                                freq = int(freq_match.group(1))
-                                current_sta_band = "5" if freq >= 4900 else "2.4"
-                        break
-
+                    match = re.search(r"\d+(?:\.\d+)?", line)
+                    if match:
+                        frequency = int(float(match[0]))
+                elif line.startswith("Connected to "):
+                    bssid = line.split()[2]
+        band = self._frequency_band(frequency)
         return {
-            "ap_2ghz": ap_2ghz,
-            "ap_5ghz": ap_5ghz,
-            "current_sta_band": current_sta_band,
-            "current_sta_ssid": current_sta_ssid,
-            "ap_sta_concurrent": ap_sta_concurrent,
+            "ap_2ghz": bool(channels["2.4"]),
+            "ap_5ghz": bool(channels["5"]),
+            "ap_channels": channels,
+            "current_sta_band": band,
+            "current_sta_frequency": frequency,
+            "current_sta_ssid": ssid,
+            "current_sta_bssid": bssid,
+            "current_sta_ap_allowed": any(
+                c["frequency"] == frequency for c in channels.get(band, [])
+            ),
+            "ap_sta_concurrent": concurrent,
             "wifi_iface": wifi_iface,
         }
 
     def switch_band_and_reconnect(self, target_band):
-        """Switch current Wi-Fi connection to specified band (2.4GHz or 5GHz) for the active SSID."""
+        """Reconnect the existing profile to a permitted BSSID and verify the result."""
+        if target_band not in ("2.4", "5"):
+            return json.dumps({"success": False, "error": "Unsupported Wi-Fi band."})
         caps = self.get_capabilities()
-        ssid = caps.get("current_sta_ssid")
-        wifi_iface = caps.get("wifi_iface", "wlan0")
-
+        ssid, iface = caps["current_sta_ssid"], caps["wifi_iface"]
         if not ssid:
             return json.dumps({"success": False, "error": "No active Wi-Fi connection to switch."})
-
-        # Scan for BSSIDs of the same SSID matching target band
-        code, out, _ = self._run_cmd(["nmcli", "-t", "-f", "SSID,BSSID,FREQ,DEVICE", "dev", "wifi", "list"])
-        target_bssid = None
-        if code == 0 and out:
-            for line in out.split("\n"):
-                parts = line.split(":")
-                if len(parts) >= 3 and parts[0] == ssid:
-                    bssid = ":".join(parts[1:7]) if len(parts) >= 7 else parts[1]
-                    freq_str = parts[-2]
-                    if freq_str.isdigit():
-                        freq = int(freq_str)
-                        is_5g = freq >= 4900
-                        if (target_band == "5" and is_5g) or (target_band == "2.4" and not is_5g):
-                            target_bssid = bssid
-                            break
-
-        print(f"[*] Reconnecting to {ssid} on {target_band}GHz (BSSID: {target_bssid})...")
-        if target_bssid:
-            self._run_cmd(["nmcli", "dev", "wifi", "connect", target_bssid, "ifname", wifi_iface])
-        else:
-            # Reconnect by SSID
-            self._run_cmd(["nmcli", "dev", "wifi", "connect", ssid, "ifname", wifi_iface])
-
+        code, profile, err = self._run_cmd([
+            "nmcli", "-g", "GENERAL.CON-UUID", "device", "show", iface
+        ])
+        if code or not profile or profile == "--":
+            return json.dumps({"success": False, "error": err or "Cannot identify the active Wi-Fi profile."})
+        code, scan, err = self._run_cmd([
+            "nmcli", "--wait", "8", "-t", "-f", "SSID,BSSID,FREQ,SIGNAL",
+            "device", "wifi", "list", "ifname", iface, "--rescan", "yes"
+        ], timeout=10)
+        if code:
+            return json.dumps({"success": False, "error": err or "Wi-Fi scan failed."})
+        allowed = {c["frequency"] for c in caps["ap_channels"][target_band]}
+        candidates = []
+        for line in scan.splitlines():
+            fields = self._split_nmcli_row(line)
+            if len(fields) != 4 or fields[0] != ssid:
+                continue
+            freq_match = re.fullmatch(r"(\d+)(?:\s*MHz)?", fields[2])
+            if freq_match and int(freq_match[1]) in allowed:
+                candidates.append((int(fields[3]) if fields[3].isdigit() else 0, fields[1]))
+        if not candidates:
+            return json.dumps({"success": False, "error":
+                f"No reachable {target_band} GHz access point for '{ssid}' on a permitted hotspot channel. "
+                "Enable that band on your router or use a second Wi-Fi adapter."})
+        target_bssid = max(candidates)[1]
+        code, _, err = self._run_cmd([
+            "nmcli", "--wait", "8", "connection", "up", "uuid", profile,
+            "ifname", iface, "ap", target_bssid
+        ], timeout=10)
+        updated = self.get_capabilities()
+        if (code or updated["current_sta_band"] != target_band
+                or updated["current_sta_ssid"] != ssid
+                or not updated["current_sta_ap_allowed"]):
+            # Best effort restore of the original AP after a failed band switch.
+            restore = ["nmcli", "--wait", "8", "connection", "up", "uuid", profile, "ifname", iface]
+            if caps["current_sta_bssid"]:
+                restore += ["ap", caps["current_sta_bssid"]]
+            self._run_cmd(restore, timeout=10)
+            return json.dumps({"success": False, "error": err or "Wi-Fi did not reconnect on a permitted hotspot channel."})
         return json.dumps({"success": True, "target_band": target_band, "ssid": ssid})
 
     # ------------------ D-Bus Methods ------------------ #
 
-    def handle_method_call(self, connection, sender, object_path, interface_name, method_name, parameters, invocation):
+    def _authorize(self, sender, callback):
+        # Use the bus-assigned unique name, never a UID/PID supplied by the client.
+        if not isinstance(sender, str) or not re.fullmatch(r":[0-9]+\.[0-9]+", sender):
+            callback(False)
+            return
+        parameters = GLib.Variant("((sa{sv})sa{ss}us)", (
+            ("system-bus-name", {"name": GLib.Variant("s", sender)}),
+            MANAGE_ACTION, {}, 1, "",  # Allow interaction through the session's auth agent.
+        ))
+        def finished(connection, result):
+            try:
+                authorized, _challenge, _details = connection.call_finish(result).unpack()[0]
+            except Exception:
+                authorized = False  # Fail closed when Polkit is unavailable.
+            callback(bool(authorized))
         try:
+            self.connection.call(
+                "org.freedesktop.PolicyKit1", "/org/freedesktop/PolicyKit1/Authority",
+                "org.freedesktop.PolicyKit1.Authority", "CheckAuthorization", parameters,
+                GLib.VariantType.new("((bba{ss}))"), Gio.DBusCallFlags.NONE,
+                60000, None, finished,
+            )
+        except Exception:
+            callback(False)
+
+    def handle_method_call(self, connection, sender, object_path, interface_name, method_name, parameters, invocation):
+        if method_name not in PROTECTED_METHODS:
+            self._dispatch_method_call(method_name, parameters, invocation)
+            return
+        def authorized(allowed):
+            if not allowed:
+                invocation.return_error_literal(
+                    Gio.DBusError.quark(), Gio.DBusError.ACCESS_DENIED,
+                    "Authorization is required to manage the hotspot or read its configuration.",
+                )
+                return
+            self._dispatch_method_call(method_name, parameters, invocation)
+        self._authorize(sender, authorized)
+
+    def _dispatch_method_call(self, method_name, parameters, invocation):
+        transition = {"Start": "connecting", "Stop": "stopping",
+                      "SwitchBandAndReconnect": "connecting"}.get(method_name)
+        try:
+            if transition:
+                self._emit_signal("StatusChanged", json.dumps({
+                    "active": self.cached_status_active, "state": transition,
+                    "client_count": len(self.cached_clients),
+                }))
             if method_name == "Start":
                 res = self.method_start()
                 invocation.return_value(GLib.Variant("(s)", (res,)))
@@ -507,6 +690,8 @@ class WifiHotspotDaemon:
                     Gio.DBusError.UNKNOWN_METHOD,
                     f"Unknown method {method_name}",
                 )
+        except (ValueError, TypeError) as e:
+            invocation.return_error_literal(Gio.DBusError.quark(), Gio.DBusError.INVALID_ARGS, str(e))
         except Exception as e:
             print(f"[!] Error in {method_name}: {e}")
             invocation.return_error_literal(
@@ -515,6 +700,13 @@ class WifiHotspotDaemon:
                 str(e),
             )
 
+        finally:
+            if transition:
+                try:
+                    self._emit_signal("StatusChanged", json.dumps(self._get_status_dict()))
+                except Exception as e:
+                    print(f"[!] Could not refresh hotspot status: {e}")
+
     def method_start(self):
         self.is_starting = True
         try:
@@ -522,59 +714,50 @@ class WifiHotspotDaemon:
             if status["active"]:
                 return json.dumps({"success": True, "message": "Already running", "active": True})
 
-            # 1. Check Hardware Capabilities & Band Mismatch
+            config = validate_config(self._read_config_dict())
             caps = self.get_capabilities()
-            config = self._read_config_dict()
             req_band = config.get("FREQ_BAND", "auto")
+            if req_band not in ("auto", "2.4", "5"):
+                return json.dumps({"success": False, "error": "Unsupported hotspot band."})
+            connected = bool(caps["current_sta_ssid"])
+            if connected:
+                if not caps["ap_sta_concurrent"] or config.get("NO_VIRT", "0") == "1":
+                    return json.dumps({"success": False, "error":
+                        "This adapter/configuration cannot run Wi-Fi and a hotspot together. Use a second adapter."})
+                if not caps["current_sta_ap_allowed"] or (req_band == "2.4" and caps["current_sta_band"] != "2.4"):
+                    if not caps["ap_2ghz"]:
+                        return json.dumps({"success": False, "error": "No permitted 2.4 GHz hotspot channel is available."})
+                    print("[*] Switching upstream Wi-Fi to a permitted 2.4 GHz hotspot channel...")
+                    result = json.loads(self.switch_band_and_reconnect("2.4"))
+                    if not result["success"]:
+                        return json.dumps(result)
+                    caps = self.get_capabilities()
+                    if not caps["current_sta_ap_allowed"] or caps["current_sta_band"] != "2.4":
+                        return json.dumps({"success": False, "error": "Wi-Fi changed before hotspot startup; try again."})
+                resolved_band = caps["current_sta_band"]
+                channel = next(c["channel"] for c in caps["ap_channels"][resolved_band]
+                               if c["frequency"] == caps["current_sta_frequency"])
+            else:
+                if config.get("WIFI_IFACE", "wlan0") == config.get("INTERNET_IFACE", "wlan0"):
+                    return json.dumps({"success": False, "error": "Connect to Wi-Fi before sharing this adapter's connection."})
+                resolved_band = req_band
+                if req_band == "auto":
+                    resolved_band = "5" if caps["ap_5ghz"] else "2.4"
+                channels = caps["ap_channels"][resolved_band]
+                if not channels:
+                    return json.dumps({"success": False, "error": f"No permitted {resolved_band} GHz hotspot channel is available."})
+                channel = config.get("CHANNEL", "default")
+                if channel == "default":
+                    channel = channels[0]["channel"]
+                elif str(channel) not in {str(c["channel"]) for c in channels}:
+                    return json.dumps({"success": False, "error": "The configured hotspot channel is not permitted."})
 
-            # If currently connected via 5GHz but Wi-Fi card does NOT support 5GHz AP mode:
-            if caps["current_sta_band"] == "5" and not caps["ap_5ghz"]:
-                msg = (
-                    "Your Wi-Fi adapter does not support 5GHz Hotspot mode. "
-                    "Would you like to switch your internet connection to the 2.4GHz band and start the Hotspot?"
-                )
-                action_payload = {
-                    "type": "band_switch",
-                    "message": msg,
-                    "target_band": "2.4",
-                    "action": "SwitchBandAndReconnect",
-                }
-                self._emit_signal("UserActionRequired", json.dumps(action_payload))
-                return json.dumps({
-                    "success": False,
-                    "action_required": "band_switch",
-                    "target_band": "2.4",
-                    "message": msg,
-                })
-
-            # 2. Automatically Prepare Firewall & Clear dnsmasq
             self.prepare_firewall()
-
-            # 3. Ensure Channel Compatibility in AP+STA Repeater Mode
-            wifi_iface = config.get("WIFI_IFACE", "wlp2s0")
-            inet_iface = config.get("INTERNET_IFACE", "wlp2s0")
-            if wifi_iface == inet_iface or caps.get("current_sta_ssid"):
-                # In concurrent AP+STA mode, channel MUST follow connected channel (default)
-                if config.get("CHANNEL") != "default":
-                    print("[*] Normalizing CHANNEL=default for AP+STA concurrent mode.")
-                    config["CHANNEL"] = "default"
-                    self._write_config_dict(config)
-
-            # Resolve auto band based on capabilities
-            resolved_band = req_band
-            if req_band == "auto":
-                if caps.get("current_sta_band"):
-                    resolved_band = caps["current_sta_band"]
-                elif caps.get("ap_5ghz"):
-                    resolved_band = "5"
-                else:
-                    resolved_band = "2.4"
-                print(f"[*] Auto frequency band resolved to: {resolved_band}")
 
             # 4. Start create_ap process with logfile
             config_path = get_config_path(for_write=False)
             log_path = "/tmp/create_ap.log"
-            cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--daemon", "--freq-band", resolved_band]
+            cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
             code, out, err = self._run_cmd(cmd)
 
@@ -589,6 +772,15 @@ class WifiHotspotDaemon:
             self._emit_signal("StatusChanged", json.dumps(status))
 
             if status["active"]:
+                if connected:
+                    upstream = self.get_capabilities()
+                    if (status.get("iface") == caps["wifi_iface"]
+                            or upstream["current_sta_ssid"] != caps["current_sta_ssid"]
+                            or upstream["current_sta_frequency"] != caps["current_sta_frequency"]):
+                        self.method_stop()
+                        return json.dumps({"success": False, "error":
+                            "The hotspot could not keep the upstream Wi-Fi connection active. "
+                            "Concurrent Wi-Fi + hotspot startup was cancelled."})
                 return json.dumps({"success": True, "status": status})
             else:
                 err_msg = ""

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    if [ -f /etc/wifi-hotspot.conf ] && [ ! -L /etc/wifi-hotspot.conf ]; then
+        chmod 0600 /etc/wifi-hotspot.conf
+    fi
+    deb-systemd-helper unmask wifi-hotspot-daemon.service >/dev/null || true
+    deb-systemd-helper enable wifi-hotspot-daemon.service >/dev/null || true
+    if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        deb-systemd-invoke restart wifi-hotspot-daemon.service >/dev/null || true
+        # Reload service policy without restarting the system bus.
+        systemctl --system reload dbus.service >/dev/null 2>&1 || true
+    fi
+fi

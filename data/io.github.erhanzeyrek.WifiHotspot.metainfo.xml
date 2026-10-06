@@ -3,7 +3,7 @@
   <id>io.github.erhanzeyrek.WifiHotspot</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
-  <name>Wi-Fi Hotspot</name>
+  <name>Wi-Fi Relay</name>
   <summary>Native GNOME Shell Wi-Fi Hotspot with simultaneous AP+STA support</summary>
   <description>
     <p>
@@ -17,5 +17,6 @@
     <category>Network</category>
     <category>Settings</category>
   </categories>
+  <url type="homepage">https://github.com/3togo/gnome-wifi-hotspot</url>
   <developer_name>Erhan Zeyrek</developer_name>
 </component>

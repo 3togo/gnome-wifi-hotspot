@@ -1,0 +1,21 @@
+.TH WIFI-HOTSPOT-SETTINGS 1 "October 2026" "Wi-Fi Relay" "User Commands"
+.SH NAME
+wifi-hotspot-settings \- configure and manage a GNOME Wi-Fi hotspot
+.SH SYNOPSIS
+.B wifi-hotspot-settings
+.SH DESCRIPTION
+Open the GTK4 preferences application to configure hotspot credentials,
+network interfaces, frequency band, and client isolation, and view clients.
+The system daemon can share an existing Wi-Fi connection through a virtual
+access point if the wireless hardware and driver support concurrent AP+STA.
+If necessary, startup switches the existing connection to a reachable
+2.4 GHz access point with the same SSID on a permitted hotspot channel.
+.SH FILES
+.TP
+.I /etc/wifi-hotspot.conf
+System hotspot configuration. Set WIFI_IFACE and INTERNET_IFACE to the
+appropriate interfaces before starting the hotspot.
+.SH SEE ALSO
+.BR nmcli (1),
+.BR iw (8),
+.BR hostapd (8)

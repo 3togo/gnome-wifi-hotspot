@@ -1,6 +1,9 @@
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import St from 'gi://St';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -54,7 +57,7 @@ const HotspotToggle = GObject.registerClass(
 class HotspotToggle extends QuickSettings.QuickMenuToggle {
     _init(extension) {
         super._init({
-            title: _('Wi-Fi Hotspot'),
+            title: _('Wi-Fi Relay'),
             subtitle: _('Off'),
             iconName: 'network-wireless-hotspot-symbolic',
             toggleMode: true,
@@ -62,11 +65,12 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
 
         this._extension = extension;
         this._isBusy = false;
+        this._statusRevision = 0;
         this._clients = [];
         this._status = { active: false, ssid: '', client_count: 0 };
 
         // 1. Configure Header & Menu
-        this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Hotspot'), _('Off'));
+        this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), _('Off'));
 
         // 2. Dynamic Details Section
         this._detailsSection = new PopupMenu.PopupMenuSection();
@@ -96,7 +100,7 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
                         console.warn(`[Hotspot] D-Bus proxy error: ${error.message}`);
                         return;
                     }
-                    this._onProxyReady();
+                    if (!this._destroyed) this._onProxyReady();
                 }
             );
         } catch (e) {
@@ -105,6 +109,8 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _onProxyReady() {
+        // Allow time for scanning, reconnecting, and hotspot startup.
+        this._proxy.set_default_timeout(60000);
         // Listen to signals
         this._statusSignalId = this._proxy.connectSignal('StatusChanged', (_proxy, _sender, [statusJson]) => {
             try {
@@ -119,6 +125,7 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
             try {
                 this._clients = JSON.parse(clientsJson);
                 this._renderMenuDetails();
+                this._syncTray();
             } catch (e) {
                 console.error(`[Hotspot] ClientsChanged parse error: ${e}`);
             }
@@ -145,8 +152,9 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
 
     _queryStatus() {
         if (!this._proxy || this._isBusy) return;
+        const revision = this._statusRevision;
         this._proxy.GetStatusRemote((result, error) => {
-            if (error) return;
+            if (error || !this._proxy || revision !== this._statusRevision) return;
             try {
                 const [statusJson] = result;
                 const status = JSON.parse(statusJson);
@@ -156,24 +164,43 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _updateUI(status) {
+        this._statusRevision++;
         this._status = status;
         const active = !!status.active;
+        const transitioning = ['connecting', 'stopping'].includes(status.state) || this._isBusy;
         this.checked = active;
+        this.reactive = !transitioning;
 
-        if (active) {
+        if (transitioning) {
+            this.subtitle = status.state === 'stopping' ? _('Stopping...') : _('Connecting...');
+            this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), this.subtitle);
+        } else if (active) {
             const count = status.client_count || this._clients.length;
             this.subtitle = count > 0 ? `${status.ssid} (${count} devices)` : (status.ssid || _('On'));
-            this.menu.setHeader('network-wireless-hotspot-symbolic', status.ssid || _('Wi-Fi Hotspot'), _('Active'));
+            this.menu.setHeader('network-wireless-hotspot-symbolic', status.ssid || _('Wi-Fi Relay'), _('Active'));
         } else {
             this.subtitle = _('Off');
-            this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Hotspot'), _('Off'));
-        }
-
-        if (this._extension.indicator) {
-            this._extension.indicator.visible = active;
+            this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), _('Off'));
         }
 
         this._renderMenuDetails();
+        this._syncTray();
+    }
+
+    _syncTray() {
+        this._extension.tray?.update(this._status, this._clients, this._isBusy);
+    }
+
+    _setBusy(state) {
+        this._isBusy = true;
+        this._updateUI({...this._status, state});
+    }
+
+    _finishOperation() {
+        if (!this._proxy) return;
+        this._isBusy = false;
+        this._updateUI({...this._status, state: this._status.active ? 'on' : 'off'});
+        this._queryStatus();
     }
 
     _renderMenuDetails() {
@@ -217,8 +244,8 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _onToggleClicked() {
-        if (!this._proxy || this._isBusy) return;
-        this._isBusy = true;
+        if (!this._proxy || this._isBusy || ['connecting', 'stopping'].includes(this._status.state)) return;
+        this._setBusy(this._status.active ? 'stopping' : 'connecting');
 
         const isCurrentlyActive = !!this._status.active;
 
@@ -226,25 +253,25 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
             // Currently active -> Turn OFF
             this.subtitle = _('Stopping...');
             this._proxy.StopRemote((result, error) => {
-                this._isBusy = false;
+                if (!this._proxy) return;
+                this._finishOperation();
                 if (error) {
                     console.error(`[Hotspot] Stop error: ${error.message}`);
-                    Main.notify(_('Wi-Fi Hotspot'), _('Stop error: ') + error.message);
+                    Main.notify(_('Wi-Fi Relay'), _('Stop error: ') + error.message);
                 }
-                this._queryStatus();
             });
         } else {
             // Currently inactive -> Turn ON
-            this.subtitle = _('Starting...');
             this._proxy.StartRemote((result, error) => {
-                this._isBusy = false;
+                if (!this._proxy) return;
+                this._finishOperation();
                 if (error) {
                     console.error(`[Hotspot] Start error: ${error.message}`);
                     let userMsg = error.message;
                     if (error.message.includes('ServiceUnknown') || error.message.includes('not activatable')) {
                         userMsg = _('Background service (daemon) is not running.');
                     }
-                    Main.notify(_('Wi-Fi Hotspot'), _('Start error: ') + userMsg);
+                    Main.notify(_('Wi-Fi Relay'), _('Start error: ') + userMsg);
                     this.checked = false;
                     this.subtitle = _('Off');
                     return;
@@ -256,30 +283,28 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
                     if (!res.success && res.action_required === 'band_switch') {
                         this._handleUserActionRequired(res);
                     } else if (!res.success) {
-                        Main.notify(_('Wi-Fi Hotspot'), _('Start error: ') + (res.error || _('Failed to start Hotspot.')));
+                        Main.notify(_('Wi-Fi Relay'), _('Start error: ') + (res.error || _('Failed to start Hotspot.')));
                         this.checked = false;
                         this.subtitle = _('Off');
                         return;
                     }
                 } catch (e) {}
-
-                this._queryStatus();
             });
         }
     }
 
     _handleUserActionRequired(action) {
-        if (action.type === 'band_switch') {
+        if (action.type === 'band_switch' || action.action_required === 'band_switch') {
             const msg = action.message || _("Your Wi-Fi adapter does not support 5GHz Hotspot. Switch to 2.4GHz and start?");
             
             // Show system notification with quick action button
-            const source = new Main.MessageTray.Source({
-                title: _('Wi-Fi Hotspot'),
+            const source = new MessageTray.Source({
+                title: _('Wi-Fi Relay'),
                 iconName: 'network-wireless-hotspot-symbolic',
             });
             Main.messageTray.add(source);
 
-            const notification = new Main.MessageTray.Notification({
+            const notification = new MessageTray.Notification({
                 source: source,
                 title: _('Band Compatibility Warning'),
                 body: msg,
@@ -287,14 +312,29 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
             });
 
             notification.addAction(_("Switch to 2.4GHz and Start"), () => {
-                this.subtitle = _("Switching to 2.4GHz...");
+                if (!this._proxy || this._isBusy) return;
+                this._setBusy('connecting');
                 this._proxy.SwitchBandAndReconnectRemote('2.4', (res, err) => {
+                    if (!this._proxy) return;
+                    this._finishOperation();
                     if (err) {
-                        Main.notify(_('Wi-Fi Hotspot'), _('Band switch error: ') + err.message);
+                        Main.notify(_('Wi-Fi Relay'), _('Band switch error: ') + err.message);
                         return;
                     }
-                    // Automatically trigger start after 2 seconds
-                    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
+                    try {
+                        const response = JSON.parse(res[0]);
+                        if (!response.success) {
+                            Main.notify(_('Wi-Fi Relay'), _('Band switch error: ') + response.error);
+                            this._queryStatus();
+                            return;
+                        }
+                    } catch (e) {
+                        Main.notify(_('Wi-Fi Relay'), _('Invalid band switch response.'));
+                        return;
+                    }
+                    // Start after the verified reconnection
+                    this._restartTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
+                        this._restartTimer = null;
                         this._onToggleClicked();
                         return GLib.SOURCE_REMOVE;
                     });
@@ -332,6 +372,11 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     destroy() {
+        this._destroyed = true;
+        if (this._restartTimer) {
+            GLib.source_remove(this._restartTimer);
+            this._restartTimer = null;
+        }
         if (this._pollTimer) {
             GLib.source_remove(this._pollTimer);
             this._pollTimer = null;
@@ -346,46 +391,82 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 });
 
+// A dedicated panel button keeps the hotspot visible even when it is off.
+const HotspotTray = GObject.registerClass(
+class HotspotTray extends PanelMenu.Button {
+    _init(extension) {
+        super._init(0.0, _('Wi-Fi Relay'));
+        this._icon = new St.Icon({
+            icon_name: 'network-wireless-hotspot-symbolic',
+            style_class: 'system-status-icon hotspot-tray-off',
+        });
+        this.add_child(this._icon);
+        this._statusItem = new PopupMenu.PopupMenuItem('', {reactive: false});
+        this.menu.addMenuItem(this._statusItem);
+        this._switch = new PopupMenu.PopupSwitchMenuItem(_('Wi-Fi Relay'), false);
+        this._switch.connect('toggled', () => extension._indicator?._toggle._onToggleClicked());
+        this.menu.addMenuItem(this._switch);
+        this._details = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._details);
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.menu.addAction(_('Hotspot Settings'), () => extension._indicator?._toggle._openSettings());
+        this.update({active: false}, [], false);
+    }
+
+    update(status, clients, busy) {
+        const stopping = status.state === 'stopping';
+        const transitioning = busy || stopping || status.state === 'connecting';
+        const state = transitioning ? 'connecting' : status.active ? 'on' : 'off';
+        const label = transitioning
+            ? (stopping ? _('Stopping...') : _('Connecting...'))
+            : status.active ? _('On') : _('Off');
+        this._icon.style_class = `system-status-icon hotspot-tray-${state}`;
+        this.accessible_name = `${_('Wi-Fi Relay')}: ${label}`;
+        this._statusItem.label.text = this.accessible_name;
+        this._switch.setToggleState(!!status.active);
+        this._switch.setSensitive(!transitioning);
+        this._details.removeAll();
+        if (status.active) {
+            this._details.addMenuItem(new PopupMenu.PopupMenuItem(
+                `SSID: ${status.ssid || 'Hotspot'}`, {reactive: false}));
+            this._details.addMenuItem(new PopupMenu.PopupMenuItem(
+                `${_('Connected Devices')}: ${status.client_count ?? clients.length}`, {reactive: false}));
+            for (const client of clients) {
+                const name = client.hostname || _('Device');
+                this._details.addMenuItem(new PopupMenu.PopupMenuItem(
+                    client.ip ? `${name} (${client.ip})` : name, {reactive: false}));
+            }
+        }
+    }
+});
+
 const HotspotIndicator = GObject.registerClass(
 class HotspotIndicator extends QuickSettings.SystemIndicator {
     _init(extension) {
         super._init();
-
-        this._indicator = this._addIndicator();
-        this._indicator.iconName = 'network-wireless-hotspot-symbolic';
-        this._indicator.visible = false;
-
         this._toggle = new HotspotToggle(extension);
         this.quickSettingsItems.push(this._toggle);
     }
 
-    get indicator() {
-        return this._indicator;
-    }
-
     destroy() {
-        if (this._toggle) {
-            this._toggle.destroy();
-            this._toggle = null;
-        }
+        this._toggle?.destroy();
+        this._toggle = null;
         super.destroy();
     }
 });
 
 export default class WifiHotspotExtension extends Extension {
     enable() {
+        this.tray = new HotspotTray(this);
+        Main.panel.addToStatusArea(this.uuid, this.tray);
         this._indicator = new HotspotIndicator(this);
         Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
     }
 
-    get indicator() {
-        return this._indicator ? this._indicator.indicator : null;
-    }
-
     disable() {
-        if (this._indicator) {
-            this._indicator.destroy();
-            this._indicator = null;
-        }
+        this._indicator?.destroy();
+        this._indicator = null;
+        this.tray?.destroy();
+        this.tray = null;
     }
 }
