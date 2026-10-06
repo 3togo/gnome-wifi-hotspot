@@ -3,6 +3,7 @@ import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {getAutoStart, setAutoStart} from './startup.js';
 
 const BUS_NAME = 'io.github.erhanzeyrek.WifiHotspot';
 const OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot';
@@ -121,6 +122,31 @@ export default class HotspotPreferences extends ExtensionPreferences {
         });
         window.add(pageGeneral);
 
+        const grpStartup = new Adw.PreferencesGroup({title: _('Startup')});
+        pageGeneral.add(grpStartup);
+        const startupRow = new Adw.SwitchRow({
+            title: _('Start tray at login'),
+            subtitle: _('Show the tray automatically when you log in. Disabling also hides it now.'),
+            active: getAutoStart(),
+        });
+        grpStartup.add(startupRow);
+        const startupSignal = startupRow.connect('notify::active', () => {
+            try {
+                setAutoStart(startupRow.active);
+            } catch (error) {
+                startupRow.block_signal_handler(startupSignal);
+                startupRow.active = getAutoStart();
+                startupRow.unblock_signal_handler(startupSignal);
+                const dialog = new Adw.MessageDialog({
+                    transient_for: window,
+                    heading: _('Could not save startup setting'),
+                    body: error.message,
+                });
+                dialog.add_response('ok', _('Close'));
+                dialog.present();
+            }
+        });
+
         // Basic Settings Group
         const grpBasic = new Adw.PreferencesGroup({
             title: _('Hotspot Configuration'),
@@ -138,7 +164,7 @@ export default class HotspotPreferences extends ExtensionPreferences {
 
         // Network Interfaces Group
         const grpNet = new Adw.PreferencesGroup({
-            title: _('Network & Hardware'),
+            title: _('Network and Hardware'),
         });
         pageGeneral.add(grpNet);
 
@@ -186,7 +212,7 @@ export default class HotspotPreferences extends ExtensionPreferences {
         });
         window.add(pageAdv);
 
-        const grpAdv = new Adw.PreferencesGroup({ title: _('Protocol & Security') });
+        const grpAdv = new Adw.PreferencesGroup({ title: _('Protocol and Security') });
         pageAdv.add(grpAdv);
 
         const switchHidden = new Adw.SwitchRow({ title: _('Hidden SSID'), subtitle: _('Hide network name from broadcast') });
@@ -209,7 +235,7 @@ export default class HotspotPreferences extends ExtensionPreferences {
         switch80211ax.connect('notify::active', () => saveConfig());
         grpAdv.add(switch80211ax);
 
-        const grpIp = new Adw.PreferencesGroup({ title: _('Gateway & Channel') });
+        const grpIp = new Adw.PreferencesGroup({ title: _('Gateway and Channel') });
         pageAdv.add(grpIp);
 
         const entryGateway = new Adw.EntryRow({ title: _('Gateway IP') });
@@ -347,7 +373,11 @@ export default class HotspotPreferences extends ExtensionPreferences {
             };
 
             if (proxy) {
-                proxy.SetConfigRemote(JSON.stringify(conf), () => {});
+                proxy.SetConfigRemote(JSON.stringify(conf), (_result, error) => {
+                    grpBasic.set_description(error
+                        ? `${_('Settings were not saved')}: ${error.message}`
+                        : _('Wi-Fi broadcast name and security credentials'));
+                });
             }
         }
 

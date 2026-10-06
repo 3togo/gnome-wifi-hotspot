@@ -1,0 +1,86 @@
+// Exercise the extension's tray/controller without changing host networking.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+
+class Menu {
+    items = [];
+    addMenuItem(item) { this.items.push(item); }
+    addAction(label, action) { this.items.push({label, action}); }
+    setHeader() {}
+    removeAll() { this.items = []; }
+}
+class Actor {
+    constructor(...args) { this._init(...args); }
+    _init() { this.menu = new Menu(); this.quickSettingsItems = []; }
+    connect() {}
+    add_child() {}
+    destroy() {}
+}
+class Item {
+    constructor(text) { this.label = {text}; }
+    connect() {}
+    setToggleState(value) { this.state = value; }
+    setSensitive(value) { this.sensitive = value; }
+}
+let query, start, stop;
+const proxy = {
+    GetStatusRemote(callback) { query = callback; },
+    StartRemote(callback) { start = callback; },
+    StopRemote(callback) { stop = callback; },
+    disconnectSignal() {},
+};
+const context = {
+    GObject: {registerClass: cls => cls},
+    Gio: {DBus: {system: {}}, DBusProxy: {makeProxyWrapper: () => class {constructor() {return proxy;}}}},
+    GLib: {source_remove() {}},
+    St: {Icon: class {constructor(props) {Object.assign(this, props);}}},
+    PanelMenu: {Button: Actor},
+    QuickSettings: {QuickMenuToggle: Actor, SystemIndicator: Actor},
+    PopupMenu: {PopupMenuItem: Item, PopupImageMenuItem: Item, PopupSwitchMenuItem: Item,
+        PopupMenuSection: Menu, PopupSeparatorMenuItem: Item},
+    Main: {notify() {}}, MessageTray: {}, Extension: class {}, _: text => text,
+    console: {warn() {}, error() {}},
+};
+const source = readFileSync(new URL('../extension/extension.js', import.meta.url), 'utf8')
+    .replace(/^import .*;\n/gm, '').replace('export default class', 'class');
+vm.runInNewContext(`${source}\nglobalThis.classes = {HotspotTray, HotspotToggle};`, context);
+const extension = {};
+extension.tray = new context.classes.HotspotTray(extension);
+const toggle = new context.classes.HotspotToggle(extension);
+const tray = extension.tray;
+assert.match(tray._icon.style_class, /hotspot-tray-off/);
+assert.equal(tray._switch.sensitive, true);
+
+toggle._onToggleClicked();
+assert.match(tray._icon.style_class, /hotspot-tray-connecting/);
+assert.equal(tray._switch.sensitive, false);
+start(['{"success":false,"error":"No permitted channel"}'], null);
+query(['{"active":false}'], null);
+assert.match(tray._icon.style_class, /hotspot-tray-off/);
+assert.equal(tray._switch.sensitive, true);
+
+// A reply from a query made before a signal must not overwrite that signal.
+toggle._queryStatus();
+const staleQuery = query;
+toggle._updateUI({active: false, state: 'connecting'});
+staleQuery(['{"active":false}'], null);
+assert.match(tray._icon.style_class, /hotspot-tray-connecting/);
+
+toggle._updateUI({active: true, ssid: 'Test', client_count: 1});
+assert.match(tray._icon.style_class, /hotspot-tray-on/);
+assert.equal(tray._switch.state, true);
+toggle._onToggleClicked();
+assert.match(tray._icon.style_class, /hotspot-tray-connecting/);
+assert.match(tray.accessible_name, /Stopping/);
+toggle._updateUI({active: false});
+stop([true], null);
+query(['{"active":false}'], null);
+assert.match(tray._icon.style_class, /hotspot-tray-off/);
+
+// Pending callbacks after disable must not touch destroyed actors.
+toggle._onToggleClicked();
+const pendingStart = start;
+toggle.destroy();
+pendingStart(['{"success":true}'], null);
+console.log('Tray state, failed startup, stale replies, and disable checks passed.');

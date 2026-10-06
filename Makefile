@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-UUID := wifi-hotspot@erhanzeyrek
+UUID := wifi-relay@3togo.github.io
 EXT_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 SRC_EXT_DIR := $(PWD)/extension
 DBUS_CONF := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.conf
@@ -10,7 +10,7 @@ SYSTEM_CONFIG := $(PWD)/data/wifi-hotspot.conf
 .PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall
 
 all:
-	@echo "GNOME Wi-Fi Hotspot"
+	@echo "Wi-Fi Relay"
 	@echo "Targets:"
 	@echo "  dev-setup         - Set up symlinks, D-Bus policy, and Polkit rules for live development (no reboot)"
 	@echo "  dev-run-daemon    - Run D-Bus daemon in foreground (terminal 1)"
@@ -39,7 +39,7 @@ dev-setup:
 dev-service-enable:
 	@echo "==> Creating and enabling systemd development service..."
 	@echo "[Unit]" | sudo tee /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
-	@echo "Description=GNOME Wi-Fi Hotspot D-Bus Daemon (Dev)" | sudo tee -a /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
+	@echo "Description=Wi-Fi Relay D-Bus Daemon (Dev)" | sudo tee -a /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
 	@echo "After=network.target" | sudo tee -a /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
 	@echo "[Service]" | sudo tee -a /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
 	@echo "Type=dbus" | sudo tee -a /etc/systemd/system/wifi-hotspot-daemon.service > /dev/null
@@ -118,9 +118,13 @@ install:
 	install -m 0755 daemon/wifi-hotspot-daemon.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/create_ap $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
-	install -m 0755 settings/main.py $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
+	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
 	install -d -m 0755 $(PREFIX)/bin
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/main.py $(PREFIX)/bin/wifi-hotspot-settings
+	ln -sf $(PREFIX)/share/wifi-hotspot/settings/enable-extension.py $(PREFIX)/bin/wifi-hotspot-enable-extension
+	install -d -m 0755 $(SYSCONFDIR)/xdg/autostart
+	install -m 0644 data/wifi-hotspot-autostart.desktop $(SYSCONFDIR)/xdg/autostart/
 	install -d -m 0755 $(SYSCONFDIR)/dbus-1/system.d
 	install -m 0644 data/io.github.erhanzeyrek.WifiHotspot.conf $(SYSCONFDIR)/dbus-1/system.d/
 	install -d -m 0755 $(PREFIX)/share/dbus-1/system-services
@@ -137,8 +141,9 @@ install:
 		HOST=$$(hostname 2>/dev/null || echo "Hotspot"); \
 		[ "$$HOST" = "localhost" ] && HOST="Hotspot"; \
 		sed "s|SSID=.*|SSID=$${HOST}-Hotspot|g" data/wifi-hotspot.conf > /tmp/wifi-hotspot.conf; \
-		install -m 0644 /tmp/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
+		install -m 0600 /tmp/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
 	fi
+	chmod 0600 $(SYSCONFDIR)/wifi-hotspot.conf
 	install -d -m 0755 $(PREFIX)/share/applications
 	install -m 0644 data/io.github.erhanzeyrek.WifiHotspot.desktop $(PREFIX)/share/applications/
 	install -d -m 0755 $(PREFIX)/share/metainfo
@@ -154,7 +159,8 @@ uninstall:
 	rm -rf $(PREFIX)/share/gnome-shell/extensions/$(UUID)
 	rm -rf $(PREFIX)/libexec/wifi-hotspot-daemon
 	rm -rf $(PREFIX)/share/wifi-hotspot
-	rm -f $(PREFIX)/bin/wifi-hotspot-settings
+	rm -f $(PREFIX)/bin/wifi-hotspot-settings $(PREFIX)/bin/wifi-hotspot-enable-extension
+	rm -f $(SYSCONFDIR)/xdg/autostart/wifi-hotspot-autostart.desktop
 	rm -f $(SYSCONFDIR)/dbus-1/system.d/io.github.erhanzeyrek.WifiHotspot.conf
 	rm -f $(PREFIX)/share/dbus-1/system-services/io.github.erhanzeyrek.WifiHotspot.service
 	rm -f $(PREFIX)/share/polkit-1/actions/io.github.erhanzeyrek.WifiHotspot.policy

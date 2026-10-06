@@ -1,0 +1,73 @@
+gnome-wifi-hotspot (1.0.0-10) unstable; urgency=medium
+
+  * Prepare Wi-Fi Relay Beta 1 for Debian/Ubuntu and XFCE.
+  * Fix settings group titles containing invalid label markup.
+  * Document verified startup, security, and package lifecycle behavior.
+
+ -- 3togo <3togo@users.noreply.github.com>  Tue, 06 Oct 2026 00:09:00 +0000
+
+gnome-wifi-hotspot (1.0.0-9) unstable; urgency=medium
+
+  * Rename the app to Wi-Fi Relay and use wifi-relay@3togo.github.io.
+  * Migrate existing GNOME extension enabled and disabled preferences.
+
+ -- 3togo <3togo@users.noreply.github.com>  Tue, 06 Oct 2026 00:08:00 +0000
+
+gnome-wifi-hotspot (1.0.0-8) unstable; urgency=medium
+
+  * Enforce Polkit authorization for privileged methods
+    and credential reads.
+  * Validate configuration and replace it atomically
+    with owner-only permissions.
+  * Read backend settings literally, without eval or backslash interpretation.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:07:00 +0000
+
+gnome-wifi-hotspot (1.0.0-7) unstable; urgency=medium
+
+  * Use a StatusNotifier tray on XFCE and other non-GNOME desktops.
+  * Autostart the appropriate tray for the current desktop session.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:06:00 +0000
+
+gnome-wifi-hotspot (1.0.0-6) unstable; urgency=medium
+
+  * Add a per-user Start tray at login switch, enabled by default.
+  * Share the startup choice between extension preferences and the settings app.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:05:00 +0000
+
+gnome-wifi-hotspot (1.0.0-5) unstable; urgency=medium
+
+  * Enable the tray extension automatically at the first GNOME login.
+  * Preserve other enabled extensions and later manual disable choices.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:04:00 +0000
+
+gnome-wifi-hotspot (1.0.0-4) unstable; urgency=medium
+
+  * Add a persistent hotspot tray menu with connecting, on, and off colors.
+  * Broadcast transitions initiated from the settings app to the tray icon.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:03:00 +0000
+
+gnome-wifi-hotspot (1.0.0-3) unstable; urgency=medium
+
+  * Permit established replies to hotspot clients across different uplinks.
+  * Leave dnsmasq instances owned by other services running.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:02:00 +0000
+
+gnome-wifi-hotspot (1.0.0-2) unstable; urgency=medium
+
+  * Save selected network interfaces and preserve virtual AP configuration.
+  * Require an active upstream Wi-Fi connection on concurrent hotspot startup.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:01:00 +0000
+
+gnome-wifi-hotspot (1.0.0-1) unstable; urgency=medium
+
+  * Package GNOME extension, settings app, and hotspot daemon for Debian/Ubuntu.
+  * Include channel-aware AP+STA detection and automatic 2.4 GHz fallback.
+
+ -- Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>  Tue, 06 Oct 2026 00:00:00 +0000

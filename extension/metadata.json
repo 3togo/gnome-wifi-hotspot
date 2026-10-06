@@ -1,7 +1,7 @@
 {
-  "name": "Wi-Fi Hotspot",
-  "description": "Native Quick Settings Wi-Fi Hotspot toggle with AP+STA concurrent sharing and auto-switch.",
-  "uuid": "wifi-hotspot@erhanzeyrek",
+  "name": "Wi-Fi Relay",
+  "description": "Color-coded top-bar tray icon and Quick Settings Wi-Fi Hotspot toggle with AP+STA concurrent sharing and auto-switch.",
+  "uuid": "wifi-relay@3togo.github.io",
   "shell-version": [
     "45",
     "46",
@@ -10,5 +10,5 @@
     "49",
     "50"
   ],
-  "url": "https://github.com/erhanzeyrek/gnome-wifi-hotspot"
+  "url": "https://github.com/3togo/gnome-wifi-hotspot"
 }

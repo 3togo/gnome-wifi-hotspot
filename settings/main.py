@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Wi-Fi Hotspot Settings App (Libadwaita / GTK4)
+Wi-Fi Relay Settings App (Libadwaita / GTK4)
 Native GNOME interface for configuring Wi-Fi Hotspot, managing AP settings,
 viewing connected devices and generating QR connection codes.
 """
@@ -15,6 +15,11 @@ gi.require_version("Adw", "1")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
 from gi.repository import Gtk, Adw, Gio, GLib
+
+try:
+    from startup import get_auto_start, set_auto_start, is_gnome, launch_tray
+except ModuleNotFoundError:
+    from settings.startup import get_auto_start, set_auto_start, is_gnome, launch_tray
 
 BUS_NAME = "io.github.erhanzeyrek.WifiHotspot"
 OBJECT_PATH = "/io/github/erhanzeyrek/WifiHotspot"
@@ -35,17 +40,20 @@ def get_default_ssid():
 
 class HotspotSettingsWindow(Adw.PreferencesWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Wi-Fi Hotspot Settings")
+        super().__init__(application=app, title="Wi-Fi Relay Settings")
         self.set_default_size(680, 580)
         self.app = app
         self.dbus_proxy = None
         self.config_data = {}
         self.interfaces = {"wifi_interfaces": ["wlan0"], "all_interfaces": ["wlan0", "eth0"]}
         self.capabilities = {}
+        self._hotspot_busy = False
+        self._loading_fields = True
 
         self._init_dbus()
         self._build_ui()
         self._load_data()
+        self._loading_fields = False
 
         # Periodic status refresh
         GLib.timeout_add_seconds(3, self._refresh_status)
@@ -72,6 +80,16 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         page_general = Adw.PreferencesPage(title="General", icon_name="network-wireless-hotspot-symbolic")
         self.add(page_general)
 
+        grp_startup = Adw.PreferencesGroup(title="Startup")
+        page_general.add(grp_startup)
+        self.switch_startup = Adw.SwitchRow(
+            title="Start tray at login",
+            subtitle="Show the tray automatically when you log in. Disabling also hides it now.",
+            active=get_auto_start(),
+        )
+        self.switch_startup.connect("notify::active", self._on_startup_changed)
+        grp_startup.add(self.switch_startup)
+
         # Status Group
         grp_status = Adw.PreferencesGroup(title="Hotspot Status")
         page_general.add(grp_status)
@@ -95,13 +113,15 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         grp_basic.add(self.entry_pass)
 
         # Network Interfaces Group
-        grp_net = Adw.PreferencesGroup(title="Network Interfaces & Frequency Band")
+        grp_net = Adw.PreferencesGroup(title="Network Interfaces and Frequency Band")
         page_general.add(grp_net)
 
-        self.combo_wifi_iface = Adw.ComboRow(title="Wi-Fi Broadcast Interface")
+        self.combo_wifi_iface = Adw.ComboRow(title="Wi-Fi Adapter", subtitle="A virtual hotspot interface is created on this adapter")
+        self.combo_wifi_iface.connect("notify::selected", self._on_field_changed)
         grp_net.add(self.combo_wifi_iface)
 
-        self.combo_inet_iface = Adw.ComboRow(title="Internet Sharing Interface")
+        self.combo_inet_iface = Adw.ComboRow(title="Internet Sharing Interface", subtitle="Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
+        self.combo_inet_iface.connect("notify::selected", self._on_field_changed)
         grp_net.add(self.combo_inet_iface)
 
         self.combo_band = Adw.ComboRow(title="Frequency Band")
@@ -117,7 +137,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         page_adv = Adw.PreferencesPage(title="Advanced", icon_name="emblem-system-symbolic")
         self.add(page_adv)
 
-        grp_adv_sec = Adw.PreferencesGroup(title="Broadcast & Security Options")
+        grp_adv_sec = Adw.PreferencesGroup(title="Broadcast and Security Options")
         page_adv.add(grp_adv_sec)
 
         self.switch_hidden = Adw.SwitchRow(title="Hidden SSID", subtitle="Hide network name from broadcast")
@@ -140,7 +160,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self.switch_80211ax.connect("notify::active", self._on_field_changed)
         grp_adv_sec.add(self.switch_80211ax)
 
-        grp_ip = Adw.PreferencesGroup(title="Gateway & Channel")
+        grp_ip = Adw.PreferencesGroup(title="Gateway and Channel")
         page_adv.add(grp_ip)
 
         self.entry_gateway = Adw.EntryRow(title="Gateway IP")
@@ -173,6 +193,20 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
 
     # ---------------- D-Bus & Data Operations ---------------- #
 
+    def _on_startup_changed(self, row, _param):
+        enabled = row.get_active()
+        try:
+            set_auto_start(enabled, Gio.Settings.new("org.gnome.shell") if is_gnome() else None, Gio.Settings.sync)
+            if enabled and not is_gnome():
+                launch_tray()
+        except Exception as error:
+            row.handler_block_by_func(self._on_startup_changed)
+            row.set_active(get_auto_start())
+            row.handler_unblock_by_func(self._on_startup_changed)
+            dialog = Adw.MessageDialog(transient_for=self, heading="Could not save startup setting", body=str(error))
+            dialog.add_response("ok", "Close")
+            dialog.present()
+
     def _load_data(self):
         if not self.dbus_proxy:
             self._load_fallback_config()
@@ -182,10 +216,10 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             # 1. Interfaces
             res = self.dbus_proxy.GetInterfaces()
             self.interfaces = json.loads(res)
-            
+
             wifi_model = Gtk.StringList.new(self.interfaces.get("wifi_interfaces", ["wlan0"]))
             self.combo_wifi_iface.set_model(wifi_model)
-            
+
             all_model = Gtk.StringList.new(self.interfaces.get("all_interfaces", ["wlan0", "eth0"]))
             self.combo_inet_iface.set_model(all_model)
 
@@ -209,36 +243,54 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             self._load_fallback_config()
 
     def _populate_fields(self, conf):
-        self.entry_ssid.set_text(conf.get("SSID", get_default_ssid()))
-        self.entry_pass.set_text(conf.get("PASSPHRASE", "12345678"))
-        self.entry_gateway.set_text(conf.get("GATEWAY", "192.168.12.1"))
-        self.entry_channel.set_text(conf.get("CHANNEL", "default"))
+        was_loading = self._loading_fields
+        self._loading_fields = True
+        try:
+            self.config_data = dict(conf)
+            for row, key in ((self.combo_wifi_iface, "WIFI_IFACE"),
+                             (self.combo_inet_iface, "INTERNET_IFACE")):
+                model = row.get_model()
+                if model:
+                    for index in range(model.get_n_items()):
+                        if model.get_string(index) == conf.get(key):
+                            row.set_selected(index)
+                            break
+            self.entry_ssid.set_text(conf.get("SSID", get_default_ssid()))
+            self.entry_pass.set_text(conf.get("PASSPHRASE", "12345678"))
+            self.entry_gateway.set_text(conf.get("GATEWAY", "192.168.12.1"))
+            self.entry_channel.set_text(conf.get("CHANNEL", "default"))
 
-        self.switch_hidden.set_active(conf.get("HIDDEN", "0") == "1")
-        self.switch_isolate.set_active(conf.get("ISOLATE_CLIENTS", "0") == "1")
-        self.switch_80211n.set_active(conf.get("IEEE80211N", "0") == "1")
-        self.switch_80211ac.set_active(conf.get("IEEE80211AC", "0") == "1")
-        self.switch_80211ax.set_active(conf.get("IEEE80211AX", "0") == "1")
+            self.switch_hidden.set_active(conf.get("HIDDEN", "0") == "1")
+            self.switch_isolate.set_active(conf.get("ISOLATE_CLIENTS", "0") == "1")
+            self.switch_80211n.set_active(conf.get("IEEE80211N", "0") == "1")
+            self.switch_80211ac.set_active(conf.get("IEEE80211AC", "0") == "1")
+            self.switch_80211ax.set_active(conf.get("IEEE80211AX", "0") == "1")
 
-        band = conf.get("FREQ_BAND", "auto")
-        if band == "2.4":
-            self.combo_band.set_selected(1)
-        elif band == "5":
-            self.combo_band.set_selected(2)
-        else:
-            self.combo_band.set_selected(0)
+            band = conf.get("FREQ_BAND", "auto")
+            if band == "2.4":
+                self.combo_band.set_selected(1)
+            elif band == "5":
+                self.combo_band.set_selected(2)
+            else:
+                self.combo_band.set_selected(0)
+        finally:
+            self._loading_fields = was_loading
 
     def _load_fallback_config(self):
         conf_path = "/etc/wifi-hotspot.conf"
         if not os.path.exists(conf_path):
             conf_path = os.path.expanduser("~/.config/wifi-hotspot.conf")
         conf = {}
-        if os.path.exists(conf_path):
-            with open(conf_path, "r") as f:
-                for line in f:
-                    if "=" in line and not line.startswith("#"):
-                        k, v = line.strip().split("=", 1)
-                        conf[k] = v.strip().strip("\"'")
+        try:
+            if os.path.exists(conf_path):
+                with open(conf_path, "r") as f:
+                    for line in f:
+                        if "=" in line and not line.startswith("#"):
+                            k, v = line.rstrip("\r\n").split("=", 1)
+                            conf[k] = v
+        except OSError:
+            # Credentials are owner-only; keep settings usable if authorization failed.
+            conf = {}
 
         # Local interface scan
         wifi = []
@@ -259,13 +311,13 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self._populate_fields(conf)
 
     def _refresh_status(self):
-        if not self.dbus_proxy:
+        if not self.dbus_proxy or self._hotspot_busy:
             return GLib.SOURCE_CONTINUE
         try:
             res = self.dbus_proxy.GetStatus()
             status = json.loads(res)
             active = bool(status.get("active"))
-            
+
             # Update switch state silently
             self.switch_hotspot.handler_block_by_func(self._on_switch_toggled)
             self.switch_hotspot.set_active(active)
@@ -306,22 +358,46 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             self.row_no_clients.set_subtitle("Connected devices will be listed here")
 
     def _on_switch_toggled(self, switch, state):
-        if not self.dbus_proxy:
-            return
-        if state:
-            self.row_status.set_subtitle("Starting...")
-            GLib.idle_add(lambda: self.dbus_proxy.Start())
-        else:
-            self.row_status.set_subtitle("Stopping...")
-            GLib.idle_add(lambda: self.dbus_proxy.Stop())
+        if not self.dbus_proxy or self._hotspot_busy:
+            return True
+        self._hotspot_busy = True
+        switch.set_sensitive(False)
+        self.row_status.set_subtitle("Starting (Wi-Fi may switch to 2.4 GHz)..." if state else "Stopping...")
+        self.dbus_proxy.call(
+            "Start" if state else "Stop", None, Gio.DBusCallFlags.NONE,
+            60000, None, self._on_hotspot_finished, state,
+        )
         return False
 
+    def _on_hotspot_finished(self, proxy, result, starting):
+        try:
+            value = proxy.call_finish(result).unpack()[0]
+            if starting:
+                response = json.loads(value)
+                if not response.get("success"):
+                    raise RuntimeError(response.get("error") or "Failed to start hotspot.")
+            elif not value:
+                raise RuntimeError("Failed to stop hotspot.")
+        except Exception as error:
+            self.add_toast(Adw.Toast.new(str(error)))
+        finally:
+            self._hotspot_busy = False
+            self.switch_hotspot.set_sensitive(True)
+            self._refresh_status()
+
     def _on_field_changed(self, *args):
-        # Auto-save changes to D-Bus
+        if self._loading_fields or self._hotspot_busy:
+            return
+        wifi_item = self.combo_wifi_iface.get_selected_item()
+        inet_item = self.combo_inet_iface.get_selected_item()
+        if wifi_item is None or inet_item is None:
+            return
+        # Auto-save the selected interfaces without discarding other options.
         band_idx = self.combo_band.get_selected()
         band_str = "auto" if band_idx == 0 else ("2.4" if band_idx == 1 else "5")
 
         conf = {
+            **self.config_data,
             "SSID": self.entry_ssid.get_text() or get_default_ssid(),
             "PASSPHRASE": self.entry_pass.get_text() or "12345678",
             "GATEWAY": self.entry_gateway.get_text() or "192.168.12.1",
@@ -332,15 +408,18 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             "IEEE80211N": "1" if self.switch_80211n.get_active() else "0",
             "IEEE80211AC": "1" if self.switch_80211ac.get_active() else "0",
             "IEEE80211AX": "1" if self.switch_80211ax.get_active() else "0",
-            "WIFI_IFACE": "wlan0",
-            "INTERNET_IFACE": "wlan0",
+            "WIFI_IFACE": wifi_item.get_string(),
+            "INTERNET_IFACE": inet_item.get_string(),
         }
 
         if self.dbus_proxy:
             try:
                 self.dbus_proxy.SetConfig(json.dumps(conf))
+                self.config_data = conf
+                self.row_status.set_title("Service Status")
             except Exception as e:
-                print(f"[!] Error saving config: {e}")
+                self.row_status.set_title("Settings were not saved")
+                self.row_status.set_subtitle(str(e))
 
     def _on_show_qr(self, button):
         ssid = self.entry_ssid.get_text() or get_default_ssid()
