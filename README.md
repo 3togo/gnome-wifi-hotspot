@@ -1,5 +1,24 @@
 # Wi-Fi Relay 🌐
 
+## Download Beta 1
+
+**Ready-to-install packages are available — no source build required.**
+
+- **[Download Ubuntu 26.10 Stonking package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/gnome-wifi-hotspot_1.0.0-10%2Bubuntu26.10.1_all.deb)**
+- **[Download Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/gnome-wifi-hotspot_1.0.0-10_all.deb)**
+- [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.1) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/SHA256SUMS)
+
+Install the downloaded package, then **open settings before starting the hotspot**:
+
+```bash
+sudo apt install ./gnome-wifi-hotspot_*.deb
+wifi-hotspot-settings
+```
+
+Download either package, then run these commands from its download folder. In
+settings, select your Wi-Fi adapter and internet sharing interface, and set the
+network name and password. Log out and back in to start the tray automatically.
+
 **Beta scope:** This release focuses on the Debian/Ubuntu package and XFCE tray.
 GNOME desktop integration and RPM installation remain experimental and unverified.
 The GNOME extension declares versions 45–50; GNOME 51 is not supported by this beta.
