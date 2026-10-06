@@ -112,6 +112,16 @@ Before installing, ensure the core networking packages are present on your syste
 
 ### Debian / Ubuntu package
 
+For Ubuntu 26.10 **Stonking**, the
+[Ubuntu Stonking package workflow](https://github.com/3togo/gnome-wifi-hotspot/actions/workflows/ubuntu-stonking.yml)
+builds and tests a `.deb` in an Ubuntu 26.10 container on pushes and pull requests.
+It can also be run manually with an optional base package version. Download the
+`wifi-relay-ubuntu-stonking-…` artifact from a successful run; it contains the
+package and `SHA256SUMS`. Verify the checksum with `sha256sum -c SHA256SUMS`, then
+install the downloaded `.deb` with `sudo apt install ./gnome-wifi-hotspot_…_all.deb`.
+The workflow checks installation and GTK widgets; it does not test an actual
+desktop login or GNOME Shell session.
+
 Build the package from this checkout without root:
 
 ```bash

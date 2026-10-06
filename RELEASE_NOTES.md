@@ -29,6 +29,9 @@ after installation to activate the session startup entry.
 - Polkit authorization for network changes and configuration/password reads.
 - Configuration validation, literal backend parsing, atomic saving, and
   owner-only permissions for the password file.
+- GitHub Actions builds Ubuntu 26.10 Stonking packages and checks automated tests,
+  GTK widgets, installation, upgrade, removal, and purge. Successful runs provide
+  a `.deb` and checksum as downloadable artifacts.
 
 Existing package names, commands, configuration paths, and D-Bus identifiers
 remain compatible. Upgrading restarts the daemon and may stop an active hotspot;
