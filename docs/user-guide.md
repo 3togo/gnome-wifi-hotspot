@@ -13,13 +13,21 @@ headless session, with full desktop interaction still awaiting validation.
 
 Open the [Beta 2 downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2).
 Download the recommended **[Wi-Fi Relay — Beta 2 for Ubuntu 26.10 (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb)**
-and `SHA256SUMS` into the same folder. The recommended package was built and
-verified by automated tests.
+and `SHA256SUMS` into the same folder. The package filename is
+`gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb`; it was built and verified by
+automated tests.
 
-Open a terminal in that folder and run:
+Open a terminal in that folder. Run each step separately.
+
+Verify the checksum:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
+```
+
+Install the recommended package:
+
+```bash
 sudo apt install ./gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb
 ```
 
@@ -32,8 +40,16 @@ hotspot; you must enable sharing again afterward. Existing configuration is pres
 
 The release also provides **[Wi-Fi Relay — Beta 2, standard build (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb)**,
 tested on Ubuntu 26.10. Both builds contain the same app release; install only one.
-If you choose the standard build, use `gnome-wifi-hotspot_1.0.0-12_all.deb`
-in the install command above.
+If your downloaded file is `gnome-wifi-hotspot_1.0.0-12_all.deb`, use this install
+command instead:
+
+```bash
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
+```
+
+The `%2B` in the recommended package URL represents a literal `+` in its filename.
+If your browser added a suffix such as `(1)`, rename the file to the original
+release filename before verifying/installing.
 
 ## 2. Open Settings and configure sharing
 

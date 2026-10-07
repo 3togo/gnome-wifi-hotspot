@@ -10,11 +10,25 @@
 - [Optional XFCE network-menu packages and matching source archive](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2)
 - [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS)
 
-Download `SHA256SUMS` alongside the package, verify it, then **open settings before starting the hotspot**:
+The recommended download is named `gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb`.
+Download `SHA256SUMS` into the same directory, then run each command separately
+from a terminal in that directory.
+
+Verify the checksum:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
+```
+
+Install the recommended package:
+
+```bash
 sudo apt install ./gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb
+```
+
+**Open settings before starting the hotspot**, as your normal user:
+
+```bash
 wifi-hotspot-settings
 ```
 
@@ -28,7 +42,12 @@ are not retained across a daemon restart or reboot.
 
 [Wi-Fi Relay — Beta 2, standard build (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb) is also available,
 tested on Ubuntu 26.10. Both packages contain the same app release; install only
-one. If using the standard build, substitute its filename in the install command.
+one. If you downloaded `gnome-wifi-hotspot_1.0.0-12_all.deb`, use this install
+command instead of the recommended-package command:
+
+```bash
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
+```
 
 **Beta scope:** Debian/Ubuntu packaging and the XFCE tray, with optional downstream
 NetworkManager Applet packages for Ubuntu 26.10 amd64. GNOME 45–51 is declared;

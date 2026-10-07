@@ -11,16 +11,28 @@ recovery behavior, and troubleshooting.
 
 | Download | Purpose |
 | :--- | :--- |
-| [Wi-Fi Relay — Beta 2 for Ubuntu 26.10 (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) | Recommended; built and lifecycle-tested by automated CI |
+| [Wi-Fi Relay — Beta 2 for Ubuntu 26.10 (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) | Recommended; automated build and lifecycle checks. Filename: `gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb` |
 | [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS) | Checksums for packages, applet sources, and build information |
 | [BUILD_INFO.txt](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/BUILD_INFO.txt) | Source commit, build provenance, and validation summary |
 
-Download Wi-Fi Relay and `SHA256SUMS` into the same directory,
-verify its checksum, and install it:
+Download the recommended package and `SHA256SUMS` into the same directory.
+Open a terminal in that directory and run each step separately.
+
+**1. Verify the downloaded files:**
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
+```
+
+**2. Install the recommended CI build:**
+
+```sh
 sudo apt install ./gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb
+```
+
+**3. Open Settings as your normal user:**
+
+```sh
 wifi-hotspot-settings
 ```
 
@@ -28,8 +40,16 @@ wifi-hotspot-settings
 
 [Wi-Fi Relay — Beta 2, standard build (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb) is also available,
 tested on Ubuntu 26.10. Both packages contain the same app release; install only
-one. For the standard build, substitute `gnome-wifi-hotspot_1.0.0-12_all.deb`
-in the install command.
+one. If your downloaded file is `gnome-wifi-hotspot_1.0.0-12_all.deb`, use this
+install command **instead of step 2 above**:
+
+```sh
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
+```
+
+Use the filename saved by your browser: `%2B` in a download URL represents a literal
+`+` in the CI package filename. If the browser added a suffix such as `(1)`, rename
+the downloaded file to its original release filename before verifying/installing.
 
 ### First-run setup
 
