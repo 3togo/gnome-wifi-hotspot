@@ -11,21 +11,25 @@ recovery behavior, and troubleshooting.
 
 | Download | Purpose |
 | :--- | :--- |
-| [Relay `1.0.0-12` (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb) | Base package, tested on Ubuntu 26.10 |
-| [Relay `1.0.0-12+ubuntu26.10.11` (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) | Package built and lifecycle-tested by CI |
+| [Wi-Fi Relay — Beta 2 for Ubuntu 26.10 (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) | Recommended; built and lifecycle-tested by automated CI |
 | [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS) | Checksums for packages, applet sources, and build information |
 | [BUILD_INFO.txt](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/BUILD_INFO.txt) | Source commit, build provenance, and validation summary |
 
-Download either Relay package and `SHA256SUMS` into the same directory,
+Download Wi-Fi Relay and `SHA256SUMS` into the same directory,
 verify its checksum, and install it:
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
-sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb
 wifi-hotspot-settings
 ```
 
-For the CI build, substitute its downloaded filename in the install command.
+### Additional builds
+
+[Wi-Fi Relay — Beta 2, standard build (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb) is also available,
+tested on Ubuntu 26.10. Both packages contain the same app release; install only
+one. For the standard build, substitute `gnome-wifi-hotspot_1.0.0-12_all.deb`
+in the install command.
 
 ### First-run setup
 

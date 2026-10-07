@@ -6,8 +6,7 @@
 
 **Latest experimental beta release — ready-to-install packages, no source build required.**
 
-- **[Download the Relay Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb)** — tested on Ubuntu 26.10 Stonking.
-- [Download the CI-tested Ubuntu 26.10 package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) — choose either Relay package.
+- **[Download Wi-Fi Relay — Beta 2 for Ubuntu 26.10 (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb)** — recommended; built and verified by automated tests.
 - [Optional XFCE network-menu packages and matching source archive](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2)
 - [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS)
 
@@ -15,17 +14,21 @@ Download `SHA256SUMS` alongside the package, verify it, then **open settings bef
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
-sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12+ubuntu26.10.11_all.deb
 wifi-hotspot-settings
 ```
-
-For the CI build, substitute its downloaded filename in the install command.
 
 In Settings, select your Wi-Fi adapter and internet sharing interface, and set the
 network name and password. The NetworkManager backend is opt-in; existing settings
 retain create_ap. Log out and back in after installation or upgrade to load the new
 controls, then enable sharing. Upgrades stop active sharing, and sharing requests
 are not retained across a daemon restart or reboot.
+
+### Additional builds
+
+[Wi-Fi Relay — Beta 2, standard build (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb) is also available,
+tested on Ubuntu 26.10. Both packages contain the same app release; install only
+one. If using the standard build, substitute its filename in the install command.
 
 **Beta scope:** Debian/Ubuntu packaging and the XFCE tray, with optional downstream
 NetworkManager Applet packages for Ubuntu 26.10 amd64. GNOME 45–51 is declared;
