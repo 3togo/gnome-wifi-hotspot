@@ -145,7 +145,7 @@ Build the package from this checkout without root:
 
 ```bash
 ./packaging/build-deb.sh
-sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-10_all.deb
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-11+nm5_all.deb
 ```
 
 The package includes the current working-tree changes. An optional first argument
@@ -227,6 +227,31 @@ sudo make uninstall
 ---
 
 ## 💻 Developer & Live Hacking Workflow
+
+An experimental persistent **NetworkManager backend** is available in Settings →
+General → **Hotspot Backend**. Connect the selected adapter to Wi-Fi, stop any
+existing hotspot, and select **NetworkManager (Experimental)**. Configure the
+SSID/password, then use the existing GNOME Quick Settings toggle, desktop tray,
+or Settings switch. It runs until switched off; closing Settings does not stop it.
+It shares the host default route and requires WPA2 and the current upstream channel.
+Upstream disconnects or roaming stop the hotspot with an error; automatic recovery
+and GNOME's built-in hotspot menu integration are not implemented.
+
+On XFCE, an optional [patched NetworkManager Applet](integration/nm-applet/README.md)
+adds **Wi-Fi Relay** directly to the existing network icon menu, with a Hotspot
+checkbox, status/client count, and Settings launcher. This is a separate downstream
+applet package; the normal Relay package also keeps its existing tray controls.
+
+The [native NetworkManager integration proposal](docs/networkmanager-upstream-proposal.md)
+defines upstream responsibilities, tested invariants, and the hardware checks still
+needed before a production merge. Run `make test` and `make test-nm-menu` to verify
+the reference implementation; CI also runs the menu tests with memory/UB sanitizers.
+
+An experimental [NetworkManager AP+STA probe](docs/networkmanager-prototype.md)
+assesses whether NetworkManager can own a virtual hotspot while keeping the
+upstream Wi-Fi connection. It is read-only by default, with an explicit temporary
+live-test mode. Existing installations default to `create_ap` until the new backend
+is explicitly selected.
 
 For developers iterating on the GNOME Shell extension or daemon on Immutable/Atomic OS without requiring reboots:
 

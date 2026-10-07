@@ -1,0 +1,44 @@
+{
+  "client": "Android 14 tablet",
+  "baseline_https": {
+    "success": true,
+    "https_status": 200,
+    "certificate_and_hostname_verified": true,
+    "source_bound": true,
+    "tls_protocol": "TLSv1.3",
+    "body_bytes_received": 589
+  },
+  "endpoints": {
+    "example.com": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 589
+    },
+    "www.kernel.org": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 19137
+    },
+    "wrong.host.badssl.com": {
+      "success": false,
+      "stage": "tls",
+      "error_type": "SSLHandshakeException"
+    }
+  },
+  "original_wifi_restored": true,
+  "client_route_on_wifi": true,
+  "associated_with_hotspot": true,
+  "upstream_preserved": true,
+  "upstream_preserved_after_test": true,
+  "date": "2026-10-07",
+  "relay_version": "1.0.0-11+nm3",
+  "applet_version": "1.36.0-4ubuntu1+relay2",
+  "host_egress": "Ethernet default route",
+  "temporary_android_probe_removed": true
+}

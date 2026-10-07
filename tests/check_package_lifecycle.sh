@@ -8,7 +8,10 @@ if [ ! -f /.dockerenv ]; then
 fi
 package=${1:?Pass the absolute path to the new Debian package}
 config=/etc/wifi-hotspot.conf
-cp "$config" /tmp/original-hotspot-config
+# Fresh-install defaults belong to the new package, not the old fixture version.
+mkdir -p /tmp/new-hotspot-defaults
+dpkg-deb -x "$package" /tmp/new-hotspot-defaults
+cp /tmp/new-hotspot-defaults/etc/wifi-hotspot.conf /tmp/new-hotspot-config
 sed -i 's/^SSID=.*/SSID=BetaLifecycle/; s/^PASSPHRASE=.*/PASSPHRASE=synthetic-test-secret/' "$config"
 chmod 0644 "$config"
 cp "$config" /tmp/expected-hotspot-config
@@ -34,7 +37,7 @@ test ! -e /etc/polkit-1/rules.d/io.github.erhanzeyrek.WifiHotspot.rules
 echo 'Purge removes system configuration, autostart, and authorization files.'
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     "$package" > /tmp/wifi-relay-fresh-install.log 2>&1
-cmp "$config" /tmp/original-hotspot-config
+cmp "$config" /tmp/new-hotspot-config
 test "$(stat -c %a "$config")" = 600
 test -x /usr/bin/wifi-hotspot-settings
 test -x /usr/bin/wifi-hotspot-enable-extension

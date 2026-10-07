@@ -1,0 +1,320 @@
+{
+  "wifi_only_client": {
+    "client": "Android 14 tablet",
+    "baseline_https": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 589
+    },
+    "endpoints": {
+      "example.com": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 589
+      },
+      "www.kernel.org": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19137
+      },
+      "wrong.host.badssl.com": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException"
+      }
+    },
+    "original_wifi_restored": true,
+    "client_route_on_wifi": true,
+    "associated_with_hotspot": true,
+    "fresh_dns": {
+      "success": true,
+      "rcode": 3,
+      "unique_query": "relay-f8adec547671492ea3e05352ae48f0c7.example.com",
+      "gateway_queried": true,
+      "source_bound": true
+    },
+    "host_route_on_wifi": true,
+    "upstream_preserved": true,
+    "upstream_preserved_after_test": true
+  },
+  "packet_capture": {
+    "fresh_dns_query_seen_on_hotspot": true,
+    "fresh_dns_query_forwarded_on_wifi": true,
+    "fresh_dns_response_seen_on_wifi": true,
+    "fresh_dns_response_returned_to_client": true,
+    "https_destinations_seen_on_both_interfaces": 6,
+    "wifi_https_return_packets": 174,
+    "captures_stopped": true,
+    "raw_packet_captures_removed": true
+  },
+  "nm4_restart": {
+    "cycles": [],
+    "failures": [],
+    "initial_cleanup": {},
+    "networkmanager_restart": {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "station_reconnected": true
+    },
+    "final_hotspot_restored": true,
+    "final_station_restored": true
+  },
+  "systemd_suspend": {
+    "failures": [],
+    "systemd_suspend_exit": 0,
+    "elapsed_boottime_seconds": 37.3,
+    "suspend_and_resume_completed": true,
+    "station_reconnected": true,
+    "hotspot_active_after_resume": false,
+    "cleanup_after_resume": {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true
+    },
+    "final_hotspot_restored": true
+  },
+  "channel_switch": {
+    "failures": [],
+    "band_channel_changed": true,
+    "cleanup": {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true
+    },
+    "sharing_stopped_on_change": true,
+    "reason_reported": true,
+    "final_hotspot_restored": true,
+    "final_station_restored": true
+  },
+  "start_stop_cycles": [
+    {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "upstream_preserved": true
+    },
+    {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "upstream_preserved": true
+    },
+    {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "upstream_preserved": true
+    },
+    {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "upstream_preserved": true
+    },
+    {
+      "interfaces_removed": true,
+      "profiles_removed": true,
+      "worker_reaped": true,
+      "journal_removed": true,
+      "firewall_references_removed": true,
+      "dnsmasq_reaped": true,
+      "upstream_preserved": true
+    }
+  ],
+  "worker_crash": {
+    "interfaces_removed": true,
+    "profiles_removed": true,
+    "worker_reaped": true,
+    "journal_removed": true,
+    "firewall_references_removed": true,
+    "dnsmasq_reaped": true,
+    "error_reported": true,
+    "upstream_preserved": true
+  },
+  "daemon_crash": {
+    "interfaces_removed": true,
+    "profiles_removed": true,
+    "worker_reaped": true,
+    "journal_removed": true,
+    "firewall_references_removed": true,
+    "dnsmasq_reaped": true,
+    "service_restarted": true,
+    "upstream_preserved": true
+  },
+  "upstream_disconnect": {
+    "interfaces_removed": true,
+    "profiles_removed": true,
+    "worker_reaped": true,
+    "journal_removed": true,
+    "firewall_references_removed": true,
+    "dnsmasq_reaped": true,
+    "stopped_on_upstream_loss": true,
+    "reason_reported": true
+  },
+  "date": "2026-10-07",
+  "installed_relay_version": "1.0.0-11+nm4",
+  "python_tests_passed": 150,
+  "package_lifecycle": {
+    "upgrade": true,
+    "removal": true,
+    "purge": true,
+    "fresh_install": true
+  },
+  "nm_restart_bug_fixed": "Retry owned journal recovery after NetworkManager returns; preserve interface/profile identity checks",
+  "notes": [
+    "Wi-Fi-only HTTPS and DNS captured before the nm4 cleanup fix; lifecycle restart/resume checks passed on nm4.",
+    "Suspend and upstream changes stop sharing; restart was requested explicitly by the test.",
+    "Five cycles and worker/daemon crashes were tested on nm3; final installed version is nm4.",
+    "Post-stress nm4 HTTPS passed again; one random-name DNS probe returned NOERROR (rcode 0), while a subsequent host dig query for the same name returned NXDOMAIN. Negative-answer consistency is under investigation.",
+    "Three later client random-name DNS checks passed; the initial NOERROR anomaly was not reproduced after a settling delay, and its cause remains open."
+  ],
+  "nm4_post_stress_client": {
+    "installed_relay_version": "1.0.0-11+nm4",
+    "client": "Android 14 tablet",
+    "baseline_https": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 589
+    },
+    "endpoints": {
+      "example.com": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 589
+      },
+      "www.kernel.org": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19137
+      },
+      "wrong.host.badssl.com": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException"
+      }
+    },
+    "original_wifi_restored": true,
+    "client_route_on_wifi": true,
+    "associated_with_hotspot": true,
+    "fresh_dns": {
+      "success": false,
+      "rcode": 0,
+      "unique_query": "relay-5e9e4d3003ee4f77a694aec04f8c4372.example.com",
+      "gateway_queried": true,
+      "source_bound": true
+    },
+    "host_route_on_wifi": true,
+    "upstream_preserved": true,
+    "upstream_preserved_after_test": true
+  },
+  "nm4_dns_recheck": {
+    "installed_relay_version": "1.0.0-11+nm4",
+    "client": "Android 14 tablet",
+    "baseline_https": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 589
+    },
+    "endpoints": {
+      "example.com": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 589
+      },
+      "www.kernel.org": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19137
+      },
+      "wrong.host.badssl.com": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException"
+      }
+    },
+    "original_wifi_restored": true,
+    "client_route_on_wifi": true,
+    "associated_with_hotspot": true,
+    "fresh_dns": {
+      "success": true,
+      "rcode": 3,
+      "answer_count": 0,
+      "response_bytes": 130,
+      "unique_query": "relay-44b059fb9f1e40b38958f599f0eb419c.example.com",
+      "gateway_queried": true,
+      "source_bound": true
+    },
+    "dns_rechecks": [
+      {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "response_bytes": 130,
+        "unique_query": "relay-1b1452ac588c454cb15c6246141ddfad.example.com",
+        "gateway_queried": true,
+        "source_bound": true
+      },
+      {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "response_bytes": 130,
+        "unique_query": "relay-eef72767793541ab8d4ec89d7b46b879.example.com",
+        "gateway_queried": true,
+        "source_bound": true
+      }
+    ],
+    "host_route_on_wifi": true,
+    "upstream_preserved": true,
+    "upstream_preserved_after_test": true
+  }
+}

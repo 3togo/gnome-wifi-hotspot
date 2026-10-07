@@ -70,7 +70,7 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
         this._status = { active: false, ssid: '', client_count: 0 };
 
         // 1. Configure Header & Menu
-        this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), _('Off'));
+        this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), this.subtitle);
 
         // 2. Dynamic Details Section
         this._detailsSection = new PopupMenu.PopupMenuSection();
@@ -168,8 +168,9 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
         this._status = status;
         const active = !!status.active;
         const transitioning = ['connecting', 'stopping'].includes(status.state) || this._isBusy;
-        this.checked = active;
-        this.reactive = !transitioning;
+        this.checked = active || !!status.desired_active;
+        this.reactive = !this._isBusy && status.state !== 'stopping' &&
+            (status.state !== 'connecting' || !!status.desired_active);
 
         if (transitioning) {
             this.subtitle = status.state === 'stopping' ? _('Stopping...') : _('Connecting...');
@@ -179,8 +180,8 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
             this.subtitle = count > 0 ? `${status.ssid} (${count} devices)` : (status.ssid || _('On'));
             this.menu.setHeader('network-wireless-hotspot-symbolic', status.ssid || _('Wi-Fi Relay'), _('Active'));
         } else {
-            this.subtitle = _('Off');
-            this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), _('Off'));
+            this.subtitle = status.desired_active ? _('Waiting for Wi-Fi') : _('Off');
+            this.menu.setHeader('network-wireless-hotspot-symbolic', _('Wi-Fi Relay'), this.subtitle);
         }
 
         this._renderMenuDetails();
@@ -244,10 +245,11 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _onToggleClicked() {
-        if (!this._proxy || this._isBusy || ['connecting', 'stopping'].includes(this._status.state)) return;
-        this._setBusy(this._status.active ? 'stopping' : 'connecting');
+        if (!this._proxy || this._isBusy || this._status.state === 'stopping' ||
+            (this._status.state === 'connecting' && !this._status.desired_active)) return;
+        this._setBusy((this._status.active || this._status.desired_active) ? 'stopping' : 'connecting');
 
-        const isCurrentlyActive = !!this._status.active;
+        const isCurrentlyActive = !!(this._status.active || this._status.desired_active);
 
         if (isCurrentlyActive) {
             // Currently active -> Turn OFF
@@ -294,6 +296,11 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _handleUserActionRequired(action) {
+        if (action.type === 'error') {
+            Main.notify(_('Wi-Fi Relay'), action.message || _('Hotspot stopped unexpectedly.'));
+            this._queryStatus();
+            return;
+        }
         if (action.type === 'band_switch' || action.action_required === 'band_switch') {
             const msg = action.message || _("Your Wi-Fi adapter does not support 5GHz Hotspot. Switch to 2.4GHz and start?");
             
@@ -416,15 +423,17 @@ class HotspotTray extends PanelMenu.Button {
     update(status, clients, busy) {
         const stopping = status.state === 'stopping';
         const transitioning = busy || stopping || status.state === 'connecting';
-        const state = transitioning ? 'connecting' : status.active ? 'on' : 'off';
+        const state = transitioning || (status.desired_active && !status.active)
+            ? 'connecting' : status.active ? 'on' : 'off';
         const label = transitioning
             ? (stopping ? _('Stopping...') : _('Connecting...'))
-            : status.active ? _('On') : _('Off');
+            : status.active ? _('On') : status.desired_active ? _('Waiting for Wi-Fi') : _('Off');
         this._icon.style_class = `system-status-icon hotspot-tray-${state}`;
         this.accessible_name = `${_('Wi-Fi Relay')}: ${label}`;
         this._statusItem.label.text = this.accessible_name;
-        this._switch.setToggleState(!!status.active);
-        this._switch.setSensitive(!transitioning);
+        this._switch.setToggleState(!!(status.active || status.desired_active));
+        this._switch.setSensitive(!busy && !stopping &&
+            (status.state !== 'connecting' || !!status.desired_active));
         this._details.removeAll();
         if (status.active) {
             this._details.addMenuItem(new PopupMenu.PopupMenuItem(

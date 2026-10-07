@@ -13,6 +13,9 @@ import shutil
 import re
 import ipaddress
 import tempfile
+import importlib.util
+import signal
+from pathlib import Path
 import gi
 
 gi.require_version("GLib", "2.0")
@@ -33,6 +36,7 @@ CONFIG_DEFAULTS = {
     "MAC_FILTER": "0", "MAC_FILTER_ACCEPT": "/etc/hostapd/hostapd.accept",
     "ISOLATE_CLIENTS": "0", "SHARE_METHOD": "nat", "IEEE80211N": "0",
     "IEEE80211AC": "0", "IEEE80211AX": "0", "NO_VIRT": "0", "USE_PSK": "0",
+    "BACKEND": "create_ap",
 }
 CONFIG_FLAGS = frozenset({"ETC_HOSTS", "NO_DNS", "NO_DNSMASQ", "HIDDEN", "MAC_FILTER",
                           "ISOLATE_CLIENTS", "IEEE80211N", "IEEE80211AC", "IEEE80211AX",
@@ -52,6 +56,8 @@ def validate_config(conf, partial=False):
     if partial:
         return conf
     result = {**CONFIG_DEFAULTS, **conf}
+    if result["BACKEND"] not in {"create_ap", "networkmanager"}:
+        raise ValueError("BACKEND must be create_ap or networkmanager.")
     for key in CONFIG_FLAGS:
         if result[key] not in {"0", "1"}:
             raise ValueError(f"{key} must be 0 or 1.")
@@ -193,6 +199,11 @@ class WifiHotspotDaemon:
         self.cached_clients = []
         self.cached_status_active = False
         self.is_starting = False
+        backend_spec = importlib.util.spec_from_file_location(
+            "relay_nm_backend", Path(__file__).resolve().with_name("nm_backend.py"))
+        backend_module = importlib.util.module_from_spec(backend_spec)
+        backend_spec.loader.exec_module(backend_module)
+        self.nm_backend = backend_module.Backend()
         print(f"[*] WifiHotspotDaemon initialized. Using create_ap: {self.create_ap_bin}")
 
         # Subscribe to NetworkManager WirelessEnabled property changes
@@ -213,6 +224,16 @@ class WifiHotspotDaemon:
 
         # Periodic check for status, Wi-Fi radio & connected clients (every 2s)
         GLib.timeout_add_seconds(2, self._periodic_poll)
+        self._suspending = False
+        self.connection.signal_subscribe(
+            "org.freedesktop.login1", "org.freedesktop.login1.Manager",
+            "PrepareForSleep", "/org/freedesktop/login1", None,
+            Gio.DBusSignalFlags.NONE, self._on_prepare_for_sleep, None)
+
+    def _on_prepare_for_sleep(self, connection, sender_name, object_path, interface_name, signal_name, parameters, user_data):
+        sleeping = bool(parameters.unpack()[0])
+        self._suspending = sleeping
+        self.nm_backend.prepare_for_sleep(sleeping)
 
     def _on_nm_properties_changed(self, connection, sender_name, object_path, interface_name, signal_name, parameters, user_data):
         if self.is_starting:
@@ -222,10 +243,10 @@ class WifiHotspotDaemon:
             if "WirelessEnabled" in changed_props:
                 wireless_enabled = bool(changed_props["WirelessEnabled"])
                 print(f"[*] NetworkManager WirelessEnabled changed: {wireless_enabled}")
-                if not wireless_enabled:
+                if not wireless_enabled and not getattr(self, "_suspending", False):
                     status = self._get_status_dict()
-                    if status["active"]:
-                        print("[*] Wi-Fi turned off. Automatically stopping hotspot...")
+                    if status["active"] or status.get("desired_active"):
+                        print("[*] Wi-Fi turned off. Automatically stopping hotspot...", flush=True)
                         self.method_stop()
         except Exception as e:
             print(f"[!] Error handling NM property change: {e}")
@@ -244,18 +265,30 @@ class WifiHotspotDaemon:
 
     def _periodic_poll(self):
         try:
+            config = self._read_config_dict()
+            if config.get("BACKEND") == "networkmanager":
+                self.nm_backend.poll(config)
             status = self._get_status_dict()
+            if status.get("error") and status["error"] != getattr(self, "_last_nm_error", None):
+                self._last_nm_error = status["error"]
+                self._emit_signal("UserActionRequired", json.dumps({
+                    "type": "error", "message": status["error"]}))
 
-            # 1. If hotspot is active, check if Wi-Fi radio was turned off
-            if status["active"]:
+            # Turning the radio off cancels pending recovery as well.
+            if status["active"] or status.get("desired_active"):
                 code, out, _ = self._run_cmd(["nmcli", "radio", "wifi"])
-                if code == 0 and out.strip().lower() == "disabled":
-                    print("[*] Wi-Fi disabled detected via poll. Stopping hotspot...")
+                if (code == 0 and out.strip().lower() == "disabled"
+                        and not getattr(self, "_suspending", False)):
+                    print("[*] Wi-Fi disabled detected via poll. Stopping hotspot...", flush=True)
                     self.method_stop()
                     return GLib.SOURCE_CONTINUE
 
             # 2. Check if active status changed (e.g. process died or interface removed)
-            if status["active"] != self.cached_status_active:
+            if (status["active"] != self.cached_status_active or
+                    status.get("state") != getattr(self, "_cached_state", None) or
+                    status.get("desired_active") != getattr(self, "_cached_desired", None)):
+                self._cached_state = status.get("state")
+                self._cached_desired = status.get("desired_active")
                 self.cached_status_active = status["active"]
                 self._emit_signal("StatusChanged", json.dumps(status))
 
@@ -285,6 +318,11 @@ class WifiHotspotDaemon:
             return -1, "", str(e)
 
     def _get_status_dict(self):
+        nm = getattr(self, "nm_backend", None)
+        if nm is not None:
+            status = nm.get_status()
+            if nm.process or self._read_config_dict().get("BACKEND", "create_ap") == "networkmanager":
+                return status
         code, out, _ = self._run_cmd([self.create_ap_bin, "--list-running"])
         if code == 0 and out.strip():
             # Output format: <PID> <PHYSICAL_IFACE> [(<VIRTUAL_IFACE>)]
@@ -327,6 +365,19 @@ class WifiHotspotDaemon:
         }
 
     def _get_clients_list(self, iface):
+        nm = getattr(self, "nm_backend", None)
+        if nm is not None and self._read_config_dict().get("BACKEND") == "networkmanager":
+            if not nm.get_status().get("active"):
+                return []
+            code, output, _ = self._run_cmd(["iw", "dev", iface, "station", "dump"])
+            if code:
+                return []
+            macs = [block.split()[0].lower() for block in re.split(r"(?m)^Station ", output)[1:]
+                    if re.search(r"(?m)^\s*authorized:\s*yes\s*$", block)]
+            code, output, _ = self._run_cmd(["ip", "-j", "-4", "neighbor", "show", "dev", iface])
+            neighbors = json.loads(output) if code == 0 else []
+            addresses = {n.get("lladdr", "").lower(): n.get("dst", "") for n in neighbors}
+            return [{"mac": mac, "ip": addresses.get(mac, ""), "hostname": ""} for mac in macs]
         # 1. Get stations from iw
         code, out, _ = self._run_cmd(["iw", "dev", iface, "station", "dump"])
         macs = []
@@ -422,6 +473,10 @@ class WifiHotspotDaemon:
         validate_config(conf, partial=True)
         merged = {**self._read_config_dict(), **conf}
         config = validate_config(merged)
+        previous_backend = self._read_config_dict().get("BACKEND", "create_ap")
+        status = self._get_status_dict() if config["BACKEND"] != previous_backend else {}
+        if status.get("active") or status.get("desired_active"):
+            raise ValueError("Stop the hotspot before changing its backend.")
         path = get_config_path(for_write=True)
         temp_path = None
         try:
@@ -715,6 +770,14 @@ class WifiHotspotDaemon:
                 return json.dumps({"success": True, "message": "Already running", "active": True})
 
             config = validate_config(self._read_config_dict())
+            if config["BACKEND"] == "networkmanager":
+                try:
+                    status = self.nm_backend.start(config)
+                    self.cached_status_active = True
+                    self._last_nm_error = None
+                    return json.dumps({"success": True, "status": status})
+                except Exception as exc:
+                    return json.dumps({"success": False, "error": str(exc)})
             caps = self.get_capabilities()
             req_band = config.get("FREQ_BAND", "auto")
             if req_band not in ("auto", "2.4", "5"):
@@ -799,6 +862,14 @@ class WifiHotspotDaemon:
             self.is_starting = False
 
     def method_stop(self):
+        nm = getattr(self, "nm_backend", None)
+        if nm is not None and (nm.process or self._read_config_dict().get("BACKEND", "create_ap") == "networkmanager"):
+            result = nm.stop()
+            self.cached_status_active = False
+            self.cached_clients = []
+            self._emit_signal("StatusChanged", json.dumps(nm.get_status()))
+            self._emit_signal("ClientsChanged", json.dumps([]))
+            return result
         status = self._get_status_dict()
         if not status["active"]:
             return True
@@ -847,12 +918,17 @@ class WifiHotspotDaemon:
         })
 
 
+_daemon_instance = None
+
+
 def on_bus_acquired(connection, name):
+    global _daemon_instance
     print(f"[*] D-Bus system bus acquired: {name}")
     node_info = Gio.DBusNodeInfo.new_for_xml(INTROSPECTION_XML)
     interface_info = node_info.interfaces[0]
 
     daemon = WifiHotspotDaemon(connection)
+    _daemon_instance = daemon
 
     connection.register_object(
         OBJECT_PATH,
@@ -869,6 +945,8 @@ def on_name_acquired(connection, name):
 
 def on_name_lost(connection, name):
     print(f"[!] Name lost on D-Bus: {name}. Exiting.")
+    if _daemon_instance:
+        _daemon_instance.nm_backend.stop()
     sys.exit(1)
 
 
@@ -883,12 +961,20 @@ def main():
     )
 
     loop = GLib.MainLoop()
+    def shutdown(signum, frame):
+        if _daemon_instance:
+            _daemon_instance.nm_backend.stop()
+        loop.quit()
+    signal.signal(signal.SIGTERM, shutdown)
     try:
         print("[*] WifiHotspot D-Bus service loop running...")
         loop.run()
     except KeyboardInterrupt:
         print("\n[*] Exiting daemon...")
         loop.quit()
+    finally:
+        if _daemon_instance:
+            _daemon_instance.nm_backend.stop()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,14 @@ POLKIT_RULES := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.rules
 POLKIT_POLICY := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.policy
 SYSTEM_CONFIG := $(PWD)/data/wifi-hotspot.conf
 
-.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall
+.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-nm-menu
+
+test:
+	python3 -m unittest discover -s tests
+	node tests/test_tray.mjs
+
+test-nm-menu:
+	integration/nm-applet/test.sh
 
 all:
 	@echo "Wi-Fi Relay"
@@ -117,12 +124,16 @@ install:
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon
 	install -m 0755 daemon/wifi-hotspot-daemon.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/create_ap $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -m 0755 daemon/nm_backend.py $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon/tools
+	install -m 0755 tools/nm_ap_sta_probe.py $(PREFIX)/libexec/wifi-hotspot-daemon/tools/
 	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
 	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
 	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
 	install -d -m 0755 $(PREFIX)/bin
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/main.py $(PREFIX)/bin/wifi-hotspot-settings
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/enable-extension.py $(PREFIX)/bin/wifi-hotspot-enable-extension
+	ln -sf $(PREFIX)/libexec/wifi-hotspot-daemon/tools/nm_ap_sta_probe.py $(PREFIX)/bin/wifi-relay-nm-probe
 	install -d -m 0755 $(SYSCONFDIR)/xdg/autostart
 	install -m 0644 data/wifi-hotspot-autostart.desktop $(SYSCONFDIR)/xdg/autostart/
 	install -d -m 0755 $(SYSCONFDIR)/dbus-1/system.d
@@ -160,6 +171,7 @@ uninstall:
 	rm -rf $(PREFIX)/libexec/wifi-hotspot-daemon
 	rm -rf $(PREFIX)/share/wifi-hotspot
 	rm -f $(PREFIX)/bin/wifi-hotspot-settings $(PREFIX)/bin/wifi-hotspot-enable-extension
+	rm -f $(PREFIX)/bin/wifi-relay-nm-probe
 	rm -f $(SYSCONFDIR)/xdg/autostart/wifi-hotspot-autostart.desktop
 	rm -f $(SYSCONFDIR)/dbus-1/system.d/io.github.erhanzeyrek.WifiHotspot.conf
 	rm -f $(PREFIX)/share/dbus-1/system-services/io.github.erhanzeyrek.WifiHotspot.service
