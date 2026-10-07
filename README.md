@@ -2,18 +2,22 @@
 
 ## Download Beta 2
 
-**Ready-to-install packages are available — no source build required.**
+**Published experimental prerelease — ready-to-install packages, no source build required.**
 
 - **[Download the Relay Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb)** — tested on Ubuntu 26.10 Stonking.
-- [Ubuntu 26.10 CI build and optional XFCE network-menu packages](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2)
+- [Download the CI-tested Ubuntu 26.10 package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) — choose either Relay package.
+- [Optional XFCE network-menu packages and matching source archive](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2)
 - [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS)
 
-Install the downloaded package, then **open settings before starting the hotspot**:
+Download `SHA256SUMS` alongside the package, verify it, then **open settings before starting the hotspot**:
 
 ```bash
+sha256sum --ignore-missing -c SHA256SUMS
 sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
 wifi-hotspot-settings
 ```
+
+For the CI build, substitute its downloaded filename in the install command.
 
 In Settings, select your Wi-Fi adapter and internet sharing interface, and set the
 network name and password. The NetworkManager backend is opt-in; existing settings
@@ -28,49 +32,53 @@ interaction, additional physical drivers, multi-client soak, and RPM installatio
 remain unverified. Earlier upgrade/restart cancellations remain documented in the
 [validation report](docs/networkmanager-live-validation.md).
 
-[![GNOME Shell](https://img.shields.io/badge/GNOME-45%20|%2046%20|%2047%20|%2048-blue?logo=gnome&logoColor=white)](https://www.gnome.org/)
+[![GNOME Shell](https://img.shields.io/badge/GNOME-45%E2%80%9351-blue?logo=gnome&logoColor=white)](https://www.gnome.org/)
 [![GTK4 & Libadwaita](https://img.shields.io/badge/UI-GTK4%20%2F%20Libadwaita-purple)](https://gnome.pages.gitlab.gnome.org/libadwaita/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Immutable Linux Ready](https://img.shields.io/badge/Fedora%20Atomic-Bluefin%20%7C%20Bazzite%20%7C%20Silverblue-success)](https://projectbluefin.io/)
+[![Ubuntu package CI](https://github.com/3togo/gnome-wifi-hotspot/actions/workflows/ubuntu-stonking.yml/badge.svg)](https://github.com/3togo/gnome-wifi-hotspot/actions/workflows/ubuntu-stonking.yml)
 
-Native, seamless, and modern **Wi-Fi Hotspot & Repeater (AP+STA)** integration for GNOME Shell. Share your Wi-Fi internet connection from the same wireless card (just like Windows 10/11) directly from the GNOME Quick Settings Command Center.
+**Wi-Fi hotspot and repeater (AP+STA)** controls for GNOME Shell and desktop trays.
+Share an existing Wi-Fi connection through the same adapter when its driver and
+regulatory channel permissions support concurrent station and access-point operation.
 
 ---
 
 ## 🎯 Overview
 
-Most Linux hotspot tools are either legacy GTK3 applications, CLI-only scripts, or simple wrappers around NetworkManager that disable your active Wi-Fi connection when creating an Access Point.
+Wi-Fi Relay provides a GTK4/Libadwaita settings application, a Polkit-protected
+system D-Bus service, and desktop controls. GNOME uses a Quick Settings extension;
+XFCE and other desktops use a StatusNotifier tray. An optional patched
+NetworkManager Applet adds Relay to the existing XFCE network menu.
 
-**Wi-Fi Relay** bridges this gap by providing a deep, native GNOME Shell integration powered by a secure system D-Bus daemon. It enables true **concurrent Wi-Fi reception and broadcasting (AP+STA mode)** on supported wireless cards without interrupting your existing connection.
+### Hotspot backends
 
----
+Choose **General → Network Interfaces and Frequency Band → Hotspot Backend** in Settings.
+Stop sharing before changing backends.
 
-## 🚀 Key Advantages Over Traditional Tools (`linux-wifi-hotspot` / `wihotspot`)
-
-| Feature | Legacy `linux-wifi-hotspot` | **Wi-Fi Relay** (This Project) |
+| Behavior | `create_ap` (default) | `NetworkManager (Experimental)` |
 | :--- | :--- | :--- |
-| **Desktop Integration** | Separate, standalone GTK3 window | **Native GNOME Quick Settings toggle & top-bar indicator** |
-| **User Experience** | Manual app launch required every time | **1-Click toggle directly in GNOME Command Center** |
-| **Connected Clients** | Basic terminal/table display | **Integrated Quick Menu submenu** showing device names and IPs |
-| **Security & Permissions** | Prompts for `sudo` password on every start | **Secure D-Bus daemon with Polkit rules** (passwordless for wheel/sudo) |
-| **Immutable / Atomic OS** | Hardcoded to `/usr`, breaks on Ostree systems | **First-class Bluefin, Bazzite & Fedora Silverblue support** (`/usr/local` & `/etc`) |
-| **Channel Synchronization** | Frequent `EBUSY` crashes on channel changes | **Automatic dynamic channel syncing** with active Wi-Fi connection |
-| **Modern Standards** | Legacy GTK3 UI | **Modern GTK4 & Libadwaita** application matching GNOME HIG |
-| **Band Compatibility** | Fails silently on unsupported 5GHz AP mode | **Channel-aware hardware check** with automatic 2.4 GHz fallback |
-| **Connection Sharing** | Not available or external | **Connection details dialog** showing Wi-Fi connection text; QR image rendering is planned |
-| **Device Naming** | Shows raw, cryptic MAC addresses | **Intelligent hostname resolution** (shows device name & IP) |
-| **Default Naming** | Generic hardcoded SSID | **Dynamic `<hostname>-Hotspot`** naming tailored to your machine |
+| AP and IPv4 sharing | `hostapd`, `dnsmasq`, and firewall rules | NetworkManager AP profile with shared IPv4 |
+| Internet route | Configured sharing interface | Host default route, including preferred Ethernet or VPN routes |
+| Upstream band | May switch to a reachable permitted 2.4 GHz AP with the same SSID | Uses the current upstream channel; does not switch bands |
+| Settings | Existing create_ap options | WPA2, hidden SSID, client isolation, raw PSK, and /24 gateway; unsupported overrides are rejected |
+| Temporary upstream loss | Existing create_ap behavior | Waits and retries the original Wi-Fi profile on a permitted channel |
+
+The NetworkManager backend creates a service-owned virtual AP interface and a
+volatile connection profile. Credentials travel through an anonymous pipe;
+cleanup checks resource identities before deleting anything. Existing installations
+keep `create_ap` until the NetworkManager backend is explicitly selected.
 
 ---
 
 ## ✨ Features
 
-- 🚦 **Persistent Tray Icon:** A clickable top-bar hotspot icon stays visible: gray when off, amber while connecting or stopping, and green when on. Its menu provides the hotspot switch, connected devices, and settings; changes from the settings app update the icon too.
+- 🚦 **Persistent Tray Icon:** A clickable top-bar hotspot icon stays visible: gray when off, amber while waiting, connecting, or stopping, and green when on. Its menu provides the hotspot switch, connected devices, and settings; changes from the settings app update the icon too.
 - ⚡ **1-Click Quick Settings Toggle:** Turn your hotspot on and off right from the GNOME status menu.
 - 📱 **Expandable Submenu:** View active SSID, real-time frequency band (2.4/5 GHz), connected device count, and individual device names & IP addresses.
 - 🔄 **True AP+STA Concurrent Mode:** Receive Wi-Fi internet and broadcast a hotspot simultaneously from a single Wi-Fi adapter.
-- 🛡️ **Zero-Friction Firewall Setup:** Automatically configures `firewalld` policies for DHCP/DNS and handles `dnsmasq` lifecycle cleanly.
-- 📶 **Wi-Fi Standards Control:** Configurable support for **IEEE 802.11n (Wi-Fi 4)**, **IEEE 802.11ac (Wi-Fi 5)**, and **IEEE 802.11ax (Wi-Fi 6)**.
+- 🔄 **NetworkManager Recovery:** Resume requested sharing after temporary upstream loss, NetworkManager restart, or suspend once the original Wi-Fi profile is stable on a permitted channel. Stop, radio-off, or changing settings cancels recovery; daemon restart or reboot clears the request.
+- 🛡️ **IPv4 Sharing:** The selected backend manages AP activation, DHCP/DNS, and forwarding.
+- 📶 **Wi-Fi Standards Control:** The create_ap backend exposes **IEEE 802.11n/ac/ax** options where supported by the hardware and hostapd. The NetworkManager backend rejects generation overrides.
 - 🎛️ **Libadwaita Preferences App:** Beautiful native GNOME preferences window for configuring credentials, interfaces, hidden SSIDs, client isolation, and gateways.
 - 📷 **Connection Details:** Display credentials and Wi-Fi connection text for sharing. Rendering a scannable QR image is planned.
 
@@ -94,9 +102,9 @@ an optional uppercase two-letter `COUNTRY`. Values are single-line literal text;
 SSID is limited to 32 UTF-8 bytes, and WPA passphrases to 8–63 printable ASCII
 characters (or a 64-digit hexadecimal PSK with `USE_PSK=1`).
 
-### Automatic band fallback
+### Automatic band fallback (create_ap)
 
-The hotspot checks the selected adapter's AP+STA support and permitted channels.
+The create_ap backend checks the selected adapter's AP+STA support and permitted channels.
 When the current Wi-Fi channel cannot host an access point, it automatically
 reconnects the existing Wi-Fi profile to a reachable 2.4 GHz access point with
 **the same SSID**, then starts the hotspot on that channel. This briefly interrupts
@@ -115,7 +123,9 @@ policy, including an Ethernet or VPN route that has priority over Wi-Fi.
 
 ## 📦 Requirements
 
-Before installing, ensure the core networking packages are present on your system:
+The released `.deb` installs its dependencies through APT. Source installations
+need the core networking packages below. Fedora/Atomic and Arch installation paths
+are provided for development; this release was validated on Ubuntu 26.10.
 
 - **Fedora / Bluefin / Bazzite / Silverblue / RHEL:**
   ```bash
@@ -143,8 +153,10 @@ It can also be run manually with an optional base package version. Download the
 `wifi-relay-ubuntu-stonking-…` artifact from a successful run; it contains the
 package and `SHA256SUMS`. Verify the checksum with `sha256sum -c SHA256SUMS`, then
 install the downloaded `.deb` with `sudo apt install ./gnome-wifi-hotspot_…_all.deb`.
-The workflow checks installation and GTK widgets; it does not test an actual
-desktop login or GNOME Shell session.
+The workflow runs Python and Node tests, GTK widget checks, applet tests under
+address/undefined-behavior sanitizers, AppStream validation, and Lintian, then checks
+installation, upgrade, removal, purge, and fresh installation. It does not test an
+actual desktop login or GNOME Shell session.
 
 Build the package from this checkout without root:
 
@@ -167,25 +179,51 @@ select your actual **Wi-Fi Adapter** and **Internet Sharing Interface**; the
 default `wlan0` may not exist on your machine. To share an existing Wi-Fi
 connection using one adapter, choose that adapter for both fields. Set the
 hotspot name and a password of at least eight characters. Settings save
-automatically. Keep **Start tray at login** enabled if you want automatic startup.
+automatically. **Start tray at login** starts the desktop controls; enable the
+hotspot separately using the **Hotspot Status → Service Status** switch or tray menu.
 
 Then log out and back in. The tray extension is enabled automatically at your first
 desktop login after installation and starts on subsequent logins. GNOME uses the
 Shell extension; XFCE and other desktops use a StatusNotifier tray.
 
-### 1. Clone the Repository
+### Optional XFCE network-menu integration
+
+Download these three matching **Ubuntu 26.10 amd64** packages from the
+[Beta 2 release](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2),
+verify them with the release `SHA256SUMS`, and install them together:
+
+```bash
+sudo apt install ./network-manager-applet_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./network-manager-gnome_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./nm-connection-editor_1.36.0-4ubuntu1+relay3_amd64.deb
+```
+
+Log out and back in, then open the usual network icon → **Wi-Fi Relay** beside
+**VPN Connections**. Its Hotspot checkbox controls Relay's selected backend and
+can cancel a waiting recovery request. Install and configure Relay first.
+GNOME Shell uses the separate Quick Settings extension and does not require these
+applet packages. This is a downstream applet integration; Relay is a Wi-Fi AP and
+is not registered as a VPN or merged into upstream NetworkManager.
+
+Distribution updates may replace the patched applet. The release includes matching
+patched sources; see the [applet guide](integration/nm-applet/README.md) for building,
+maintenance, and rollback.
+
+### Source installation
+
+#### 1. Clone the Repository
 ```bash
 git clone https://github.com/3togo/gnome-wifi-hotspot.git
 cd gnome-wifi-hotspot
 ```
 
-### 2. Install System Components
+#### 2. Install System Components
 ```bash
 sudo make install
 ```
 *This installs the daemon to `/usr/local/libexec/wifi-hotspot-daemon`, configuration and D-Bus policies to `/etc`, and registers the systemd service to start automatically on boot.*
 
-### 3. Configure Before First Use
+#### 3. Configure Before First Use
 
 **Run the settings app as your normal user before starting the hotspot:**
 
@@ -197,7 +235,7 @@ Select the Wi-Fi adapter and internet sharing interface in **General**, then set
 the hotspot name and password. For sharing Wi-Fi from a single adapter, select
 the same adapter for both interfaces. Settings save automatically.
 
-### 4. Start the Tray
+#### 4. Start the Tray
 Log out of your desktop session and log back in (**Logout → Login**). The tray
 starts automatically at login. GNOME uses the Shell extension, while XFCE and
 other desktops use the standalone StatusNotifier tray. You can control this in
@@ -221,7 +259,24 @@ gnome-extensions enable wifi-relay@3togo.github.io
 
 ## 🗑️ Uninstallation
 
-To completely remove the extension, daemon, systemd services, and D-Bus policies:
+For a Debian/Ubuntu package installation, remove the application while preserving
+configuration:
+
+```bash
+sudo apt remove gnome-wifi-hotspot
+```
+
+To remove its system configuration and authorization files as well:
+
+```bash
+sudo apt purge gnome-wifi-hotspot
+```
+
+If you installed the optional patched applet, follow its
+[rollback instructions](integration/nm-applet/README.md#maintenance-and-rollback)
+to restore the distribution packages.
+
+For a source installation, remove the extension, daemon, systemd services, and D-Bus policies:
 
 ```bash
 sudo make uninstall
@@ -233,14 +288,17 @@ sudo make uninstall
 
 ## 💻 Developer & Live Hacking Workflow
 
-An experimental persistent **NetworkManager backend** is available in Settings →
+An experimental service-owned **NetworkManager backend** is available in Settings →
 General → **Hotspot Backend**. Connect the selected adapter to Wi-Fi, stop any
 existing hotspot, and select **NetworkManager (Experimental)**. Configure the
 SSID/password, then use the existing GNOME Quick Settings toggle, desktop tray,
 or Settings switch. It runs until switched off; closing Settings does not stop it.
 It shares the host default route and requires WPA2 and the current upstream channel.
-Upstream disconnects or roaming stop the hotspot with an error; automatic recovery
-and GNOME's built-in hotspot menu integration are not implemented.
+Temporary upstream loss stops the current AP and leaves the requested sharing
+session waiting. Recovery retries only after the original upstream profile returns
+on a permitted channel. Stop cancels waiting or connecting retries. Recovery intent
+is held in memory and is cleared by a daemon restart or reboot. GNOME's built-in
+hotspot menu remains separate; seamless roaming is not promised.
 
 On XFCE, an optional [patched NetworkManager Applet](integration/nm-applet/README.md)
 adds **Wi-Fi Relay** directly to the existing network icon menu, with a Hotspot
@@ -280,30 +338,51 @@ make dev-monitor-dbus
 
 ---
 
+## Validation
+
+[Beta 2 CI passed](https://github.com/3togo/gnome-wifi-hotspot/actions/runs/37675244790)
+for release commit `bfd860c64270855a1d6e38bad5e87705015543b8`: **170 Python tests**,
+Node state checks, GTK settings/tray checks, **16 applet sanitizer cases**, and package
+lifecycle checks. An additional isolated upgrade from the published Beta 1
+`1.0.0-10` package preserved settings and passed remove, purge, fresh-install, and
+`dpkg --audit` checks. Published release downloads were verified against their checksums.
+
+Physical tests covered upstream loss/reconnection, Stop while waiting,
+NetworkManager restart, suspend/resume, and installed-menu Start/Stop on one
+Wi-Fi driver. Android HTTPS checks verified certificate and hostname validation;
+gateway DNS result codes matched direct upstream queries. GNOME 51 extension
+loading and disable/re-enable passed in an isolated headless session.
+
+Full GNOME desktop interaction, additional drivers, natural roaming, multiple-client
+soak, distribution applet upgrades, and RPM installation still need coverage.
+Earlier combined upgrade/restart trials lost sharing intent; the cancellation
+source was not conclusively identified. See the
+[live validation report](docs/networkmanager-live-validation.md) and
+[sanitized evidence](docs/evidence/nm5-validation-2026-10-07.json).
+
+---
+
 ## 🏗️ Architecture
 
+```text
+GNOME Quick Settings / desktop tray / optional nm-applet menu / Settings
+                                │
+                     Polkit-protected system D-Bus
+                                │
+                  Python daemon (systemd, runs as root)
+                     status, recovery, resource cleanup
+                                │
+                 ┌──────────────┴────────────────┐
+                 │                               │
+          create_ap backend             NetworkManager backend
+          virtual AP interface          service-owned virtual AP interface
+          hostapd + dnsmasq              volatile WPA2 AP profile
+          iptables / firewalld           shared IPv4 (DHCP/DNS/forwarding)
 ```
- ┌────────────────────────────────────────────────────────┐
- │                   GNOME Shell UI                       │
- │  Quick Settings Toggle ── QuickMenu Submenu ── Prefs   │
- └───────────────────────────┬────────────────────────────┘
-                             │ D-Bus System Bus
-                             │ (io.github.erhanzeyrek.WifiHotspot)
- ┌───────────────────────────▼────────────────────────────┐
- │             Python D-Bus Daemon (Systemd)              │
- │  - Polkit security checks & non-root user execution    │
- │  - Dynamic station & client IP/hostname resolution     │
- │  - Real-time NetworkManager Wi-Fi state monitor        │
- └───────────────────────────┬────────────────────────────┘
-                             │
- ┌───────────────────────────▼────────────────────────────┐
- │               Backend Network Engine                   │
- │  - nl80211 virtual interface management (ap1)          │
- │  - hostapd (AP broadcast & IEEE 802.11n/ac/ax)         │
- │  - dnsmasq (DHCP lease allocation & DNS)               │
- │  - iptables / firewalld NAT packet forwarding          │
- └────────────────────────────────────────────────────────┘
-```
+
+Desktop applications run as the logged-in user. The daemon performs privileged
+network operations after Polkit authorization. Both backends expose the same
+Relay controls and status; the NetworkManager path owns only its recorded resources.
 
 ---
 
