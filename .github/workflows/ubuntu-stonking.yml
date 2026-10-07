@@ -37,7 +37,9 @@ jobs:
           printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
           chmod 0755 /usr/sbin/policy-rc.d
           printf '%s\n' 'Acquire::ForceIPv4 "true";' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' > /etc/apt/apt.conf.d/80-wifi-relay-ci
-          apt-get update
+          # GitHub-hosted Linux runners use Azure; keep archive signature checks enabled.
+          sed -i 's|archive.ubuntu.com|azure.archive.ubuntu.com|g; s|security.ubuntu.com|azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          apt-get update --error-on=any
           apt-get install -y --no-install-recommends \
             ca-certificates git dpkg-dev python3 python3-gi \
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtk-3.0 \
