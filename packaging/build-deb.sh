@@ -3,7 +3,7 @@
 set -euo pipefail
 umask 022
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-version=${1:-1.0.0-11+nm5}
+version=${1:-1.0.0-12}
 dpkg --validate-version "$version"
 output_dir="$repo_dir/dist"
 stage_dir=$(mktemp -d)

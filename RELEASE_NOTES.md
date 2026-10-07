@@ -1,68 +1,81 @@
-# Wi-Fi Relay 1.0.0 Beta 1
+# Wi-Fi Relay 1.0.0 Beta 2
 
-Wi-Fi Relay shares an existing Wi-Fi connection through a concurrent hotspot
-on supported adapters, with a persistent desktop tray and a GTK settings app.
+Beta 2 adds an optional NetworkManager sharing backend, recoverable hotspot
+sessions, and a Wi-Fi Relay submenu in Ubuntu's NetworkManager Applet. It remains
+an experimental prerelease tested primarily on Ubuntu 26.10/XFCE.
 
-## Install and configure
+## Install or upgrade
 
-Download `gnome-wifi-hotspot_1.0.0-10_all.deb`, then run:
+Download `gnome-wifi-hotspot_1.0.0-12_all.deb` and `SHA256SUMS` from this release.
+The Ubuntu 26.10 CI build is also supplied with its original versioned filename.
+Choose one Relay package, verify its checksum, and install it:
 
-```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-10_all.deb
+```sh
+sha256sum --ignore-missing -c SHA256SUMS
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
 wifi-hotspot-settings
 ```
 
-Choose the actual Wi-Fi adapter and internet sharing interface. For sharing Wi-Fi
-from a single adapter, select that adapter for both fields. Set the network name
-and password before enabling the hotspot. Tray startup defaults to on and can be
-changed under **General → Startup → Start tray at login**. Log out and back in
-after installation to activate the session startup entry.
+For the CI build, substitute its downloaded filename in the install command.
+In Settings, choose the actual Wi-Fi adapter and sharing interface, set an SSID
+and password, and choose the hotspot backend. Existing configurations retain
+`create_ap`; NetworkManager is opt-in and needs an associated upstream on a
+permitted AP channel. Unsupported options are rejected rather than silently ignored.
 
-## Changes
+Upgrading restarts the service and stops an active hotspot. Log out and back in
+so the desktop controls load the new code, then explicitly enable sharing again.
+A reboot or daemon restart clears the in-memory sharing request.
 
-- Gray tray icon when off, amber while connecting/stopping, and green when on.
-- XFCE StatusNotifier tray with hotspot control, connected devices, and settings.
-- GNOME extension renamed to `wifi-relay@3togo.github.io`, with migration of the
-  previous extension's enabled and disabled choices.
-- Channel-aware AP+STA checks and automatic reconnection to a permitted 2.4 GHz
-  access point on the same upstream network when necessary.
-- Polkit authorization for network changes and configuration/password reads.
-- Configuration validation, literal backend parsing, atomic saving, and
-  owner-only permissions for the password file.
-- GitHub Actions builds Ubuntu 26.10 Stonking packages and checks automated tests,
-  GTK widgets, installation, upgrade, removal, and purge. Successful runs provide
-  a `.deb` and checksum as downloadable artifacts.
+## Optional XFCE network-menu integration
 
-Existing package names, commands, configuration paths, and D-Bus identifiers
-remain compatible. Upgrading restarts the daemon and may stop an active hotspot;
-enable it again from the tray after the upgrade.
+These downstream **amd64 Ubuntu 26.10** packages add a Wi-Fi Relay submenu beside
+VPN Connections. Install all three matching versions together with Relay:
 
-## Beta scope and known limitations
+```sh
+sudo apt install ./network-manager-applet_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./network-manager-gnome_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./nm-connection-editor_1.36.0-4ubuntu1+relay3_amd64.deb
+```
 
-- Initial beta focus: Debian/Ubuntu packages and the XFCE tray.
-- Concurrent sharing depends on the Wi-Fi adapter, driver, and permitted channels.
-  Band fallback can briefly interrupt the upstream connection.
-- Real GNOME desktop integration and RPM installation remain unverified. The
-  extension declares GNOME 45–50; GNOME 51 is not supported by this beta.
-- The settings app's sharing dialog displays connection text; it does not yet
-  render a scannable QR image.
-- Debian package linting has warnings for direct service-policy reloads, the
-  missing autostart-helper manual page, and intentional `0600` config permissions.
+The hotspot is a Wi-Fi AP; it is not registered as a VPN. GNOME Shell uses the
+separate Quick Settings extension and does not need these applet replacements.
+Distribution updates can replace the patched applet. See
+[integration/nm-applet/README.md](integration/nm-applet/README.md) for rollback.
 
-## Verification
+## Changes since Beta 1
 
-- 55 automated tests pass, including denied authorization, malformed settings,
-  atomic-write failure, startup preferences, and extension UUID migration.
-- GNOME tray controller checks pass. Real GTK4 settings and GTK3 desktop-tray
-  checks also pass on Ubuntu 24.04 under Xvfb.
-- Native GJS startup preference checks and package checksum verification pass.
-- Installed version `1.0.0-9` passes authorized configuration reads and rejection
-  of malformed updates without changing the saved settings.
-- Debian linting has no errors; AppStream validation succeeds.
-- Ubuntu 24.04 container: installation with full dependencies, upgrade from
-  `1.0.0-7`, removal, purge, and fresh installation of `1.0.0-10` pass. Upgrade
-  preserves a modified config and changes its permissions from `0644` to `0600`.
-- Physical reboot on Ubuntu 26.10/XFCE: the installed `1.0.0-9` daemon starts at
-  boot and the tray starts automatically at login. The final `1.0.0-10` adds
-  settings heading fixes and release documentation; startup/security code is
-  unchanged.
+- Optional service-owned NetworkManager AP+STA backend with volatile profiles,
+  credentials passed through a pipe, and identity-checked resource cleanup.
+- Retry owned-resource cleanup when NetworkManager is temporarily unavailable.
+- Resume authorized sharing after temporary upstream loss, NetworkManager restart,
+  or suspend, once the original Wi-Fi profile and a permitted channel are stable.
+- Keep recovery pinned to the original upstream profile. Stop, radio-off, or a
+  settings change cancels recovery. Waiting and connecting retries remain cancellable.
+- Show waiting state in Settings, desktop tray, GNOME Quick Settings, and the
+  optional applet submenu, without reporting waiting sessions as active.
+- GNOME Shell 51 support, checked with an isolated headless load and disable/re-enable.
+- Repeatable Android DNS/HTTPS probes and sanitized live validation reports.
+
+## Validation and remaining limits
+
+170 Python tests, Node menu-state checks, and 16 applet cases under address and
+undefined-behavior sanitizers pass locally. The release source is also checked by
+the Ubuntu 26.10 CI workflow, including GTK widgets and package lifecycle checks.
+
+Physical checks passed upstream disconnect/reconnect, Stop while waiting,
+NetworkManager restart, suspend/resume, and installed menu Start/Stop. Android
+HTTPS returned 200 from two endpoints with TLS certificate and hostname checks;
+an invalid-hostname endpoint failed at the TLS handshake. Ten gateway DNS result
+codes matched direct upstream queries, locating the observed negative-answer
+variation upstream rather than specifically in Relay startup.
+
+Coverage is limited to one physical Wi-Fi driver. Full GNOME desktop interaction,
+natural roaming, multiple-client soak, distribution applet upgrades, and RPM
+installation still need coverage. Earlier combined upgrade/restart trials lost
+sharing intent; the cancellation source was not conclusively identified. The
+combined run passed after the desktop clients were restarted with current code.
+This is not a native upstream NetworkManager merge, and seamless roaming is not
+promised. QR image rendering remains planned.
+
+See [the live validation report](docs/networkmanager-live-validation.md) and
+[its evidence](docs/evidence/nm5-validation-2026-10-07.json) for results and limits.

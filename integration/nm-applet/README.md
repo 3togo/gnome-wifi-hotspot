@@ -20,9 +20,9 @@ Enable Ubuntu source repositories and install the build dependencies:
 ```sh
 sudo apt-get build-dep network-manager-applet
 bash integration/nm-applet/build-deb.sh
-sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay2_amd64.deb \
-  ./dist/nm-connection-editor_1.36.0-4ubuntu1+relay2_amd64.deb \
-  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay2_amd64.deb
+sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./dist/nm-connection-editor_1.36.0-4ubuntu1+relay3_amd64.deb \
+  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay3_amd64.deb
 ```
 
 Ubuntu requires matching versions of these three packages, so install them together.
@@ -41,7 +41,7 @@ SANITIZE=1 make test-nm-menu
 ```
 
 The test uses a private bus and fake Relay service, and changes no host connections.
-Its 14 cases check menu activation, duplicate requests, Start/Stop reply types,
+Its 16 cases check menu activation, duplicate requests, Start/Stop reply types,
 busy state, denied authorization, client counts, malformed status, service
 replacement with pending replies, and cancellation during outstanding requests. A separate installed-app live test should exercise
 the exported DBusMenu events against the real Relay service.
@@ -54,8 +54,8 @@ python3 integration/nm-applet/check-live-menu.py --cycle
 
 The installed patch was tested in the XFCE session: its exported menu matched
 the real active hotspot and one connected client, and the Settings action opened
-the settings application. Live Stop/Start was deferred to preserve that client's
-connection; isolated menu tests verified both operations.
+the settings application. A subsequent client-free installed-menu Stop/Start cycle passed on relay3.
+The additional cases cover waiting-state parsing and cancelling recovery from the menu.
 
 ## Maintenance and rollback
 

@@ -1,27 +1,32 @@
 # Wi-Fi Relay 🌐
 
-## Download Beta 1
+## Download Beta 2
 
 **Ready-to-install packages are available — no source build required.**
 
-- **[Download Ubuntu 26.10 Stonking package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/gnome-wifi-hotspot_1.0.0-10%2Bubuntu26.10.1_all.deb)**
-- **[Download Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/gnome-wifi-hotspot_1.0.0-10_all.deb)**
-- [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.1) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.1/SHA256SUMS)
+- **[Download the Relay Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb)** — tested on Ubuntu 26.10 Stonking.
+- [Ubuntu 26.10 CI build and optional XFCE network-menu packages](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2)
+- [Release notes and all downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2) · [SHA256 checksums](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/SHA256SUMS)
 
 Install the downloaded package, then **open settings before starting the hotspot**:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_*.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-12_all.deb
 wifi-hotspot-settings
 ```
 
-Download either package, then run these commands from its download folder. In
-settings, select your Wi-Fi adapter and internet sharing interface, and set the
-network name and password. Log out and back in to start the tray automatically.
+In Settings, select your Wi-Fi adapter and internet sharing interface, and set the
+network name and password. The NetworkManager backend is opt-in; existing settings
+retain create_ap. Log out and back in after installation or upgrade to load the new
+controls, then enable sharing. Upgrades stop active sharing, and sharing requests
+are not retained across a daemon restart or reboot.
 
-**Beta scope:** This release focuses on the Debian/Ubuntu package and XFCE tray.
-GNOME desktop integration and RPM installation remain experimental and unverified.
-The GNOME extension declares versions 45–50; GNOME 51 is not supported by this beta.
+**Beta scope:** Debian/Ubuntu packaging and the XFCE tray, with optional downstream
+NetworkManager Applet packages for Ubuntu 26.10 amd64. GNOME 45–51 is declared;
+GNOME 51 loading and disable/re-enable passed in a headless session. Full GNOME
+interaction, additional physical drivers, multi-client soak, and RPM installation
+remain unverified. Earlier upgrade/restart cancellations remain documented in the
+[validation report](docs/networkmanager-live-validation.md).
 
 [![GNOME Shell](https://img.shields.io/badge/GNOME-45%20|%2046%20|%2047%20|%2048-blue?logo=gnome&logoColor=white)](https://www.gnome.org/)
 [![GTK4 & Libadwaita](https://img.shields.io/badge/UI-GTK4%20%2F%20Libadwaita-purple)](https://gnome.pages.gitlab.gnome.org/libadwaita/)
@@ -145,7 +150,7 @@ Build the package from this checkout without root:
 
 ```bash
 ./packaging/build-deb.sh
-sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-11+nm5_all.deb
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-12_all.deb
 ```
 
 The package includes the current working-tree changes. An optional first argument
