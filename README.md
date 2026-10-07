@@ -1,5 +1,7 @@
 # Wi-Fi Relay 🌐
 
+**[User guide: setup, desktop controls, recovery, and troubleshooting](docs/user-guide.md)**
+
 ## Download Beta 2
 
 **Published experimental prerelease — ready-to-install packages, no source build required.**
