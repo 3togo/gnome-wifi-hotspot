@@ -2,7 +2,7 @@
 
 Beta 2 adds an optional NetworkManager sharing backend, recoverable hotspot
 sessions, and a Wi-Fi Relay submenu in Ubuntu's NetworkManager Applet. It remains
-an experimental prerelease tested primarily on Ubuntu 26.10/XFCE.
+an experimental beta release tested primarily on Ubuntu 26.10/XFCE.
 
 **[Read the user guide](docs/user-guide.md)** for step-by-step setup, desktop controls,
 recovery behavior, and troubleshooting.

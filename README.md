@@ -4,7 +4,7 @@
 
 ## Download Beta 2
 
-**Published experimental prerelease — ready-to-install packages, no source build required.**
+**Latest experimental beta release — ready-to-install packages, no source build required.**
 
 - **[Download the Relay Debian/Ubuntu package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12_all.deb)** — tested on Ubuntu 26.10 Stonking.
 - [Download the CI-tested Ubuntu 26.10 package (.deb)](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-beta.2/gnome-wifi-hotspot_1.0.0-12%2Bubuntu26.10.11_all.deb) — choose either Relay package.
