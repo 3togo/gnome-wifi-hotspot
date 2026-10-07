@@ -1,3 +1,67 @@
+gnome-wifi-hotspot (1.0.0-11+nm5) unstable; urgency=medium
+
+  * Resume authorized NetworkManager sharing after temporary upstream loss.
+  * Pin recovery to the original profile and retain Stop control while waiting.
+  * Validate GNOME Shell 51 loading and add recovery regression coverage.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 22:00:00 +0800
+
+gnome-wifi-hotspot (1.0.0-11+nm4) unstable; urgency=medium
+
+  * Retry owned-resource recovery after NetworkManager becomes available again.
+  * Add regression tests for delayed startup, worker-exit, and Stop recovery.
+  * Compare package lifecycle fresh-install defaults against the new payload.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 06:00:00 +0000
+
+gnome-wifi-hotspot (1.0.0-11+nm3) unstable; urgency=medium
+
+  * Harden worker startup, event validation, and ownership journal recovery.
+  * Ensure status notification failures cannot bypass hotspot cleanup.
+  * Expand lifecycle regression tests and prepare a native NM integration proposal.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 06:00:00 +0000
+
+gnome-wifi-hotspot (1.0.0-11+nm2) unstable; urgency=medium
+
+  * Fix Settings D-Bus argument signature so backend and interface choices save.
+  * Save visible settings before Start and block activation when saving fails.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 04:10:00 +0000
+
+gnome-wifi-hotspot (1.0.0-11+nm1) unstable; urgency=medium
+
+  * Add an experimental persistent NetworkManager backend to the Relay service.
+  * Select the backend in Settings and control it through the existing Shell/tray
+    toggle, with saved credentials and gateway configuration.
+  * Add worker shutdown and identity-checked recovery of owned AP resources.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 00:03:00 +0000
+
+gnome-wifi-hotspot (1.0.0-10+nmprobe3) unstable; urgency=medium
+
+  * Add an opt-in AP-mode restoration diagnostic during device initialization.
+  * Document successful live AP activation and cleanup with upstream Wi-Fi intact.
+  * Leave the installed hotspot service and default probe behavior unchanged.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 00:02:00 +0000
+
+gnome-wifi-hotspot (1.0.0-10+nmprobe2) unstable; urgency=medium
+
+  * Wait for virtual Wi-Fi device readiness before requesting activation.
+  * Report device state/reason and document live supplicant initialization failure.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 00:01:00 +0000
+
+gnome-wifi-hotspot (1.0.0-10+nmprobe1) unstable; urgency=medium
+
+  * Include the experimental wifi-relay-nm-probe developer command.
+  * Add API assessment, temporary client credentials, lifecycle and cleanup
+    verification, and repeated-cycle testing with documented limitations.
+  * Keep the installed hotspot service on the existing create_ap backend.
+
+ -- 3togo <3togo@users.noreply.github.com>  Wed, 07 Oct 2026 00:00:00 +0000
+
 gnome-wifi-hotspot (1.0.0-10) unstable; urgency=medium
 
   * Prepare Wi-Fi Relay Beta 1 for Debian/Ubuntu and XFCE.

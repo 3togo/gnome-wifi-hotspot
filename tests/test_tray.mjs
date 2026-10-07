@@ -78,6 +78,22 @@ stop([true], null);
 query(['{"active":false}'], null);
 assert.match(tray._icon.style_class, /hotspot-tray-off/);
 
+// Pending recovery stays checked and can be explicitly cancelled.
+toggle._updateUI({active: false, desired_active: true, state: 'waiting'});
+assert.equal(toggle.checked, true);
+assert.equal(tray._switch.state, true);
+assert.equal(tray._switch.sensitive, true);
+assert.match(tray.accessible_name, /Waiting for Wi-Fi/);
+assert.match(tray._icon.style_class, /hotspot-tray-connecting/);
+toggle._updateUI({active: false, desired_active: true, state: 'connecting'});
+assert.equal(tray._switch.sensitive, true);
+assert.equal(toggle.reactive, true);
+toggle._onToggleClicked();
+assert.equal(typeof stop, 'function');
+stop([true], null);
+query(['{"active":false,"desired_active":false}'], null);
+assert.equal(toggle.checked, false);
+
 // Pending callbacks after disable must not touch destroyed actors.
 toggle._onToggleClicked();
 const pendingStart = start;

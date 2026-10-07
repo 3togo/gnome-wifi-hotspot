@@ -116,6 +116,12 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         grp_net = Adw.PreferencesGroup(title="Network Interfaces and Frequency Band")
         page_general.add(grp_net)
 
+        self.combo_backend = Adw.ComboRow(title="Hotspot Backend",
+            subtitle="NetworkManager runs until switched off and follows host routing; experimental")
+        self.combo_backend.set_model(Gtk.StringList.new(["create_ap", "NetworkManager (Experimental)"]))
+        self.combo_backend.connect("notify::selected", self._on_field_changed)
+        grp_net.add(self.combo_backend)
+
         self.combo_wifi_iface = Adw.ComboRow(title="Wi-Fi Adapter", subtitle="A virtual hotspot interface is created on this adapter")
         self.combo_wifi_iface.connect("notify::selected", self._on_field_changed)
         grp_net.add(self.combo_wifi_iface)
@@ -247,6 +253,11 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self._loading_fields = True
         try:
             self.config_data = dict(conf)
+            self.combo_backend.set_selected(1 if conf.get("BACKEND") == "networkmanager" else 0)
+            use_nm = conf.get("BACKEND") == "networkmanager"
+            self.combo_inet_iface.set_sensitive(not use_nm)
+            self.combo_inet_iface.set_subtitle("Uses the host default route, including Ethernet or VPN"
+                if use_nm else "Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
             for row, key in ((self.combo_wifi_iface, "WIFI_IFACE"),
                              (self.combo_inet_iface, "INTERNET_IFACE")):
                 model = row.get_model()
@@ -317,16 +328,18 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             res = self.dbus_proxy.GetStatus()
             status = json.loads(res)
             active = bool(status.get("active"))
+            requested = active or bool(status.get("desired_active"))
+            self.combo_backend.set_sensitive(not requested)
 
             # Update switch state silently
             self.switch_hotspot.handler_block_by_func(self._on_switch_toggled)
-            self.switch_hotspot.set_active(active)
+            self.switch_hotspot.set_active(requested)
             self.switch_hotspot.handler_unblock_by_func(self._on_switch_toggled)
 
             if active:
                 self.row_status.set_subtitle(f"On — SSID: {status.get('ssid')} ({status.get('iface')})")
             else:
-                self.row_status.set_subtitle("Off")
+                self.row_status.set_subtitle((status.get("error") or "Waiting for Wi-Fi") if requested else (status.get("error") or "Off"))
 
             # Update clients
             res_clients = self.dbus_proxy.GetClients()
@@ -360,9 +373,13 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
     def _on_switch_toggled(self, switch, state):
         if not self.dbus_proxy or self._hotspot_busy:
             return True
+        if state and not self._on_field_changed():
+            return True
         self._hotspot_busy = True
+        self.combo_backend.set_sensitive(False)
         switch.set_sensitive(False)
-        self.row_status.set_subtitle("Starting (Wi-Fi may switch to 2.4 GHz)..." if state else "Stopping...")
+        starting_text = "Starting NetworkManager hotspot..." if self.config_data.get("BACKEND") == "networkmanager" else "Starting (Wi-Fi may switch to 2.4 GHz)..."
+        self.row_status.set_subtitle(starting_text if state else "Stopping...")
         self.dbus_proxy.call(
             "Start" if state else "Stop", None, Gio.DBusCallFlags.NONE,
             60000, None, self._on_hotspot_finished, state,
@@ -387,17 +404,20 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
 
     def _on_field_changed(self, *args):
         if self._loading_fields or self._hotspot_busy:
-            return
+            return False
         wifi_item = self.combo_wifi_iface.get_selected_item()
         inet_item = self.combo_inet_iface.get_selected_item()
         if wifi_item is None or inet_item is None:
-            return
+            self.row_status.set_title("Settings were not saved")
+            self.row_status.set_subtitle("Select a Wi-Fi adapter and sharing interface first.")
+            return False
         # Auto-save the selected interfaces without discarding other options.
         band_idx = self.combo_band.get_selected()
         band_str = "auto" if band_idx == 0 else ("2.4" if band_idx == 1 else "5")
 
         conf = {
             **self.config_data,
+            "BACKEND": "networkmanager" if self.combo_backend.get_selected() == 1 else "create_ap",
             "SSID": self.entry_ssid.get_text() or get_default_ssid(),
             "PASSPHRASE": self.entry_pass.get_text() or "12345678",
             "GATEWAY": self.entry_gateway.get_text() or "192.168.12.1",
@@ -414,12 +434,19 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
 
         if self.dbus_proxy:
             try:
-                self.dbus_proxy.SetConfig(json.dumps(conf))
+                if not self.dbus_proxy.SetConfig("(s)", json.dumps(conf)):
+                    raise RuntimeError("The service could not save the settings.")
                 self.config_data = conf
+                use_nm = conf["BACKEND"] == "networkmanager"
+                self.combo_inet_iface.set_sensitive(not use_nm)
+                self.combo_inet_iface.set_subtitle("Uses the host default route, including Ethernet or VPN"
+                    if use_nm else "Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
                 self.row_status.set_title("Service Status")
+                return True
             except Exception as e:
                 self.row_status.set_title("Settings were not saved")
                 self.row_status.set_subtitle(str(e))
+        return False
 
     def _on_show_qr(self, button):
         ssid = self.entry_ssid.get_text() or get_default_ssid()

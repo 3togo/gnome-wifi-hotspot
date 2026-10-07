@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-07",
+  "relay_version": "1.0.0-11+nm5",
+  "applet_version": "1.36.0-4ubuntu1+relay3",
+  "python_tests": 170,
+  "node_menu_state": "passed",
+  "applet_sanitized_tests": 16,
+  "gnome": {
+    "version": "51.0",
+    "headless_software_display": true,
+    "extension_loaded": true,
+    "disable_enable_passed": true,
+    "extension_error": ""
+  },
+  "recovery": {
+    "version": "1.0.0-11+nm5",
+    "checks": {
+      "upstream_loss": {
+        "interfaces_removed": true,
+        "profiles_removed": true,
+        "worker_reaped": true,
+        "journal_removed": true,
+        "firewall_references_removed": true,
+        "dnsmasq_reaped": true,
+        "automatic_resume": true,
+        "original_profile_preserved": true
+      },
+      "stop_cancels_recovery": true,
+      "networkmanager_restart": true
+    },
+    "failures": []
+  },
+  "suspend": {
+    "elapsed_boottime_seconds": 55.7,
+    "automatic_resume": true,
+    "desired_active": true,
+    "original_profile_preserved": true
+  },
+  "dns": {
+    "queries": 10,
+    "same_name_gateway_upstream_rcode_matches": 10,
+    "nxdomain_count": 3,
+    "noerror_empty_answer_count": 7,
+    "strict_nxdomain_assertion_retained": true,
+    "interpretation": "Unexpected negative response codes were reproduced directly through the upstream resolver; not specific to Relay startup."
+  },
+  "https": {
+    "example.com": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 589
+    },
+    "www.kernel.org": {
+      "success": true,
+      "https_status": 200,
+      "certificate_and_hostname_verified": true,
+      "source_bound": true,
+      "tls_protocol": "TLSv1.3",
+      "body_bytes_received": 19137
+    },
+    "wrong.host.badssl.com": {
+      "success": false,
+      "stage": "tls",
+      "error_type": "SSLHandshakeException"
+    }
+  },
+  "client_route_on_wifi": true,
+  "host_route_on_wifi": true,
+  "client_original_wifi_restored": true,
+  "limitations": [
+    "Only one physical Wi-Fi driver tested.",
+    "GNOME headless loading does not certify physical desktop interaction.",
+    "Earlier combined restart trials lost intent; source of cancellation was not conclusively identified. Combined run passed after desktop clients were restarted with current code.",
+    "Natural roaming, multi-client soak, distribution applet updates, and upstream maintainer review remain."
+  ],
+  "final_install_source_matches": true,
+  "installed_menu_cycle": {
+    "menu_present": true,
+    "status_matches_service": true,
+    "active": true,
+    "client_count": 0,
+    "settings_action_sent": false,
+    "live_cycle_verified": true
+  },
+  "post_restart_gnome_smoke": {
+    "headless_gnome": true,
+    "extension_loaded": true,
+    "disable_enable_passed": true,
+    "extension_error": ""
+  }
+}

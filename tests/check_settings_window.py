@@ -15,5 +15,12 @@ assert window.switch_startup.get_active() is True
 assert window.combo_wifi_iface.get_model().get_n_items() > 0
 assert window.combo_inet_iface.get_model().get_n_items() > 0
 assert window.entry_ssid.get_text()
+assert window.combo_backend.get_model().get_n_items() == 2
+window._populate_fields({**window.config_data, 'BACKEND': 'networkmanager'})
+assert window.combo_backend.get_selected() == 1
+assert not window.combo_inet_iface.get_sensitive()
+window._populate_fields({**window.config_data, 'BACKEND': 'create_ap'})
+assert window.combo_backend.get_selected() == 0
+assert window.combo_inet_iface.get_sensitive()
 window.destroy()
-print('Real GTK4 settings window, first-run fields, and startup default checks passed.')
+print('Real GTK4 settings window, backend selector, first-run fields, and startup checks passed.')

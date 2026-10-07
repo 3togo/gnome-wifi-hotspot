@@ -114,16 +114,18 @@ class HotspotTray(Gtk.Application):
         stopping = self.status.get('state') == 'stopping'
         transition = self.busy or self.status.get('state') in ('connecting', 'stopping')
         active = bool(self.status.get('active'))
-        state = 'connecting' if transition else 'on' if active else 'off'
-        label = ('Stopping…' if stopping else 'Connecting…') if transition else 'On' if active else 'Off'
+        requested = active or bool(self.status.get('desired_active'))
+        state = 'connecting' if transition or (requested and not active) else 'on' if active else 'off'
+        label = ('Stopping…' if stopping else 'Connecting…') if transition else 'On' if active else 'Waiting for Wi-Fi' if requested else 'Off'
         self.indicator.set_icon_full('wifi-hotspot-' + state, 'Wi-Fi Relay: ' + label)
         menu = Gtk.Menu()
         status_item = Gtk.MenuItem(label='Wi-Fi Relay: ' + label)
         status_item.set_sensitive(False)
         menu.append(status_item)
         switch = Gtk.CheckMenuItem(label='Enable hotspot')
-        switch.set_active(active)
-        switch.set_sensitive(not transition and self.proxy is not None)
+        switch.set_active(requested)
+        switch.set_sensitive(not self.busy and not stopping and
+                             (self.status.get('state') != 'connecting' or requested) and self.proxy is not None)
         switch.connect('toggled', self._toggle)
         menu.append(switch)
         if self.status.get('unavailable'):
@@ -152,9 +154,10 @@ class HotspotTray(Gtk.Application):
         self.indicator.set_menu(menu)
 
     def _toggle(self, _item):
-        if self.busy or not self.proxy or self.status.get('state') in ('connecting', 'stopping'):
+        if (self.busy or not self.proxy or self.status.get('state') == 'stopping' or
+                (self.status.get('state') == 'connecting' and not self.status.get('desired_active'))):
             return
-        method = 'Stop' if self.status.get('active') else 'Start'
+        method = 'Stop' if (self.status.get('active') or self.status.get('desired_active')) else 'Start'
         self.busy = True
         self.status['state'] = 'stopping' if method == 'Stop' else 'connecting'
         self.revision += 1
