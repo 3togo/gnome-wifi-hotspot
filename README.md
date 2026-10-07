@@ -1,5 +1,7 @@
 # Wi-Fi Relay 🌐
 
+**Wi-Fi hotspot and connection sharing for Linux.**
+
 **[User guide: setup, desktop controls, recovery, and troubleshooting](docs/user-guide.md)**
 
 ## Download Beta 2
@@ -73,6 +75,26 @@ Wi-Fi Relay provides a GTK4/Libadwaita settings application, a Polkit-protected
 system D-Bus service, and desktop controls. GNOME uses a Quick Settings extension;
 XFCE and other desktops use a StatusNotifier tray. An optional patched
 NetworkManager Applet adds Relay to the existing XFCE network menu.
+
+### Names and terminology
+
+| Term | Meaning |
+| :--- | :--- |
+| **Wi-Fi Relay** | The product name: the settings app, service, and desktop controls in this project. |
+| **Wi-Fi hotspot** | The wireless network your computer creates for phones, tablets, and other clients. Labels such as “Enable hotspot” and “Hotspot Name” describe this feature. |
+| **Relay / repeater mode (AP+STA)** | Sharing an existing Wi-Fi connection through a hotspot while the computer remains connected to upstream Wi-Fi. Using one adapter requires compatible hardware, drivers, and channel permissions. |
+
+We use **Wi-Fi Relay** for the app's branding and **hotspot** for the network it
+creates. The term “repeater” here describes internet connection sharing through a
+separate access point; it does not promise seamless roaming or a transparent Wi-Fi
+range extender.
+
+The repository and Debian package still use `gnome-wifi-hotspot`, and commands
+such as `wifi-hotspot-settings`, the `wifi-hotspot-daemon.service` service, and
+`/etc/wifi-hotspot.conf` retain their existing names for compatibility. They all
+belong to **Wi-Fi Relay**. Use the filenames and commands shown in the installation
+instructions. Any future technical renaming will need aliases and upgrade migration;
+the branding change alone does not rename these interfaces.
 
 ### Hotspot backends
 
