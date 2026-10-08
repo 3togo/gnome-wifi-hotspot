@@ -34,6 +34,7 @@ for icon in off connecting on; do
     install_file "settings/icons/wifi-hotspot-$icon.svg" "usr/share/wifi-hotspot/settings/icons/wifi-hotspot-$icon.svg" 0644
 done
 install_file settings/startup.py usr/share/wifi-hotspot/settings/startup.py 0644
+install_file settings/visibility.py usr/share/wifi-hotspot/settings/visibility.py 0644
 install_file settings/enable-extension.py usr/share/wifi-hotspot/settings/enable-extension.py 0755
 install_file data/wifi-hotspot-autostart.desktop etc/xdg/autostart/wifi-hotspot-autostart.desktop 0644
 install -d -m 0755 "$stage_dir/usr/bin"

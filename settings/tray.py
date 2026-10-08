@@ -10,6 +10,7 @@ gi.require_version('AyatanaAppIndicator3', '0.1')
 from gi.repository import Gtk, Gio, GLib, AyatanaAppIndicator3 as AppIndicator
 
 from startup import get_auto_start
+from visibility import get_tray_visible
 
 BUS_NAME = 'io.github.erhanzeyrek.WifiHotspot'
 OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
@@ -17,7 +18,11 @@ OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
 
 class HotspotTray(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id=BUS_NAME + '.Tray')
+        super().__init__(application_id=BUS_NAME + '.Tray',
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.add_main_option('show-icon', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
+                             'Show the tray icon in this session', None)
+        self.manual_start = False
         self.proxy = None
         self.indicator = None
         self.status = {'active': False}
@@ -26,10 +31,21 @@ class HotspotTray(Gtk.Application):
         self.revision = 0
         self.query_pending = False
 
+    def do_command_line(self, command_line):
+        if command_line.get_options_dict().contains('show-icon'):
+            self.manual_start = True
+        self.activate()
+        return 0
+
+    def _update_visibility(self):
+        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE if get_tray_visible()
+                                  else AppIndicator.IndicatorStatus.PASSIVE)
+
     def do_activate(self):
         if self.indicator:
+            self._update_visibility()
             return
-        if not get_auto_start():
+        if not get_auto_start() and not self.manual_start:
             self.quit()
             return
         self.hold()
@@ -39,7 +55,7 @@ class HotspotTray(Gtk.Application):
             AppIndicator.IndicatorCategory.HARDWARE, str(icon_dir))
         self.indicator.set_title('Wi-Fi Relay')
         self._render()
-        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
+        self._update_visibility()
         Gio.DBusProxy.new_for_bus(
             Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, None,
             BUS_NAME, OBJECT_PATH, BUS_NAME, None, self._proxy_ready)
@@ -70,10 +86,11 @@ class HotspotTray(Gtk.Application):
             pass
 
     def _poll(self):
-        if not get_auto_start():
+        if not get_auto_start() and not self.manual_start:
             self.indicator.set_status(AppIndicator.IndicatorStatus.PASSIVE)
             self.quit()
             return GLib.SOURCE_REMOVE
+        self._update_visibility()
         self._query()
         return GLib.SOURCE_CONTINUE
 

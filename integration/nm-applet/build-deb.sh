@@ -3,7 +3,7 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source_version=1.36.0-4ubuntu1
-version=${1:-1.36.0-4ubuntu1+relay4}
+version=${1:-1.36.0-4ubuntu1+relay5}
 dpkg --validate-version "$version"
 make -C "$repo_dir" test
 if [[ -n ${DISPLAY:-} || -n ${WAYLAND_DISPLAY:-} ]]; then

@@ -128,7 +128,7 @@ install:
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon/tools
 	install -m 0755 tools/nm_ap_sta_probe.py $(PREFIX)/libexec/wifi-hotspot-daemon/tools/
 	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
-	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py settings/visibility.py $(PREFIX)/share/wifi-hotspot/settings/
 	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
 	install -d -m 0755 $(PREFIX)/bin
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/main.py $(PREFIX)/bin/wifi-hotspot-settings
