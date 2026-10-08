@@ -32,6 +32,8 @@ spec.loader.exec_module(daemon)
 
 NM_NAME = "org.freedesktop.NetworkManager"
 NM_PATH = "/org/freedesktop/NetworkManager"
+NATIVE_RELAY_CAPABILITY = 0x7001
+NATIVE_RELAY_PARENT_KEY = "org.freedesktop.NetworkManager.wifi-relay.parent"
 
 
 class ProbeFailure(RuntimeError):
@@ -114,7 +116,7 @@ def inspect(station, ap_iface):
         "driver": command(["nmcli", "-g", "GENERAL.DRIVER", "device", "show", station]),
         "networkmanager_advertises_ap": nm_ap == "yes",
         "api_compatibility": api,
-        "integration": {"virtual_interface_lifecycle": "external-helper",
+        "integration": {"virtual_interface_lifecycle": ("networkmanager" if api.get("native_wifi_relay") else "external-helper"),
                         "upstream_gnome_ui": "not-integrated",
                         "extension_toggle": "relay-service-backend-selector",
                         "live_activation": "not-tested"},
@@ -187,6 +189,24 @@ class NetworkManager:
             Gio.dbus_address_get_for_bus_sync(Gio.BusType.SYSTEM, None),
             Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT
             | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+        self._active = None
+        self._user_disconnected = False
+        # Subscribe before activation so a quick GUI Disconnect cannot be lost.
+        self._state_subscription = self.bus.signal_subscribe(
+            NM_NAME, NM_NAME + ".Connection.Active", "StateChanged", None, None,
+            Gio.DBusSignalFlags.NONE, self._active_state_changed)
+
+    def _active_state_changed(self, bus, sender, path, interface, signal, parameters):
+        state, reason = parameters.unpack()
+        if path == self._active and state in (3, 4) and reason == 2:
+            # NM_ACTIVE_CONNECTION_STATE_REASON_USER_DISCONNECTED
+            self._user_disconnected = True
+
+    def user_disconnected(self):
+        context = GLib.MainContext.default()
+        while context.pending():
+            context.iteration(False)
+        return self._user_disconnected
 
     def call(self, path, interface, method, parameters=None):
         return self.bus.call_sync(NM_NAME, path, interface, method, parameters,
@@ -197,11 +217,13 @@ class NetworkManager:
                          GLib.Variant("(s)", (iface,)))[0]
 
     def activate(self, device, profile):
-        return self.call(NM_PATH, NM_NAME, "AddAndActivateConnection2", GLib.Variant(
+        self._user_disconnected = False
+        self._active = self.call(NM_PATH, NM_NAME, "AddAndActivateConnection2", GLib.Variant(
             "(a{sa{sv}}ooa{sv})", (profile, device, "/", {
                 "persist": GLib.Variant("s", "volatile"),
                 "bind-activation": GLib.Variant("s", "dbus-client"),
             })))[1]
+        return self._active
 
     def state(self, active):
         return self.call(active, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
@@ -219,14 +241,22 @@ class NetworkManager:
                                            if a.get("direction", "in") == "in"]
         version = self.call(NM_PATH, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
             "(ss)", (NM_NAME, "Version")))[0]
-        return {"daemon_version": version,
+        capabilities = self.call(NM_PATH, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
+            "(ss)", (NM_NAME, "Capabilities")))[0]
+        return {"native_wifi_relay": NATIVE_RELAY_CAPABILITY in capabilities,
+                "daemon_version": version,
                 "add_and_activate_connection2": inputs == ["a{sa{sv}}", "o", "o", "a{sv}"],
                 "activation_options": "require-live-verification"}
 
     def deactivate(self, active):
-        self.call(NM_PATH, NM_NAME, "DeactivateConnection", GLib.Variant("(o)", (active,)))
+        try:
+            self.call(NM_PATH, NM_NAME, "DeactivateConnection", GLib.Variant("(o)", (active,)))
+        except GLib.Error as exc:
+            if Gio.DBusError.get_remote_error(exc) != NM_NAME + ".ConnectionNotActive":
+                raise
 
     def close(self):
+        self.bus.signal_unsubscribe(self._state_subscription)
         self.bus.close_sync(None)
 
 
@@ -332,6 +362,7 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
         raise RuntimeError("Waiting for the original Wi-Fi connection.")
     if not baseline[1] or baseline[3] != report["upstream_frequency_mhz"]:
         raise RuntimeError("Upstream changed since inspection; run inspection again.")
+    native = report.get("api_compatibility", {}).get("native_wifi_relay") is True
     nm, active, created, credentials_created = None, None, False, False
     profile_uuid, failure, requested_stop = None, None, False
     cleanup_errors = []
@@ -339,10 +370,11 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
     events = []
     result = {"activation_verified": False, "cleanup_errors": cleanup_errors,
               "lifecycle": events, "outcome": "running", "client_connectivity_tested": False,
-              "dhcp_verified": False, "dns_verified": False, "internet_verified": False}
+              "dhcp_verified": False, "dns_verified": False, "internet_verified": False,
+              "interface_lifecycle": "networkmanager" if native else "external-helper"}
 
     def stage(name):
-        if name == "active" and service_config:
+        if name == "active" and service_config and not native:
             ownership["mac"] = Path("/sys/class/net", ap, "address").read_text().strip()
             ownership_callback(ownership)
         events.append({"stage": name, "elapsed_seconds": round(time.monotonic() - started, 3)})
@@ -351,6 +383,20 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
     def check_stop():
         if stop_requested():
             raise StopRequested()
+
+    def activation_state():
+        # Dispatch the reason signal even if the active object has already gone.
+        try:
+            state = nm.state(active)
+        except Exception:
+            if nm.user_disconnected() is True:
+                result["user_disconnected"] = True
+                raise StopRequested()
+            raise
+        if nm.user_disconnected() is True:
+            result["user_disconnected"] = True
+            raise StopRequested()
+        return state
 
     def cleanup_stage(name):
         # Notification failures must never bypass network/resource cleanup.
@@ -368,52 +414,64 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
         if credentials_file:
             write_credentials(credentials_file, ssid, password)
             credentials_created = True
-        mac = "02:" + ":".join(f"{b:02x}" for b in secrets.token_bytes(5))
-        command(["iw", "dev", station, "interface", "add", ap, "type", "__ap", "addr", mac])
-        created = True
-        ownership = {"interface": ap, "mac": mac}
-        if service_config:
-            ownership["ifindex"] = int(Path("/sys/class/net", ap, "ifindex").read_text())
-            ownership_callback(ownership)
-        stage("interface-created")
-        nm = nm_factory()
-        deadline = time.monotonic() + 10
-        while True:
-            check_stop()
-            try:
-                device = nm.device(ap)
-                break
-            except GLib.Error:
-                if time.monotonic() >= deadline:
-                    raise RuntimeError("NetworkManager did not discover the virtual interface.")
+        if native:
+            nm = nm_factory()
+            if not nm.compatibility().get("native_wifi_relay"):
+                raise RuntimeError("Native Wi-Fi Relay support disappeared before activation.")
+            # NetworkManager realizes the child from the profile and owns its cleanup.
+            # No helper-created interface or interface-deletion journal is needed.
+            device = "/"
+            stage("native-interface-request")
+        else:
+            mac = "02:" + ":".join(f"{b:02x}" for b in secrets.token_bytes(5))
+            command(["iw", "dev", station, "interface", "add", ap, "type", "__ap", "addr", mac])
+            created = True
+            ownership = {"interface": ap, "mac": mac}
+            if service_config:
+                ownership["ifindex"] = int(Path("/sys/class/net", ap, "ifindex").read_text())
+                ownership_callback(ownership)
+            stage("interface-created")
+            nm = nm_factory()
+            deadline = time.monotonic() + 10
+            while True:
+                check_stop()
+                try:
+                    device = nm.device(ap)
+                    break
+                except GLib.Error:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("NetworkManager did not discover the virtual interface.")
+                    time.sleep(0.25)
+            command(["nmcli", "device", "set", ap, "autoconnect", "no", "managed", "yes"])
+            stage("waiting-for-device")
+            deadline = time.monotonic() + (30 if restore_ap else 15)
+            mode_restored = False
+            while True:
+                check_stop()
+                ensure_upstream(station, baseline)
+                state, reason = nm.device_state(device)
+                result["device_state"] = {"state": state, "reason": reason}
+                if state == 30:  # NM_DEVICE_STATE_DISCONNECTED: ready for activation
+                    break
+                if restore_ap and state == 20 and not mode_restored:
+                    mode_restored = restore_ap_mode(ap)
+                    if mode_restored:
+                        result["ap_mode_restored"] = True
+                        stage("restoring-ap-mode")
+                        stage("waiting-for-device")
+                if state > 30 or time.monotonic() >= deadline:
+                    raise RuntimeError("Virtual Wi-Fi device did not become ready for activation "
+                                       f"(state {state}, reason {reason}); check NetworkManager's "
+                                       "journal for supplicant/driver initialization failures.")
                 time.sleep(0.25)
-        command(["nmcli", "device", "set", ap, "autoconnect", "no", "managed", "yes"])
-        stage("waiting-for-device")
-        deadline = time.monotonic() + (30 if restore_ap else 15)
-        mode_restored = False
-        while True:
-            check_stop()
-            ensure_upstream(station, baseline)
-            state, reason = nm.device_state(device)
-            result["device_state"] = {"state": state, "reason": reason}
-            if state == 30:  # NM_DEVICE_STATE_DISCONNECTED: ready for activation
-                break
-            if restore_ap and state == 20 and not mode_restored:
-                mode_restored = restore_ap_mode(ap)
-                if mode_restored:
-                    result["ap_mode_restored"] = True
-                    stage("restoring-ap-mode")
-                    stage("waiting-for-device")
-            if state > 30 or time.monotonic() >= deadline:
-                raise RuntimeError("Virtual Wi-Fi device did not become ready for activation "
-                                   f"(state {state}, reason {reason}); check NetworkManager's "
-                                   "journal for supplicant/driver initialization failures.")
-            time.sleep(0.25)
         ensure_upstream(station, baseline)
         check_stop()
         profile = service_settings(report, service_config) if service_config else settings(report, ssid, password)
+        if native:
+            profile["user"] = {"data": GLib.Variant("a{ss}", {NATIVE_RELAY_PARENT_KEY: station})}
+            profile["802-11-wireless"]["assigned-mac-address"] = GLib.Variant("s", "preserve")
         profile_uuid = profile["connection"]["uuid"].unpack()
-        if service_config:
+        if service_config and not native:
             ownership["profile_uuid"] = profile_uuid
             ownership["profile_id"] = profile["connection"]["id"].unpack()
             ownership_callback(ownership)
@@ -422,8 +480,8 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
         deadline = time.monotonic() + 30
         while True:
             check_stop()
+            state = activation_state()
             ensure_upstream(station, baseline)
-            state = nm.state(active)
             if state == 2:  # NM_ACTIVE_CONNECTION_STATE_ACTIVATED
                 break
             if state == 4 or time.monotonic() >= deadline:
@@ -438,9 +496,9 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
         result["client_observation"] = evidence
         while True:
             check_stop()
-            ensure_upstream(station, baseline)
-            if nm.state(active) != 2:
+            if activation_state() != 2:
                 raise RuntimeError("NetworkManager hotspot stopped during observation.")
+            ensure_upstream(station, baseline)
             info = command(["iw", "dev", ap, "info"])
             frequency = re.search(r"\((\d+(?:\.\d+)?) MHz\)", info)
             if (not re.search(r"type AP\s*$", info, re.M) or not frequency
@@ -486,10 +544,12 @@ def run_probe(report, ssid, hold_seconds, nm_factory=NetworkManager,
                 action()
             except Exception as exc:
                 cleanup_errors.append(f"{label}: {exc}")
-        if created or credentials_created:
+        if created or credentials_created or (native and nm):
             try:
+                if native and not wait_absent(lambda: Path("/sys/class/net", ap).exists()):
+                    cleanup_errors.append("Native Wi-Fi Relay interface cleanup timed out.")
                 result["cleanup_verification"] = cleanup_verification(
-                    ap if created else None, profile_uuid,
+                    ap if created or native else None, profile_uuid,
                     credentials_file if credentials_created else None)
                 for name, passed in result["cleanup_verification"].items():
                     if not passed:

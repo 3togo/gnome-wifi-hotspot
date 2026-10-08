@@ -97,6 +97,39 @@ class WorkerFailureTests(unittest.TestCase):
         self.process.returncode = 1
         self.assertEqual(self.backend.get_status()['error'], 'interface survived')
 
+    def test_gui_disconnect_cancels_resume_even_with_cleanup_error(self):
+        self.backend.process = self.process
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        self.backend._candidate = ('stable', 0)
+        self.send({'event': 'result', 'result': {
+            'user_disconnected': True, 'cleanup_errors': ['cleanup retry needed']}})
+        self.process.poll.return_value = 0
+        with patch.object(self.backend, 'start') as start:
+            status = self.backend.poll(CONFIG)
+            self.backend.poll(CONFIG)
+        self.assertFalse(status['desired_active'])
+        self.assertEqual(status['state'], 'off')
+        self.assertIsNone(self.backend._upstream_uuid)
+        self.assertIsNone(self.backend._candidate)
+        start.assert_not_called()
+
+    def test_transient_failure_preserves_resume_intent(self):
+        self.backend.process = self.process
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        self.send({'event': 'result', 'result': {'error': 'Upstream interrupted'}})
+        self.process.poll.return_value = 0
+        status = self.backend.get_status()
+        self.assertTrue(status['desired_active'])
+        self.assertEqual(status['state'], 'waiting')
+        self.assertEqual(self.backend._upstream_uuid, PROFILE)
+
+    def test_user_disconnect_intent_must_be_boolean(self):
+        with self.assertRaisesRegex(ValueError, 'Invalid worker result'):
+            self.backend._validate_event({'event': 'result', 'result': {
+                'user_disconnected': 'true'}})
+
     def test_stage_messages_may_be_split_across_pipe_reads(self):
         self.backend.process = self.process
         self.send(b'{"event":"stage","stage":"active",')
@@ -111,6 +144,21 @@ class WorkerFailureTests(unittest.TestCase):
         status = self.backend.get_status()
         self.assertFalse(status['active'])
         self.assertIn('Invalid worker event', status['error'])
+
+    def test_native_interface_request_keeps_worker_connecting(self):
+        self.backend.process = self.process
+        self.send({'event': 'stage', 'stage': 'native-interface-request',
+                   'interface': 'wrnm123abc', 'band': '2.4'})
+        status = self.backend.get_status()
+        self.assertEqual(status['state'], 'connecting')
+        self.assertFalse(status['active'])
+        self.assertEqual(status['iface'], 'wrnm123abc')
+        self.assertEqual(status['band'], '2.4')
+        self.assertFalse(status.get('error'))
+        self.process.terminate.assert_not_called()
+        self.send({'event': 'stage', 'stage': 'active',
+                   'interface': 'wrnm123abc', 'band': '2.4'})
+        self.assertTrue(self.backend.get_status()['active'])
 
     def test_worker_event_schema_is_checked(self):
         for event in ([], {}, {'event': 'stage'}, {'event': 'clients', 'authorized_clients': -1},

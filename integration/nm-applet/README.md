@@ -20,9 +20,9 @@ Enable Ubuntu source repositories and install the build dependencies:
 ```sh
 sudo apt-get build-dep network-manager-applet
 bash integration/nm-applet/build-deb.sh
-sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay3_amd64.deb \
-  ./dist/nm-connection-editor_1.36.0-4ubuntu1+relay3_amd64.deb \
-  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay3_amd64.deb
+sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay4_amd64.deb \
+  ./dist/nm-connection-editor_1.36.0-4ubuntu1+relay4_amd64.deb \
+  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay4_amd64.deb
 ```
 
 Ubuntu requires matching versions of these three packages, so install them together.
@@ -30,6 +30,11 @@ Restart `nm-applet` or log out and in to load the new binary. Click the usual ne
 icon and open **Wi-Fi Relay**. Relay itself must be installed and configured first.
 This integration targets XFCE's nm-applet; GNOME Shell uses the repository's separate
 Quick Settings extension.
+
+The active hotspot row uses a Wi-Fi device icon and announces “hotspot active”.
+A hosted AP has no received-signal measurement; displaying its reported 0%
+strength previously made a connected hotspot look inactive. Ordinary station
+connections and scanned networks retain their signal-strength icons.
 
 ## Verification
 

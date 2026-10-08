@@ -356,6 +356,10 @@ defines upstream responsibilities, tested invariants, and the hardware checks st
 needed before a production merge. Run `make test` and `make test-nm-menu` to verify
 the reference implementation; CI also runs the menu tests with memory/UB sanitizers.
 
+A [Stonking native Relay development patch](integration/nm-core/README.md) adds
+NetworkManager-owned child AP interfaces and connects them to Relay's existing
+controls. It is a downstream prototype with physical-radio validation still pending.
+
 An experimental [NetworkManager AP+STA probe](docs/networkmanager-prototype.md)
 assesses whether NetworkManager can own a virtual hotspot while keeping the
 upstream Wi-Fi connection. It is read-only by default, with an explicit temporary
