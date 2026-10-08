@@ -3,9 +3,10 @@
 set -euo pipefail
 umask 022
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-version=${1:-1.0.0-12}
+version=${1:-$(dpkg-parsechangelog -l "$repo_dir/packaging/debian/changelog" -S Version)}
 dpkg --validate-version "$version"
-output_dir="$repo_dir/dist"
+export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(python3 -c 'from email.utils import parsedate_to_datetime; import sys; print(int(parsedate_to_datetime(sys.argv[1]).timestamp()))' "$(dpkg-parsechangelog -l "$repo_dir/packaging/debian/changelog" -S Date)")}
+output_dir=${WIFI_RELAY_BUILD_OUTPUT:-"$repo_dir/dist"}
 stage_dir=$(mktemp -d)
 trap 'rm -rf -- "$stage_dir"' EXIT
 
@@ -27,14 +28,16 @@ find "$stage_dir/$extension_dir" -type f -exec chmod 0644 {} +
 install_file daemon/wifi-hotspot-daemon.py usr/libexec/wifi-hotspot-daemon/wifi-hotspot-daemon.py 0755
 install_file daemon/create_ap usr/libexec/wifi-hotspot-daemon/create_ap 0755
 install_file daemon/nm_backend.py usr/libexec/wifi-hotspot-daemon/nm_backend.py 0755
+install_file daemon/configuration.py usr/libexec/wifi-hotspot-daemon/configuration.py 0644
 install_file tools/nm_ap_sta_probe.py usr/libexec/wifi-hotspot-daemon/tools/nm_ap_sta_probe.py 0755
 install_file settings/main.py usr/share/wifi-hotspot/settings/main.py 0755
 install_file settings/tray.py usr/share/wifi-hotspot/settings/tray.py 0755
 for icon in off connecting on; do
     install_file "settings/icons/wifi-hotspot-$icon.svg" "usr/share/wifi-hotspot/settings/icons/wifi-hotspot-$icon.svg" 0644
 done
-install_file settings/startup.py usr/share/wifi-hotspot/settings/startup.py 0644
-install_file settings/visibility.py usr/share/wifi-hotspot/settings/visibility.py 0644
+for module in startup visibility preferences lifecycle service_client; do
+    install_file "settings/$module.py" "usr/share/wifi-hotspot/settings/$module.py" 0644
+done
 install_file settings/enable-extension.py usr/share/wifi-hotspot/settings/enable-extension.py 0755
 install_file data/wifi-hotspot-autostart.desktop etc/xdg/autostart/wifi-hotspot-autostart.desktop 0644
 install -d -m 0755 "$stage_dir/usr/bin"
@@ -42,6 +45,7 @@ ln -s ../share/wifi-hotspot/settings/main.py "$stage_dir/usr/bin/wifi-hotspot-se
 ln -s ../share/wifi-hotspot/settings/enable-extension.py "$stage_dir/usr/bin/wifi-hotspot-enable-extension"
 ln -s ../libexec/wifi-hotspot-daemon/tools/nm_ap_sta_probe.py "$stage_dir/usr/bin/wifi-relay-nm-probe"
 install_file data/wifi-hotspot.conf etc/wifi-hotspot.conf 0600
+install_file data/wifi-hotspot.conf usr/share/wifi-hotspot/default.conf 0644
 install_file data/io.github.erhanzeyrek.WifiHotspot.conf usr/share/dbus-1/system.d/io.github.erhanzeyrek.WifiHotspot.conf 0644
 install_file data/io.github.erhanzeyrek.WifiHotspot.rules etc/polkit-1/rules.d/io.github.erhanzeyrek.WifiHotspot.rules 0644
 install_file data/io.github.erhanzeyrek.WifiHotspot.policy usr/share/polkit-1/actions/io.github.erhanzeyrek.WifiHotspot.policy 0644
@@ -50,8 +54,9 @@ install_file data/wifi-hotspot-daemon.service usr/lib/systemd/system/wifi-hotspo
 install_file data/io.github.erhanzeyrek.WifiHotspot.desktop usr/share/applications/io.github.erhanzeyrek.WifiHotspot.desktop 0644
 install_file data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml usr/share/metainfo/io.github.erhanzeyrek.WifiHotspot.metainfo.xml 0644
 install_file data/icons/hotspot.svg usr/share/icons/hicolor/scalable/apps/io.github.erhanzeyrek.WifiHotspot.svg 0644
-install_file LICENSE usr/share/doc/gnome-wifi-hotspot/copyright 0644
+install_file packaging/debian/copyright usr/share/doc/gnome-wifi-hotspot/copyright 0644
 install_file README.md usr/share/doc/gnome-wifi-hotspot/README.md 0644
+install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/production-readiness.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 

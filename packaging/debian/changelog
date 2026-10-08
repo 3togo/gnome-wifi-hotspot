@@ -1,3 +1,14 @@
+gnome-wifi-hotspot (1.0.0-13+refactor1) stonking; urgency=medium
+
+  * Separate configuration validation and desktop transport responsibilities.
+  * Make Settings requests asynchronous and serialize configuration saves.
+  * Add desktop shutdown and tray upgrade handling, atomic preferences,
+    source packaging, and optional GNOME Shell dependencies.
+  * Bound configuration requests and randomize fresh factory passwords while
+    preserving credentials on upgrades.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Thu, 08 Oct 2026 16:00:47 +0000
+
 gnome-wifi-hotspot (1.0.0-12) unstable; urgency=medium
 
   * Publish Beta 2 with the optional NetworkManager backend and

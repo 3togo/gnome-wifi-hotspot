@@ -125,10 +125,12 @@ install:
 	install -m 0755 daemon/wifi-hotspot-daemon.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/create_ap $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/nm_backend.py $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -m 0644 daemon/configuration.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon/tools
 	install -m 0755 tools/nm_ap_sta_probe.py $(PREFIX)/libexec/wifi-hotspot-daemon/tools/
 	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
-	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py settings/visibility.py $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0755 settings/main.py settings/enable-extension.py settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py $(PREFIX)/share/wifi-hotspot/settings/
 	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
 	install -d -m 0755 $(PREFIX)/bin
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/main.py $(PREFIX)/bin/wifi-hotspot-settings
@@ -149,10 +151,10 @@ install:
 	sed "s|/usr/libexec|$(PREFIX)/libexec|g" data/wifi-hotspot-daemon.service > /tmp/systemd.service
 	install -m 0644 /tmp/systemd.service $(SYSCONFDIR)/systemd/system/wifi-hotspot-daemon.service
 	if [ ! -f $(SYSCONFDIR)/wifi-hotspot.conf ]; then \
+		install -m 0600 data/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
 		HOST=$$(hostname 2>/dev/null || echo "Hotspot"); \
 		[ "$$HOST" = "localhost" ] && HOST="Hotspot"; \
-		sed "s|SSID=.*|SSID=$${HOST}-Hotspot|g" data/wifi-hotspot.conf > /tmp/wifi-hotspot.conf; \
-		install -m 0600 /tmp/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
+		python3 daemon/configuration.py $(SYSCONFDIR)/wifi-hotspot.conf data/wifi-hotspot.conf --ssid "$${HOST}-Hotspot"; \
 	fi
 	chmod 0600 $(SYSCONFDIR)/wifi-hotspot.conf
 	install -d -m 0755 $(PREFIX)/share/applications

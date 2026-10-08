@@ -1,7 +1,11 @@
 """Per-user preference for starting the tray extension at desktop login."""
-import json
 import os
+import logging
 from pathlib import Path
+try:
+    from preferences import preference_path as _preference_path, get_boolean, set_boolean
+except ModuleNotFoundError:
+    from settings.preferences import preference_path as _preference_path, get_boolean, set_boolean
 
 UUID = "wifi-relay@3togo.github.io"
 LEGACY_UUID = "wifi-hotspot@erhanzeyrek"
@@ -27,16 +31,11 @@ def migrate_extension(settings, sync):
 
 
 def preference_path():
-    config_dir = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-    return config_dir / "wifi-hotspot" / "startup.json"
+    return _preference_path('startup.json')
 
 
 def get_auto_start(path=None):
-    path = path or preference_path()
-    try:
-        return json.loads(path.read_text()).get("auto_start", True) is not False
-    except (OSError, ValueError, AttributeError):
-        return True
+    return get_boolean(path or preference_path(), 'auto_start')
 
 
 def is_gnome():
@@ -51,17 +50,32 @@ def launch_tray():
 
 def set_auto_start(enabled, settings, sync, path=None):
     path = path or preference_path()
+    original = None
     if settings is not None:
-        current = settings.get_strv("enabled-extensions")
-        updated = [uuid for uuid in current if uuid not in {UUID, LEGACY_UUID}]
-        if enabled:
-            updated.append(UUID)
-            disabled = settings.get_strv("disabled-extensions")
-            if any(uuid in disabled for uuid in (UUID, LEGACY_UUID)) and not settings.set_strv(
-                    "disabled-extensions", [uuid for uuid in disabled if uuid not in {UUID, LEGACY_UUID}]):
-                raise RuntimeError("GNOME extension settings are not writable")
-        if updated != current and not settings.set_strv("enabled-extensions", updated):
-            raise RuntimeError("GNOME extension settings are not writable")
-        sync()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"auto_start": bool(enabled)}) + "\n")
+        original = {key: settings.get_strv(key) for key in ('enabled-extensions', 'disabled-extensions')}
+    try:
+        if settings is not None:
+            current = original['enabled-extensions']
+            updated = [uuid for uuid in current if uuid not in {UUID, LEGACY_UUID}]
+            if enabled:
+                updated.append(UUID)
+                disabled = original['disabled-extensions']
+                if any(uuid in disabled for uuid in (UUID, LEGACY_UUID)) and not settings.set_strv(
+                        'disabled-extensions', [uuid for uuid in disabled if uuid not in {UUID, LEGACY_UUID}]):
+                    raise RuntimeError('GNOME extension settings are not writable')
+            if updated != current and not settings.set_strv('enabled-extensions', updated):
+                raise RuntimeError('GNOME extension settings are not writable')
+            sync()
+        set_boolean(path, 'auto_start', enabled)
+    except Exception:
+        # Keep the extension choice aligned with the previous saved preference
+        # if a disk write or a later GSettings operation fails.
+        if original is not None:
+            try:
+                for key, values in original.items():
+                    if settings.get_strv(key) != values and not settings.set_strv(key, values):
+                        raise RuntimeError('GNOME extension settings are not writable')
+                sync()
+            except Exception:
+                logging.getLogger(__name__).exception('Unable to restore GNOME startup preference')
+        raise

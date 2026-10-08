@@ -17,9 +17,24 @@ static void test_tray_visibility (void)
     g_assert_false (read_tray_visible (path));
     g_assert_cmpint (g_stat (path, &st), ==, 0);
     g_assert_cmpint (st.st_mode & 0777, ==, 0600);
+    g_assert_true (g_file_set_contents (path, "{\"visible\":false,\"future\":\"keep\"}", -1, &error));
+    g_assert_no_error (error);
     g_assert_true (write_tray_visible (path, TRUE, &error));
     g_assert_no_error (error);
     g_assert_true (read_tray_visible (path));
+    {
+        json_t *preferences = json_load_file (path, 0, NULL);
+        g_assert_cmpstr (json_string_value (json_object_get (preferences, "future")), ==, "keep");
+        json_decref (preferences);
+    }
+    {
+        gchar *oversized = g_strnfill (16385, ' ');
+        g_assert_true (g_file_set_contents (path, oversized, -1, &error));
+        g_assert_no_error (error);
+        g_assert_null (load_tray_preferences (path));
+        g_assert_true (read_tray_visible (path));
+        g_free (oversized);
+    }
     g_file_set_contents (path, "invalid", -1, &error);
     g_assert_no_error (error);
     g_assert_true (read_tray_visible (path));

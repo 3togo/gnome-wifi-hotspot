@@ -4,6 +4,7 @@
 #include <gio/gio.h>
 #include <jansson.h>
 #include <errno.h>
+#include <stdio.h>
 
 #define RELAY_NAME "io.github.erhanzeyrek.WifiHotspot"
 #define RELAY_PATH "/io/github/erhanzeyrek/WifiHotspot"
@@ -298,10 +299,27 @@ tray_preference_path (void)
     return g_build_filename (g_get_user_config_dir (), "wifi-hotspot", "tray.json", NULL);
 }
 
+static json_t *
+load_tray_preferences (const gchar *path)
+{
+    FILE *stream = fopen (path, "rb");
+    char buffer[16385];
+    size_t length;
+    gboolean failed;
+    if (!stream)
+        return NULL;
+    length = fread (buffer, 1, sizeof buffer, stream);
+    failed = ferror (stream) != 0;
+    fclose (stream);
+    if (failed || length > 16384)
+        return NULL;
+    return json_loadb (buffer, length, JSON_REJECT_DUPLICATES, NULL);
+}
+
 static gboolean
 read_tray_visible (const gchar *path)
 {
-    json_t *root = json_load_file (path, JSON_REJECT_DUPLICATES, NULL);
+    json_t *root = load_tray_preferences (path);
     gboolean visible = !json_is_object (root) || !json_is_false (json_object_get (root, "visible"));
     json_decref (root);
     return visible;
@@ -313,7 +331,8 @@ write_tray_visible (const gchar *path, gboolean visible, GError **error)
     gchar *directory = g_path_get_dirname (path);
     GFile *file;
     gboolean saved;
-    const gchar *text = visible ? "{\"visible\":true}\n" : "{\"visible\":false}\n";
+    json_t *root;
+    gchar *text;
     if (g_mkdir_with_parents (directory, 0700) != 0) {
         g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
                      "Could not create tray preferences directory: %s", g_strerror (errno));
@@ -321,10 +340,23 @@ write_tray_visible (const gchar *path, gboolean visible, GError **error)
         return FALSE;
     }
     g_free (directory);
+    root = load_tray_preferences (path);
+    if (!json_is_object (root)) {
+        json_decref (root);
+        root = json_object ();
+    }
+    json_object_set_new (root, "visible", json_boolean (visible));
+    text = json_dumps (root, JSON_COMPACT);
+    json_decref (root);
+    if (!text) {
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not encode tray preferences");
+        return FALSE;
+    }
     file = g_file_new_for_path (path);
     saved = g_file_replace_contents (file, text, strlen (text), NULL, FALSE,
                                     G_FILE_CREATE_PRIVATE, NULL, NULL, error);
     g_object_unref (file);
+    free (text);
     return saved;
 }
 

@@ -208,11 +208,14 @@ Build the package from this checkout without root:
 
 ```bash
 ./packaging/build-deb.sh
-sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-12_all.deb
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-13+refactor1_all.deb
 ```
 
 The package includes the current working-tree changes. An optional first argument
-sets the package version.
+sets the package version. See [production refactor and release gates](docs/production-readiness.md)
+for source packaging, runtime boundaries, and required release validation. Fresh
+factory installs generate a random password, visible in Settings; upgrades keep
+existing credentials.
 
 **Required first-run setup:** Launch the settings app as your normal user:
 

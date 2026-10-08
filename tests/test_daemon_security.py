@@ -121,6 +121,15 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(), self.original)
         self.assertEqual(list(self.path.parent.iterdir()), [self.path])
 
+    def test_oversized_configuration_is_rejected_before_parsing(self):
+        invocation = Mock()
+        parameters = module.GLib.Variant('(s)', (' ' * 65537,))
+        with patch.object(module.json, 'loads') as parse:
+            self.daemon._dispatch_method_call('SetConfig', parameters, invocation)
+        parse.assert_not_called()
+        self.assertEqual(invocation.return_error_literal.call_args.args[1], module.Gio.DBusError.INVALID_ARGS)
+        self.assertEqual(self.path.read_text(), self.original)
+
     def test_validation_errors_are_dbus_invalid_args(self):
         invocation = Mock()
         parameters = module.GLib.Variant('(s)', ('{"SSID":"bad\\nline"}',))

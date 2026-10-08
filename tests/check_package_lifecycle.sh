@@ -37,7 +37,15 @@ test ! -e /etc/polkit-1/rules.d/io.github.erhanzeyrek.WifiHotspot.rules
 echo 'Purge removes system configuration, autostart, and authorization files.'
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     "$package" > /tmp/wifi-relay-fresh-install.log 2>&1
-cmp "$config" /tmp/new-hotspot-config
+python3 - "$config" /tmp/new-hotspot-config <<'PY_CHECK'
+from pathlib import Path
+import re
+import sys
+actual, factory = [Path(path).read_text() for path in sys.argv[1:]]
+password = re.search(r'^PASSPHRASE=(.+)$', actual, re.M).group(1)
+assert re.fullmatch('[0-9a-f]{32}', password), 'Fresh installs need a unique secure password'
+assert actual.replace('PASSPHRASE=' + password, 'PASSPHRASE=12345678') == factory
+PY_CHECK
 test "$(stat -c %a "$config")" = 600
 test -x /usr/bin/wifi-hotspot-settings
 test -x /usr/bin/wifi-hotspot-enable-extension

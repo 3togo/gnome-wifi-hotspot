@@ -1,16 +1,13 @@
 """Per-user visibility of the separate desktop tray icon."""
-import json
-import os
-from pathlib import Path
+try:
+    from preferences import preference_path as _preference_path, get_boolean
+except ModuleNotFoundError:
+    from settings.preferences import preference_path as _preference_path, get_boolean
 
 
 def preference_path():
-    config_dir = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
-    return config_dir / 'wifi-hotspot' / 'tray.json'
+    return _preference_path('tray.json')
 
 
 def get_tray_visible(path=None):
-    try:
-        return json.loads((path or preference_path()).read_text()).get('visible', True) is not False
-    except (OSError, ValueError, AttributeError):
-        return True
+    return get_boolean(path or preference_path(), 'visible')

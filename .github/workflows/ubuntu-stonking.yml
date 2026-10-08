@@ -41,7 +41,7 @@ jobs:
           sed -i 's|archive.ubuntu.com|azure.archive.ubuntu.com|g; s|security.ubuntu.com|azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
           apt-get update --error-on=any
           apt-get install -y --no-install-recommends \
-            ca-certificates git dpkg-dev python3 python3-gi \
+            ca-certificates git dpkg-dev debhelper dh-python python3 python3-gi \
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtk-3.0 \
             gir1.2-ayatanaappindicator3-0.1 nodejs gjs iptables \
             dbus xvfb xauth lintian appstream \
@@ -77,7 +77,7 @@ jobs:
           version="${base_version}+ubuntu26.10.${GITHUB_RUN_NUMBER}"
           previous_version="${version}~ci.previous"
           ./packaging/build-deb.sh "$previous_version"
-          ./packaging/build-deb.sh "$version"
+          python3 packaging/build-source.py "$version" --binary
           package="gnome-wifi-hotspot_${version}_all.deb"
           previous="gnome-wifi-hotspot_${previous_version}_all.deb"
           printf 'deb_path=dist/%s\n' "$package" >> "$GITHUB_OUTPUT"
@@ -101,5 +101,10 @@ jobs:
           path: |
             ${{ steps.package.outputs.deb_path }}
             dist/SHA256SUMS
+            dist/*.dsc
+            dist/*.tar.xz
+            dist/*.changes
+            dist/*.buildinfo
+            dist/*-source-build.log
           if-no-files-found: error
           retention-days: 30

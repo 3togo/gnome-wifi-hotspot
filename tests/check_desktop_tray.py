@@ -62,3 +62,37 @@ with patch('tray.get_auto_start', return_value=False):
     assert app._poll() == GLib.SOURCE_REMOVE
 app.quit.assert_called_once()
 print('Visibility, explicit launch, and independent sharing/startup checks passed.')
+
+# A delayed client reply must not overwrite a newer Stop signal.
+race = HotspotTray()
+race.indicator = Mock()
+race.proxy = Mock()
+race._query()
+status_callback = race.proxy.call.call_args.args[-1]
+race.proxy.call_finish.return_value = GLib.Variant('(s)', ('{"active":true}',))
+status_callback(race.proxy, None)
+clients_callback = race.proxy.call.call_args.args[-1]
+race._signal(None, None, 'StatusChanged', GLib.Variant('(s)', ('{"active":false}',)))
+race.proxy.call_finish.return_value = GLib.Variant('(s)', ('[{"ip":"192.168.12.2"}]',))
+clients_callback(race.proxy, None)
+assert race.clients == []
+assert race.status == {'active': False}
+
+# Reload only once and defer it while an operation is running.
+race.code_revision = Mock()
+race.code_revision.changed.return_value = True
+race.busy = True
+with patch('tray.GLib.idle_add') as schedule, patch('tray.get_auto_start', return_value=True):
+    race._poll()
+    schedule.assert_not_called()
+    race.busy = False
+    race._poll()
+    race._poll()
+    schedule.assert_called_once()
+race.manual_start = True
+race._close = Mock()
+with patch('tray.sys.argv', ['tray.py']), patch('tray.os.execv') as replace:
+    race._restart_after_upgrade()
+    assert replace.call_args.args[1][-1] == '--show-icon'
+race._close.assert_called_once()
+print('Stale clients, deferred code upgrade, and manual launch preservation checks passed.')
