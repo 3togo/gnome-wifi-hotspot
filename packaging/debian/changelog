@@ -1,3 +1,11 @@
+gnome-wifi-hotspot (1.0.0-14+minimal1) stonking; urgency=medium
+
+  * Remove unused process-tool dependencies and redundant GI declarations.
+  * Use shell command lookup rather than the external which utility.
+  * Minimize companion integration bundles within supported upstream versions.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Thu, 08 Oct 2026 16:35:00 +0000
+
 gnome-wifi-hotspot (1.0.0-13+refactor1) stonking; urgency=medium
 
   * Separate configuration validation and desktop transport responsibilities.

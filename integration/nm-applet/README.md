@@ -24,12 +24,12 @@ Enable Ubuntu source repositories and install the build dependencies:
 ```sh
 sudo apt-get build-dep network-manager-applet
 bash integration/nm-applet/build-deb.sh
-sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay5_amd64.deb \
-  ./dist/nm-connection-editor_1.36.0-4ubuntu1+relay5_amd64.deb \
-  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay5_amd64.deb
+sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay6_amd64.deb \
+  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay6_amd64.deb
 ```
 
-Ubuntu requires matching versions of these three packages, so install them together.
+The transition package requires its matching applet. The compatible stock editor
+can remain installed, or APT can fetch it from Ubuntu.
 Restart `nm-applet` or log out and in to load the new binary. Click the usual network
 icon and open **Wi-Fi Relay**. Relay itself must be installed and configured first.
 When upgrading visibility support, also restart the separate Relay tray process
@@ -87,3 +87,8 @@ sudo apt install --allow-downgrades network-manager-applet=1.36.0-4ubuntu1 \
 ```
 
 Restart the applet afterward. This leaves the Relay service and Settings installed.
+
+The default bundle now exports only the patched applet and its compatible
+transition package. The unchanged editor can remain at the supported Ubuntu
+1.36 baseline; it no longer needs a custom matching .deb. Use `[version] --all`
+to export it too. See [the dependency review](../../docs/dependency-review.md).

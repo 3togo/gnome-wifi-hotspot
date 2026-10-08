@@ -21,7 +21,7 @@ def source_files():
             names.update(str(path.relative_to(ROOT)) for path in (ROOT / directory).rglob('*')
                          if path.is_file() and '__pycache__' not in path.parts
                          and path.suffix not in {'.pyc', '.log'})
-        names.add('docs/production-readiness.md')
+        names.update({'docs/production-readiness.md', 'docs/dependency-review.md'})
     else:
         names = {str(path.relative_to(ROOT)) for path in ROOT.rglob('*')
                  if path.is_file() and not set(path.relative_to(ROOT).parts) & {'.git', 'dist', '__pycache__', 'debian'}}

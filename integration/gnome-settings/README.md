@@ -31,3 +31,9 @@ open against the installed native Relay stack, two client-free Stop/Start cycles
 removed the old tab and restored exactly the two current tabs, verified through
 the accessibility tree. No GTK assertions occurred. The package awaits sudo
 installation; the open window currently runs the tested binary directly.
+
+The default export contains only gnome-control-center. The code-only device-tab
+patch retains compatibility with the stock 51.0 Ubuntu data package; rebuilding
+data, faces, and development packages is unnecessary for this fix. Pass
+`[version] --all` to export every built package. Dependency changes are limited
+to this reviewed source version.

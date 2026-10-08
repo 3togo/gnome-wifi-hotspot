@@ -3,7 +3,7 @@
 # general dependencies:
 #    bash (to run this script)
 #    util-linux (for getopt)
-#    procps or procps-ng
+#    pidof (sysvinit-utils on Debian/Ubuntu)
 #    hostapd
 #    iproute2
 #    iw
@@ -254,8 +254,8 @@ is_interface() {
 }
 
 is_wifi_interface() {
-    which iw > /dev/null 2>&1 && iw dev $1 info > /dev/null 2>&1 && return 0
-    if which iwconfig > /dev/null 2>&1 && iwconfig $1 > /dev/null 2>&1; then
+    command -v iw > /dev/null 2>&1 && iw dev $1 info > /dev/null 2>&1 && return 0
+    if command -v iwconfig > /dev/null 2>&1 && iwconfig $1 > /dev/null 2>&1; then
         USE_IWCONFIG=1
         return 0
     fi
@@ -449,7 +449,7 @@ haveged_watchdog() {
     local show_warn=1
     while :; do
         if [[ $(cat /proc/sys/kernel/random/entropy_avail) -lt 1000 ]]; then
-            if ! which haveged > /dev/null 2>&1; then
+            if ! command -v haveged > /dev/null 2>&1; then
                 if [[ $show_warn -eq 1 ]]; then
                     echo "WARN: Low entropy detected. We recommend you to install \`haveged'"
                     show_warn=0
@@ -471,7 +471,7 @@ NM_OLDER_VERSION=1
 
 networkmanager_exists() {
     local NM_VER
-    which nmcli > /dev/null 2>&1 || return 1
+    command -v nmcli > /dev/null 2>&1 || return 1
     NM_VER=$(nmcli -v | grep -m1 -oE '[0-9]+(\.[0-9]+)*\.[0-9]+')
     version_cmp $NM_VER 0.9.9
     if [[ $? -eq 1 ]]; then
@@ -1357,7 +1357,7 @@ if ! can_be_sta_and_ap ${WIFI_IFACE}; then
     fi
 fi
 
-HOSTAPD=$(which hostapd)
+HOSTAPD=$(command -v hostapd)
 
 if [[ ! -x "$HOSTAPD" ]]; then
     echo "ERROR: hostapd not found." >&2
@@ -1920,7 +1920,7 @@ if [[ $NO_HAVEGED -eq 0 ]]; then
 fi
 
 # start hostapd (use stdbuf when available for no delayed output in programs that redirect stdout)
-STDBUF_PATH=`which stdbuf`
+STDBUF_PATH=$(command -v stdbuf)
 if [ $? -eq 0 ]; then
     STDBUF_PATH=$STDBUF_PATH" -oL"
 fi

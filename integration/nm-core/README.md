@@ -142,3 +142,9 @@ still describes the hardware gates and upstream design discussion required befor
 production deployment or an upstream submission. This patch has not been submitted.
 New native additions are available under LGPL-2.1-or-later; upstream source files
 retain their original licenses. The applet integration is GPL-2.0-or-later.
+
+The core builder exports only network-manager and its exactly matching libnm0
+by default. This lock is retained because the patch changes shared profile
+validation. Use `[version] --all` for machines whose installed libnm-dev or
+network-manager-tui require a matching upgrade, including NM introspection when
+required by libnm-dev. See [minimal runtime bundles](../../docs/dependency-review.md).

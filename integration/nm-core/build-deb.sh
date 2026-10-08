@@ -3,6 +3,8 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 version=${1:-1.58.1-1ubuntu3+relay1+dev3}
+all_packages=${2:-}
+[[ -z $all_packages || $all_packages == --all ]] || { echo 'Usage: build-deb.sh [version] [--all]' >&2; exit 2; }
 dpkg --validate-version "$version"
 make -C "$repo_dir" test
 mkdir -p "$repo_dir/dist"
@@ -25,8 +27,18 @@ env -u LD_PRELOAD dpkg-buildpackage -b -uc -us -j4 > "$build_dir/build.log" 2>&1
     tail -80 "$build_dir/build.log"
     exit 1
 }
-for package in ../*"_${version}_"*.deb; do
+packages=(network-manager libnm0)
+if [[ $all_packages == --all ]]; then
+    artifacts=(../*"_${version}_"*.deb)
+else
+    artifacts=()
+    for package in "${packages[@]}"; do
+        artifacts+=(../"${package}_${version}_"*.deb)
+    done
+fi
+for package in "${artifacts[@]}"; do
     cp "$package" "$repo_dir/dist/"
     (cd "$repo_dir/dist" && sha256sum "$(basename -- "$package")" > "$(basename -- "$package").sha256")
 done
+printf 'If installed, exact-version libnm-dev and network-manager-tui also need matching builds; use --all.\n'
 printf 'Packages: %s/dist\nBuild log: %s/build.log\n' "$repo_dir" "$build_dir"
