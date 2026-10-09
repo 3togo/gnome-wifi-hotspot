@@ -104,6 +104,7 @@ python3 -m unittest discover -s tests
 node tests/test_tray.mjs
 dbus-run-session -- python3 tests/check_settings_window.py
 dbus-run-session -- python3 tests/check_desktop_tray.py
+dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
 dbus-run-session -- env SANITIZE=1 integration/nm-applet/test.sh
 ```
 
@@ -128,10 +129,10 @@ Headless GNOME Shell 51 extension loading and disable/re-enable are checked.
 Source artifacts are unsigned; repository publication and signing are separate
 release steps. Publication does not certify untested hardware combinations.
 
-The stable release is `v1.0.0`, package `1.0.0-18`. Native Ubuntu 26.10 checks
-passed 261 unit tests with no skips, real GTK4/GTK3 widgets, 17 sanitized applet
+The stable release is `v1.0.0-22`, package `1.0.0-22`. Native Ubuntu 26.10 checks
+passed 283 unit tests with no skips, real GTK4/GTK3 widgets, 17 sanitized applet
 cases, and private-bus daemon authorization. Source exports retain nested
 `packaging/debian` templates and rebuild without Git metadata; a regression test
 covers this path. Exact provenance and CI results accompany release downloads.
 
-Release maintenance and rollback are documented in [the stable release notes](releases/1.0.0-18.md).
+Release maintenance and rollback are documented in [the stable release notes](releases/1.0.0-22.md).

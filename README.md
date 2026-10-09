@@ -8,44 +8,46 @@ requires simultaneous station/access-point (AP+STA) support from its driver.
 
 ## Download and install
 
-**[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0)**
+**[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-22)**
 is the stable release for **Ubuntu 26.10 (Stonking)**, Debian package version
-**1.0.0-18**. The packages contain architecture-independent application code;
+**1.0.0-22**. The packages contain architecture-independent application code;
 APT supplies platform-specific dependencies. Other distribution releases have
 not been validated. Older beta binary downloads have been retired.
 
 | Download | Contents |
 | :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0/gnome-wifi-hotspot_1.0.0-18_all.deb) | Service and GTK settings; required |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0/gnome-wifi-hotspot-gnome_1.0.0-18_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0/gnome-wifi-hotspot-tray_1.0.0-18_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
-| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0/SHA256SUMS) | Checksums for release downloads |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot_1.0.0-22_all.deb) | Service and GTK settings; required |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot-gnome_1.0.0-22_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot-tray_1.0.0-22_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
+| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/SHA256SUMS) | Checksums for release downloads |
 
 Download the standalone app and `SHA256SUMS` into one folder. Add the optional
 control package for your desktop, using the same version for all packages.
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
-sudo apt install ./gnome-wifi-hotspot_1.0.0-18_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb
 ```
 
 The checksum check must report `OK` for each downloaded package. To install
 GNOME controls, use:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-18_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-18_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-22_all.deb
 ```
 
 For XFCE or another desktop with a compatible tray, use:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-18_all.deb ./gnome-wifi-hotspot-tray_1.0.0-18_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb ./gnome-wifi-hotspot-tray_1.0.0-22_all.deb
 ```
 
 Log out and back in after installing GNOME controls. Starting with package
 revision 1.0.0-20, tray installation also starts controls in an eligible active
 local non-GNOME graphical session, respecting the startup preference. It runs
-as the desktop user and does not start sharing; otherwise login autostart applies. GNOME compatibility is
+as the desktop user and does not start sharing. Revision 22 waits for the restart,
+verifies that the tray stays running, and retries once if necessary. Otherwise
+login autostart applies. GNOME compatibility is
 declared for Shell 45–51; the automated Shell check covers version 51. The main
 package works without either optional integration. These downloads do not
 replace NetworkManager, GNOME Settings, or the distribution's network applet.
@@ -65,7 +67,8 @@ on a permitted channel, and shares the host default route. AP+STA support and
 channel restrictions vary by hardware. Its recovery behavior and supported
 options are described in the [user guide](docs/user-guide.md).
 
-Closing Settings leaves sharing running. Turning sharing off cancels recovery
+About is available in tray and GNOME menus. Tray **Quit** stops sharing and
+closes the tray after the service confirms success. Closing Settings leaves sharing running. Turning sharing off cancels recovery
 requests. **Start desktop controls at login** shows controls; it does not start
 broadcasting. A reboot or daemon restart clears the sharing request.
 
@@ -93,7 +96,7 @@ processes, bounds worker output and shutdown, and authorizes privileged changes
 through Polkit. Firewall rules are scoped to the hotspot interface; Relay leaves
 permanent firewalld configuration and AppArmor enforcement intact.
 
-Native Ubuntu 26.10 validation includes 261 unit tests with no skips, real GTK
+Native Ubuntu 26.10 validation includes 283 unit tests with no skips, real GTK
 settings/tray checks, 17 sanitized applet cases, GNOME Shell 51 extension loading,
 private-bus service authorization checks, and Debian source/binary builds.
 GitHub CI additionally checks isolated install, upgrade, removal, and purge.
@@ -131,7 +134,7 @@ version-specific and are not upstream GNOME or NetworkManager features.
 
 - [User guide](docs/user-guide.md): setup, controls, recovery, and troubleshooting.
 - [Release notes](RELEASE_NOTES.md): changes, scope, and downloads.
-- [Release maintenance and rollback](docs/releases/1.0.0-18.md).
+- [Release maintenance and rollback](docs/releases/1.0.0-22.md).
 - [Architecture and production checks](docs/production-readiness.md).
 - [NetworkManager development](docs/networkmanager-development.md).
 - [Report a problem](https://github.com/3togo/gnome-wifi-hotspot/issues): include package version, desktop, backend, adapter/driver, and relevant errors. Remove passwords and personal network details from reports.
