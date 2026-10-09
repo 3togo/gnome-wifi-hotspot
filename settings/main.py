@@ -18,9 +18,9 @@ gi.require_version("GLib", "2.0")
 from gi.repository import Gtk, Adw, Gio, GLib, Gdk
 
 try:
-    from startup import get_auto_start, set_auto_start, is_gnome, launch_tray
+    from startup import get_auto_start, set_auto_start, is_gnome, launch_tray, desktop_integration_available
 except ModuleNotFoundError:
-    from settings.startup import get_auto_start, set_auto_start, is_gnome, launch_tray
+    from settings.startup import get_auto_start, set_auto_start, is_gnome, launch_tray, desktop_integration_available
 
 try:
     from service_client import ServiceClient, ConfigurationWriter
@@ -144,10 +144,13 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
 
         grp_startup = Adw.PreferencesGroup(title="Startup")
         page_general.add(grp_startup)
+        controls_available = desktop_integration_available()
         self.switch_startup = Adw.SwitchRow(
-            title="Start tray at login",
-            subtitle="Show the tray automatically when you log in. Disabling also hides it now.",
-            active=get_auto_start(),
+            title="Start desktop controls at login",
+            subtitle=("Show desktop controls when you log in. Disabling also hides them now."
+                      if controls_available else "Install the optional GNOME or tray integration for your desktop."),
+            active=get_auto_start() if controls_available else False,
+            sensitive=controls_available,
         )
         self.switch_startup.connect("notify::active", self._on_startup_changed)
         grp_startup.add(self.switch_startup)
@@ -264,6 +267,8 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
     def _on_startup_changed(self, row, _param):
         enabled = row.get_active()
         try:
+            if not desktop_integration_available():
+                raise RuntimeError("Desktop controls are not installed for this session")
             set_auto_start(enabled, Gio.Settings.new("org.gnome.shell") if is_gnome() else None, Gio.Settings.sync)
             if enabled and not is_gnome():
                 launch_tray()

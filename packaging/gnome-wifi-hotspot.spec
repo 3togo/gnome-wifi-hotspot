@@ -44,17 +44,17 @@ install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon
 install -m 0755 daemon/wifi-hotspot-daemon.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/create_ap %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/nm_backend.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
-install -m 0644 daemon/configuration.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
+install -m 0644 daemon/configuration.py daemon/nm_client.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools
 install -m 0755 tools/nm_ap_sta_probe.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools/
 
 # Install settings app
 install -d -m 0755 %{buildroot}%{_datadir}/wifi-hotspot/settings
-install -m 0755 settings/main.py settings/enable-extension.py settings/tray.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
+install -m 0755 settings/main.py settings/launcher.py settings/enable-extension.py settings/tray.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
 install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py settings/wifi_qr.py settings/qrcodegen.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
 cp -r settings/icons %{buildroot}%{_datadir}/wifi-hotspot/settings/
 install -d -m 0755 %{buildroot}%{_bindir}
-ln -s %{_datadir}/wifi-hotspot/settings/main.py %{buildroot}%{_bindir}/wifi-hotspot-settings
+ln -s %{_datadir}/wifi-hotspot/settings/launcher.py %{buildroot}%{_bindir}/wifi-hotspot-settings
 ln -s %{_datadir}/wifi-hotspot/settings/enable-extension.py %{buildroot}%{_bindir}/wifi-hotspot-enable-extension
 install -d -m 0755 %{buildroot}%{_sysconfdir}/xdg/autostart
 install -m 0644 data/wifi-hotspot-autostart.desktop %{buildroot}%{_sysconfdir}/xdg/autostart/

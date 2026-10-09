@@ -3,7 +3,7 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source_version=1:51.0-1ubuntu1
-version=${1:-1:51.0-1ubuntu1+relay2}
+version=${1:-1:51.0-1ubuntu1+relay3}
 all_packages=${2:-}
 [[ -z $all_packages || $all_packages == --all ]] || { echo 'Usage: build-deb.sh [version] [--all]' >&2; exit 2; }
 dpkg --validate-version "$version"
@@ -14,13 +14,18 @@ apt-get source "gnome-control-center=$source_version"
 cd gnome-control-center-51.0
 python3 "$repo_dir/packaging/minimize-integrations.py" settings "$source_version" debian/control
 patch -p1 < "$repo_dir/integration/gnome-settings/stable-wifi-device-tabs.patch"
+patch -p1 < "$repo_dir/integration/gnome-settings/relay-entrypoint.patch"
+# Advertise the bridge only in the package containing the patched panel.
+# dh_install copies this single file without changing the stock data package.
+printf '1\n' > debian/wifi-relay-entrypoint
+printf 'debian/wifi-relay-entrypoint usr/share/gnome-control-center\n' >> debian/gnome-control-center.install
 python3 - "$version" <<'PY'
 from pathlib import Path
 from email.utils import formatdate
 import sys
 path = Path('debian/changelog')
 path.write_text('gnome-control-center (' + sys.argv[1] + ') stonking; urgency=medium\n\n'
-    '  * Use stable Wi-Fi device paths to remove unrealized Relay tabs.\n\n'
+    '  * Use stable Wi-Fi device paths and add an optional Relay settings entry.\n\n'
     ' -- Wi-Fi Relay <3togo@users.noreply.github.com>  ' + formatdate(localtime=True)
     + '\n\n' + path.read_text())
 PY

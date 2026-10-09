@@ -21,7 +21,9 @@ def source_files():
             names.update(str(path.relative_to(ROOT)) for path in (ROOT / directory).rglob('*')
                          if path.is_file() and '__pycache__' not in path.parts
                          and path.suffix not in {'.pyc', '.log'})
-        names.update({'docs/production-readiness.md', 'docs/dependency-review.md'})
+        names.update({'docs/production-readiness.md', 'docs/dependency-review.md',
+                      'integration/gnome-settings/relay-entrypoint.patch',
+                      'data/wifi-relay-gnome.desktop', 'data/wifi-relay-tray.desktop'})
     else:
         names = {str(path.relative_to(ROOT)) for path in ROOT.rglob('*')
                  if path.is_file() and not set(path.relative_to(ROOT).parts) & {'.git', 'dist', '__pycache__', 'debian'}}
@@ -66,9 +68,16 @@ def main():
             archive.add(source, arcname=source.name, filter=archive_metadata)
         debian = source / 'debian'
         shutil.copytree(ROOT / 'packaging/source-debian', debian)
-        control = (ROOT / 'packaging/debian/control').read_text().replace('Version: @VERSION@\n', '')
-        control = '\n'.join(line for line in control.split('\n') if not line.startswith('Maintainer: '))
-        control = control.replace('Depends: ', 'Depends: ${misc:Depends}, ${python3:Depends}, ', 1)
+        controls = []
+        for template in ('control', 'control-gnome', 'control-tray'):
+            control = (ROOT / 'packaging/debian' / template).read_text()
+            control = '\n'.join(line for line in control.split('\n')
+                                if not line.startswith(('Version: ', 'Maintainer: ')))
+            control = control.replace('@VERSION@', '${binary:Version}')
+            substvars = '${misc:Depends}, ' if template == 'control-gnome' else '${misc:Depends}, ${python3:Depends}, '
+            control = control.replace('Depends: ', 'Depends: ' + substvars, 1)
+            controls.append(control.strip())
+        control = '\n\n'.join(controls) + '\n'
         header = ('Source: gnome-wifi-hotspot\nSection: net\nPriority: optional\n'
                   'Maintainer: Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>\n'
                   'Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-gi, '
@@ -82,10 +91,15 @@ def main():
         first = 'gnome-wifi-hotspot (' + version + ') stonking; urgency=medium'
         (debian / 'changelog').write_text(first + '\n' + rest)
         (debian / 'copyright').write_text((ROOT / 'packaging/debian/copyright').read_text())
-        for script in ('postinst', 'prerm', 'postrm'):
+        for script in ('preinst', 'postinst', 'prerm', 'postrm'):
             target = debian / f'gnome-wifi-hotspot.{script}'
-            target.write_text((ROOT / f'packaging/debian/{script}').read_text() + '\n#DEBHELPER#\n')
+            content = (ROOT / f'packaging/debian/{script}').read_text()
+            content = ''.join(line for line in content.splitlines(True)
+                              if not line.startswith('dpkg-maintscript-helper rm_conffile '))
+            target.write_text(content + '\n#DEBHELPER#\n')
             target.chmod(0o755)
+        (debian / 'gnome-wifi-hotspot.maintscript').write_text(
+            'rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot\n')
         with log_path.open('w') as log:
             subprocess.run(['dpkg-source', '-b', '.'], cwd=source, env=environment,
                            stdout=log, stderr=subprocess.STDOUT, check=True)

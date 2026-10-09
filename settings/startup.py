@@ -42,7 +42,23 @@ def is_gnome():
     return "GNOME" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
 
 
+def desktop_integration_available(gnome=None, settings_dir=None, extension_paths=None):
+    """Optional controls must exist before exposing or launching startup actions."""
+    gnome = is_gnome() if gnome is None else gnome
+    settings_dir = Path(settings_dir) if settings_dir is not None else Path(__file__).resolve().parent
+    if not gnome:
+        return (settings_dir / 'tray.py').is_file()
+    if extension_paths is None:
+        roots = [Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local/share')]
+        roots.extend(Path(root) for root in os.environ.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share').split(':') if root)
+        extension_paths = [root / 'gnome-shell/extensions' / UUID for root in roots]
+        extension_paths.append(settings_dir.parent / 'extension')  # source development
+    return any((Path(path) / 'metadata.json').is_file() for path in extension_paths)
+
+
 def launch_tray():
+    if not desktop_integration_available(gnome=False):
+        raise RuntimeError('Install gnome-wifi-hotspot-tray to enable desktop tray controls')
     from gi.repository import Gio
     Gio.Subprocess.new(["/usr/bin/python3", str(Path(__file__).resolve().parent / "tray.py")],
                        Gio.SubprocessFlags.NONE)

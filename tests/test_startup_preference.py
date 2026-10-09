@@ -82,3 +82,23 @@ class StartupPreferenceTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.set_startup(False)
         self.assertTrue(get_auto_start(self.path))
+
+
+class OptionalIntegrationTests(unittest.TestCase):
+    def test_missing_and_installed_desktop_controls(self):
+        from settings.startup import desktop_integration_available
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertFalse(desktop_integration_available(False, root))
+            self.assertFalse(desktop_integration_available(True, root, [root / 'extension']))
+            (root / 'tray.py').touch()
+            self.assertTrue(desktop_integration_available(False, root))
+            (root / 'extension').mkdir()
+            (root / 'extension/metadata.json').write_text('{}')
+            self.assertTrue(desktop_integration_available(True, root, [root / 'extension']))
+
+    def test_missing_tray_rejected_before_gi_import_or_spawn(self):
+        from settings.startup import launch_tray
+        with patch('settings.startup.desktop_integration_available', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'gnome-wifi-hotspot-tray'):
+                launch_tray()

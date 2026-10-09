@@ -108,6 +108,9 @@ class HotspotTray(Gtk.Application):
     def _poll(self):
         if self.closed:
             return GLib.SOURCE_REMOVE
+        if self.code_revision.removed():
+            self.quit()
+            return GLib.SOURCE_REMOVE
         if self.code_revision.changed() and not self.busy and not self.query_pending:
             if not self.restarting:
                 self.restarting = True
@@ -262,7 +265,7 @@ class HotspotTray(Gtk.Application):
         self.proxy.call(method, None, Gio.DBusCallFlags.NONE, 60000, self.cancel, finished)
 
     def _open_settings(self, _item):
-        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'main.py')],
+        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py')],
                            Gio.SubprocessFlags.NONE)
 
     def _error(self, message):

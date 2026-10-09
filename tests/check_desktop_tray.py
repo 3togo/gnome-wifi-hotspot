@@ -81,6 +81,7 @@ assert race.status == {'active': False}
 # Reload only once and defer it while an operation is running.
 race.code_revision = Mock()
 race.code_revision.changed.return_value = True
+race.code_revision.removed.return_value = False
 race.busy = True
 with patch('tray.GLib.idle_add') as schedule, patch('tray.get_auto_start', return_value=True):
     race._poll()
@@ -96,3 +97,14 @@ with patch('tray.sys.argv', ['tray.py']), patch('tray.os.execv') as replace:
     assert replace.call_args.args[1][-1] == '--show-icon'
 race._close.assert_called_once()
 print('Stale clients, deferred code upgrade, and manual launch preservation checks passed.')
+
+
+# Removing the optional tray exits the GUI without stopping service-owned sharing.
+removed = HotspotTray()
+removed.proxy = Mock()
+removed.quit = Mock()
+removed.code_revision.removed = lambda: True
+assert removed._poll() == GLib.SOURCE_REMOVE
+removed.quit.assert_called_once()
+removed.proxy.call.assert_not_called()
+print('Tray removal exits controls without a network operation.')

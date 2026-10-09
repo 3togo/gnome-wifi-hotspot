@@ -9,6 +9,15 @@ Beta 2 is experimental. Physical testing covers one Wi-Fi driver and XFCE.
 GNOME 45–51 is declared compatible; GNOME 51 extension loading was checked in a
 headless session, with full desktop interaction still awaiting validation.
 
+For the current development branch (1.0.0-16), the standalone application and
+controls are separate `.debs`. Install `gnome-wifi-hotspot` plus
+`gnome-wifi-hotspot-gnome` for GNOME or `gnome-wifi-hotspot-tray` for a
+StatusNotifier desktop. Use matching versions and upgrade them together.
+Main-only installation has no tray autostart and retains full settings controls.
+When upgrading a bundled release, explicitly select the integration; existing
+configuration and per-user preferences are retained. See the
+[development package instructions](../README.md#split-debian-packages-development-version-100-16).
+
 ## 1. Install or upgrade
 
 Open the [Beta 2 downloads](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-beta.2).
@@ -132,7 +141,7 @@ in the others.
 | XFCE or another desktop with a StatusNotifier tray | Open the Relay tray icon → Enable hotspot or Hotspot Settings |
 | XFCE with the optional patched NetworkManager Applet | Open the usual network icon → Wi-Fi Relay beside VPN Connections → Hotspot or Settings |
 
-**Start tray at login**, in **General → Startup**, shows the desktop controls at
+**Start desktop controls at login**, in **General → Startup**, shows the desktop controls at
 login. It does not start hotspot broadcasting. Turning it off hides the controls;
 Settings remains available from the application launcher.
 

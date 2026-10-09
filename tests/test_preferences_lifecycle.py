@@ -62,3 +62,19 @@ class CodeRevisionTests(unittest.TestCase):
             self.assertFalse(revision.changed())
             second.write_text('new')
             self.assertTrue(revision.changed())
+
+
+class CodeRemovalTests(unittest.TestCase):
+    def test_temporary_upgrade_gap_and_persistent_removal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'tray.py'
+            path.touch()
+            revision = CodeRevision([path])
+            path.unlink()
+            self.assertFalse(revision.removed(now=100))
+            self.assertFalse(revision.removed(now=105))
+            path.touch()
+            self.assertFalse(revision.removed(now=109))
+            path.unlink()
+            self.assertFalse(revision.removed(now=110))
+            self.assertTrue(revision.removed(now=120))

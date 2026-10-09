@@ -1,8 +1,10 @@
 """GTK4 smoke check. Run with a display (or Xvfb) in a separate process."""
 from pathlib import Path
 import sys
+import os
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'settings'))
+sys.path.insert(0, os.environ.get('WIFI_RELAY_TEST_SETTINGS_DIR') or
+                str(Path(__file__).resolve().parents[1] / 'settings'))
 import main
 from main import Adw, Gio, GLib, HotspotSettingsWindow
 
@@ -29,7 +31,8 @@ window = HotspotSettingsWindow(application)
 while GLib.MainContext.default().pending():
     GLib.MainContext.default().iteration(False)
 assert window.get_title() == 'Wi-Fi Relay Settings'
-assert window.switch_startup.get_active() is True
+assert window.switch_startup.get_sensitive() == main.desktop_integration_available()
+assert window.switch_startup.get_active() == (main.get_auto_start() if main.desktop_integration_available() else False)
 assert window.combo_wifi_iface.get_model().get_n_items() > 0
 assert window.combo_inet_iface.get_model().get_n_items() > 0
 assert window.entry_ssid.get_text()

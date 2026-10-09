@@ -5,9 +5,9 @@ from pathlib import Path
 import sys
 
 try:
-    from startup import get_auto_start, is_gnome, migrate_extension
+    from startup import get_auto_start, is_gnome, migrate_extension, desktop_integration_available
 except ModuleNotFoundError:
-    from settings.startup import get_auto_start, is_gnome, migrate_extension
+    from settings.startup import get_auto_start, is_gnome, migrate_extension, desktop_integration_available
 
 UUID = "wifi-relay@3togo.github.io"
 
@@ -32,7 +32,7 @@ def enable_on_first_login(settings, marker, sync):
 
 
 def main():
-    if not get_auto_start():
+    if not desktop_integration_available() or not get_auto_start():
         return 0
     if not is_gnome():
         os.execv("/usr/bin/python3", ["/usr/bin/python3", str(Path(__file__).resolve().parent / "tray.py")])

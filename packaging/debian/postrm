@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+dpkg-maintscript-helper rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot -- "$@"
 if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
     systemctl --system daemon-reload >/dev/null || true
     systemctl --system reload dbus.service >/dev/null 2>&1 || true

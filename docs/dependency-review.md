@@ -90,9 +90,12 @@ not permission to alter the running network stack.
 ## Remaining limits
 
 GTK4/adwaita supplies Settings and GTK3/AppIndicator supplies the standalone tray.
-Both remain required to preserve the existing desktop features. Making either
-optional could reduce clean-install dependencies further, but requires explicit
-feature selection and graceful handling of missing components. hostapd and
+Starting with development version 1.0.0-16, GTK3/AppIndicator belongs to the
+optional `gnome-wifi-hotspot-tray` package. GNOME Shell controls belong to
+`gnome-wifi-hotspot-gnome`. The main package requires only GTK4/adwaita for its UI;
+startup controls are unavailable when the session's integration is absent.
+Both optional packages depend on the matching main-package version. The older
+bundles reviewed above predate this split. hostapd and
 iptables remain necessary for the create_ap backend; removing them from the
 common package without changing defaults or checking backend availability would
 break fresh installations. dnsmasq-base is used for hotspot address service and

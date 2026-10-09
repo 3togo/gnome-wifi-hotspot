@@ -76,6 +76,72 @@ system D-Bus service, and desktop controls. GNOME uses a Quick Settings extensio
 XFCE and other desktops use a StatusNotifier tray. An optional patched
 NetworkManager Applet adds Relay to the existing XFCE network menu.
 
+### Split Debian packages (development version 1.0.0-16)
+
+The Beta 2 downloads above remain the earlier bundled release. Building the current
+branch produces three packages; the split is not yet a published release:
+
+| Package | Contents |
+| --- | --- |
+| `gnome-wifi-hotspot` | Service, shared NetworkManager client, standalone GTK4 editor, and diagnostics |
+| `gnome-wifi-hotspot-gnome` | GNOME Shell launch, status, and hotspot controls |
+| `gnome-wifi-hotspot-tray` | StatusNotifier tray launch, status, and hotspot controls |
+
+Build all three with `bash packaging/build-deb.sh`. Install the main application:
+
+```sh
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-16_all.deb
+```
+
+For GNOME, install its optional controls in the same transaction:
+
+```sh
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-16_all.deb \
+  ./dist/gnome-wifi-hotspot-gnome_1.0.0-16_all.deb
+```
+
+For XFCE or another desktop with a StatusNotifier host, choose the matching
+`gnome-wifi-hotspot-tray_1.0.0-16_all.deb` instead. The tray is also usable on KDE
+with a compatible StatusNotifier host; a native Plasma widget is not provided.
+Integrations require the same Relay version, so upgrade them together. The
+standalone package only suggests integrations; APT does not select either one.
+
+When upgrading the old bundled package, explicitly select the desired integration.
+Configuration and per-user startup/visibility preferences are preserved. The old
+system autostart file is retired through dpkg; modified copies are backed up as
+`.dpkg-bak`. Log out and back in to refresh GNOME controls. Removing an integration
+leaves the service and standalone editor installed; a running tray exits after
+its files have been absent for ten seconds. Startup controls in the editor are
+unavailable until the relevant integration is installed.
+
+Patched GNOME Settings and nm-applet packages remain separate experimental
+integrations; the main application does not require replacement desktop packages.
+The RPM spec retains its bundled layout. Source installs use `make install` for
+the standalone app and `make install-gnome` or `make install-tray` for controls
+(after installing the app); `make install-all` installs all three components.
+
+### Desktop integration and upgrade resilience
+
+Use `wifi-hotspot-settings` as the shared entry point. On GNOME with the optional
+[Wi-Fi panel bridge](integration/gnome-settings/README.md) installed, it opens
+**GNOME Settings → Wi-Fi**; the **Wi-Fi Relay** button there opens Relay's controls.
+Stock GNOME, XFCE, KDE, and other desktops open the same Relay editor directly.
+`wifi-hotspot-settings --standalone` always opens that editor, including for recovery.
+The Shell extension preferences and tray use this entry point instead of maintaining
+separate configuration forms. Existing hotspot toggles retain their service calls.
+
+The production D-Bus lifecycle client lives in `daemon/nm_client.py`; both the
+backend worker and diagnostic probe reuse it. For resilience across desktops,
+keep network ownership in the service/backend and
+use desktop UIs as optional clients. Requiring a GUI process for hotspot lifetime
+would prevent sharing from surviving its closure. Launching through GNOME Settings
+does not change networking permissions or make the experimental native backend
+production-ready. The stock NetworkManager backend uses its public D-Bus API but
+still needs helper-created AP interfaces; native AP+STA ownership currently requires
+the optional downstream core patch. These distribution patches require rebasing
+and validation when their upstream packages change. Existing backend choices are
+preserved; this UI refactor does not switch adapters, routing, or active sharing.
+
 ### Names and terminology
 
 | Term | Meaning |

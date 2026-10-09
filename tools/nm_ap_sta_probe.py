@@ -26,13 +26,21 @@ probe_root = Path(__file__).resolve().parents[1]
 daemon_path = probe_root / "daemon/wifi-hotspot-daemon.py"
 if not daemon_path.is_file():
     daemon_path = probe_root / "wifi-hotspot-daemon.py"
+# Resolve sibling production modules when run directly or via the installed symlink.
+sys.path.insert(0, str(daemon_path.parent))
 spec = importlib.util.spec_from_file_location("relay_daemon", daemon_path)
 daemon = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(daemon)
 
-NM_NAME = "org.freedesktop.NetworkManager"
-NM_PATH = "/org/freedesktop/NetworkManager"
-NATIVE_RELAY_CAPABILITY = 0x7001
+# Load the same production client in repository and installed tool layouts.
+client_spec = importlib.util.spec_from_file_location(
+    "relay_nm_client", daemon_path.with_name("nm_client.py"))
+client_module = importlib.util.module_from_spec(client_spec)
+client_spec.loader.exec_module(client_module)
+NetworkManager = client_module.NetworkManager
+NM_NAME = client_module.NM_NAME
+NM_PATH = client_module.NM_PATH
+NATIVE_RELAY_CAPABILITY = client_module.NATIVE_RELAY_CAPABILITY
 NATIVE_RELAY_PARENT_KEY = "org.freedesktop.NetworkManager.wifi-relay.parent"
 
 
@@ -181,83 +189,6 @@ def service_settings(report, config):
         "address": GLib.Variant("s", config["GATEWAY"]), "prefix": GLib.Variant("u", 24)}])
     return profile
 
-
-class NetworkManager:
-    def __init__(self):
-        # A private bus connection lets bind-activation clean up on process exit.
-        self.bus = Gio.DBusConnection.new_for_address_sync(
-            Gio.dbus_address_get_for_bus_sync(Gio.BusType.SYSTEM, None),
-            Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT
-            | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
-        self._active = None
-        self._user_disconnected = False
-        # Subscribe before activation so a quick GUI Disconnect cannot be lost.
-        self._state_subscription = self.bus.signal_subscribe(
-            NM_NAME, NM_NAME + ".Connection.Active", "StateChanged", None, None,
-            Gio.DBusSignalFlags.NONE, self._active_state_changed)
-
-    def _active_state_changed(self, bus, sender, path, interface, signal, parameters):
-        state, reason = parameters.unpack()
-        if path == self._active and state in (3, 4) and reason == 2:
-            # NM_ACTIVE_CONNECTION_STATE_REASON_USER_DISCONNECTED
-            self._user_disconnected = True
-
-    def user_disconnected(self):
-        context = GLib.MainContext.default()
-        while context.pending():
-            context.iteration(False)
-        return self._user_disconnected
-
-    def call(self, path, interface, method, parameters=None):
-        return self.bus.call_sync(NM_NAME, path, interface, method, parameters,
-                                  None, Gio.DBusCallFlags.NONE, 15000, None).unpack()
-
-    def device(self, iface):
-        return self.call(NM_PATH, NM_NAME, "GetDeviceByIpIface",
-                         GLib.Variant("(s)", (iface,)))[0]
-
-    def activate(self, device, profile):
-        self._user_disconnected = False
-        self._active = self.call(NM_PATH, NM_NAME, "AddAndActivateConnection2", GLib.Variant(
-            "(a{sa{sv}}ooa{sv})", (profile, device, "/", {
-                "persist": GLib.Variant("s", "volatile"),
-                "bind-activation": GLib.Variant("s", "dbus-client"),
-            })))[1]
-        return self._active
-
-    def state(self, active):
-        return self.call(active, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
-            "(ss)", (NM_NAME + ".Connection.Active", "State")))[0]
-
-    def device_state(self, device):
-        return self.call(device, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
-            "(ss)", (NM_NAME + ".Device", "StateReason")))[0]
-
-    def compatibility(self):
-        xml = self.call(NM_PATH, "org.freedesktop.DBus.Introspectable", "Introspect")[0]
-        tree = ET.fromstring(xml)
-        method = tree.find(f"./interface[@name='{NM_NAME}']/method[@name='AddAndActivateConnection2']")
-        inputs = [] if method is None else [a.get("type") for a in method.findall("arg")
-                                           if a.get("direction", "in") == "in"]
-        version = self.call(NM_PATH, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
-            "(ss)", (NM_NAME, "Version")))[0]
-        capabilities = self.call(NM_PATH, "org.freedesktop.DBus.Properties", "Get", GLib.Variant(
-            "(ss)", (NM_NAME, "Capabilities")))[0]
-        return {"native_wifi_relay": NATIVE_RELAY_CAPABILITY in capabilities,
-                "daemon_version": version,
-                "add_and_activate_connection2": inputs == ["a{sa{sv}}", "o", "o", "a{sv}"],
-                "activation_options": "require-live-verification"}
-
-    def deactivate(self, active):
-        try:
-            self.call(NM_PATH, NM_NAME, "DeactivateConnection", GLib.Variant("(o)", (active,)))
-        except GLib.Error as exc:
-            if Gio.DBusError.get_remote_error(exc) != NM_NAME + ".ConnectionNotActive":
-                raise
-
-    def close(self):
-        self.bus.signal_unsubscribe(self._state_subscription)
-        self.bus.close_sync(None)
 
 
 def api_compatibility():
