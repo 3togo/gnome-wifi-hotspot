@@ -7,8 +7,9 @@ gnome-wifi-hotspot (1.0.0-17) stonking; urgency=medium
   * Scope DHCP/DNS rules; preserve firewalld and AppArmor policies.
   * Supervise automatic activation and suspend shutdown without blocking.
   * Remove blocking reverse DNS; declare legacy command dependencies.
+  * Normalize archive timestamps for repeatable Debian binary builds.
 
- -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 12:00:00 +0000
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 11:00:00 +0000
 
 gnome-wifi-hotspot (1.0.0-16) stonking; urgency=medium
 

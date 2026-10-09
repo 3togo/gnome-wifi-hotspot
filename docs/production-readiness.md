@@ -90,7 +90,9 @@ Ayatana AppIndicator, Node.js, D-Bus, Xvfb/xauth, GCC, pkgconf, GTK3 development
 headers, and Jansson development headers. Its quilt source tree is isolated
 under dist and removed after building; logs and artifacts remain. Both package
 builders share the same payload templates. SOURCE_DATE_EPOCH controls archive
-timestamps. Debian attribution includes both create_ap copyright notices; RPM
+timestamps; the direct builder normalizes every staged archive member to that
+epoch, including future epochs. Repeated builds are compared byte for byte.
+Debian attribution includes both create_ap copyright notices; RPM
 and Make installation include the shared modules. GNOME Shell is optional for
 the standalone desktop app. CI additionally exercises install, upgrade, remove,
 and purge inside its disposable Stonking environment.

@@ -15,7 +15,7 @@ class PackageSplitTests(unittest.TestCase):
         cls.addClassCleanup(cls.directory.cleanup)
         cls.output = Path(cls.directory.name)
         cls.version = '1.0.0-16+test'
-        environment = dict(os.environ, WIFI_RELAY_BUILD_OUTPUT=str(cls.output))
+        environment = dict(os.environ, WIFI_RELAY_BUILD_OUTPUT=str(cls.output), SOURCE_DATE_EPOCH="4102444800")
         subprocess.run(['bash', str(ROOT / 'packaging/build-deb.sh'), cls.version],
                        env=environment, capture_output=True, text=True, check=True)
         cls.roots = {}
@@ -27,6 +27,15 @@ class PackageSplitTests(unittest.TestCase):
             subprocess.run(['dpkg-deb', '-x', str(deb), str(root)], check=True)
             cls.roots[suffix] = root
             cls.depends[suffix] = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Depends'], text=True)
+
+    def test_packages_are_reproducible_even_with_a_future_source_epoch(self):
+        with tempfile.TemporaryDirectory(prefix='relay-repro-test-') as directory:
+            environment = dict(os.environ, WIFI_RELAY_BUILD_OUTPUT=directory,
+                               SOURCE_DATE_EPOCH='4102444800')
+            subprocess.run(['bash', str(ROOT / 'packaging/build-deb.sh'), self.version],
+                           env=environment, capture_output=True, text=True, check=True)
+            for original in self.output.glob('*.deb'):
+                self.assertEqual(original.read_bytes(), (Path(directory) / original.name).read_bytes())
 
     def test_optional_files_have_single_owners(self):
         ownership = {}

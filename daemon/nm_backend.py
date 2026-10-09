@@ -108,6 +108,11 @@ def recover():
                 raise RuntimeError("Profile identity changed; refusing to remove it.")
             probe.command(["nmcli", "connection", "delete", "uuid", profile])
     if sysnet.exists():
+        # NM profile deletion can remove the interface while command() waits.
+        # Check again rather than deleting a subsequently reused interface name.
+        if (int((sysnet / "ifindex").read_text()) != data.get("ifindex")
+                or (sysnet / "address").read_text().strip().lower() != data.get("mac", "").lower()):
+            raise RuntimeError("Interface identity changed; refusing to remove it.")
         probe.command(["iw", "dev", iface, "del"])
     STATE_FILE.unlink()
 

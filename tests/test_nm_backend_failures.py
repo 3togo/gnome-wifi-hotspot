@@ -430,6 +430,22 @@ class OwnershipFailureTests(unittest.TestCase):
         module.write_ownership(self.data)
         self.assertEqual(self.record.stat().st_mode & 0o777, 0o600)
 
+    def test_interface_replaced_during_profile_delete_is_not_removed(self):
+        self.record.write_text(json.dumps(self.data))
+        def command(args):
+            if args == ['nmcli', '-g', 'UUID', 'connection', 'show']:
+                return PROFILE
+            if args == ['nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', PROFILE]:
+                return 'Wi-Fi Relay Hotspot'
+            if args == ['nmcli', 'connection', 'delete', 'uuid', PROFILE]:
+                (self.iface / 'ifindex').write_text('456\n')
+                return ''
+            self.fail('Unexpected interface deletion: ' + str(args))
+        self.command.side_effect = command
+        with self.assertRaisesRegex(RuntimeError, 'identity changed'):
+            module.recover()
+        self.assertTrue(self.record.exists())
+
     def test_invalid_ownership_schema_never_replaces_journal(self):
         self.save()
         for change in ({'ifindex': True}, {'ifindex': 0}, {'mac': 'invalid'},
