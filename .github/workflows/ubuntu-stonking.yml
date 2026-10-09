@@ -54,6 +54,8 @@ jobs:
 
       - name: Run automated and real-widget checks
         run: |
+          # Checkout runs with a temporary HOME; later container steps use root HOME.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           python3 -m unittest discover -s tests
           node tests/test_tray.mjs
           for script in extension/*.js; do
