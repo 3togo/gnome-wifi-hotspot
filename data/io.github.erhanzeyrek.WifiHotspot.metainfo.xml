@@ -18,5 +18,10 @@
     <category>Settings</category>
   </categories>
   <url type="homepage">https://github.com/3togo/gnome-wifi-hotspot</url>
+  <releases>
+    <release version="1.0.0" date="2026-10-09" type="stable">
+      <description><p>Standalone settings with optional desktop controls, private runtime state, bounded worker supervision, and local Wi-Fi QR images.</p></description>
+    </release>
+  </releases>
   <developer_name>Erhan Zeyrek</developer_name>
 </component>

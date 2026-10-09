@@ -26,7 +26,8 @@ def source_files():
                       'data/wifi-relay-gnome.desktop', 'data/wifi-relay-tray.desktop'})
     else:
         names = {str(path.relative_to(ROOT)) for path in ROOT.rglob('*')
-                 if path.is_file() and not set(path.relative_to(ROOT).parts) & {'.git', 'dist', '__pycache__', 'debian'}}
+                 if path.is_file() and path.relative_to(ROOT).parts[0] not in {'.git', 'dist', 'debian'}
+                 and '__pycache__' not in path.relative_to(ROOT).parts}
     return sorted(name for name in names if name and (ROOT / name).is_file())
 
 

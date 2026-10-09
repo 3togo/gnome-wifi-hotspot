@@ -1,4 +1,4 @@
-# Wi-Fi Relay production refactor
+# Wi-Fi Relay architecture and release validation
 
 This refactor preserves the native NetworkManager and create_ap backends and the
 existing desktop controls. It improves the application around those backends;
@@ -67,7 +67,7 @@ are logged once until they change or recover. Malformed, excessively nested
 per-user JSON preferences fall back to defaults.
 
 These checks use fake network transports and temporary files. Live driver,
-suspend/resume, and extended traffic testing remain release gates below.
+suspend/resume, and extended traffic testing remain outside automated coverage.
 
 ## Build and verification
 
@@ -112,10 +112,10 @@ real widgets; they do not start a hotspot or rewrite host preferences.
 Never run check_package_lifecycle.sh on a workstation: it removes and purges
 the package and is deliberately restricted to the disposable CI environment.
 
-## Release gates
+## Supported scope and remaining validation
 
 Passing automated tests does not certify wireless drivers or the patched GNOME
-and NetworkManager stack. Before declaring a production release, exercise both
+and NetworkManager stack. For deployment hardware, exercise both
 backends on the supported adapter/driver matrix, AP+STA contention and channel
 changes, suspend/resume, upstream loss/recovery, daemon crashes/restarts,
 repeated desktop upgrades, client traffic, and extended operation. Verify the
@@ -123,8 +123,15 @@ native-core, nm-applet, and GNOME Settings patches against their exact supported
 package versions. Existing configurations may retain the old factory password;
 users should choose a strong password before broadcasting.
 
-RPM installation and full GNOME Shell integration require platform validation.
+RPM installation and full interactive GNOME Shell coverage require platform validation.
+Headless GNOME Shell 51 extension loading and disable/re-enable are checked.
 Source artifacts are unsigned; repository publication and signing are separate
-release steps. This refactor does not replace those release gates.
+release steps. Publication does not certify untested hardware combinations.
 
-Release preparation and rollback are documented in [the 1.0.0-17 candidate notes](releases/1.0.0-17.md).
+The stable release is `v1.0.0`, package `1.0.0-18`. Native Ubuntu 26.10 checks
+passed 261 unit tests with no skips, real GTK4/GTK3 widgets, 17 sanitized applet
+cases, and private-bus daemon authorization. Source exports retain nested
+`packaging/debian` templates and rebuild without Git metadata; a regression test
+covers this path. Exact provenance and CI results accompany release downloads.
+
+Release maintenance and rollback are documented in [the stable release notes](releases/1.0.0-18.md).

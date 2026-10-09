@@ -51,9 +51,11 @@ install_file data/icons/hotspot.svg usr/share/icons/hicolor/scalable/apps/io.git
 install_file settings/QR-ENCODER.md usr/share/doc/gnome-wifi-hotspot/QR-ENCODER.md 0644
 install_file packaging/debian/copyright usr/share/doc/gnome-wifi-hotspot/copyright 0644
 install_file README.md usr/share/doc/gnome-wifi-hotspot/README.md 0644
+install_file RELEASE_NOTES.md usr/share/doc/gnome-wifi-hotspot/RELEASE_NOTES.md 0644
+install_file docs/user-guide.md usr/share/doc/gnome-wifi-hotspot/user-guide.md 0644
 install_file docs/dependency-review.md usr/share/doc/gnome-wifi-hotspot/dependency-review.md 0644
 install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/production-readiness.md 0644
-install_file docs/releases/1.0.0-17.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-17.md 0644
+install_file docs/releases/1.0.0-18.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-18.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 
