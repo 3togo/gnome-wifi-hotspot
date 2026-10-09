@@ -52,7 +52,7 @@ def start_user(uid):
             or not (fields.get('DISPLAY') or fields.get('WAYLAND_DISPLAY'))):
         return False
     user_systemctl(account, 'daemon-reload')
-    user_systemctl(account, '--no-block', 'start', UNIT)
+    user_systemctl(account, '--no-block', 'restart', UNIT)
     return True
 
 

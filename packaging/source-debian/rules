@@ -12,6 +12,7 @@ override_dh_auto_test:
 	node tests/test_tray.mjs
 	dbus-run-session -- xvfb-run -a python3 tests/check_settings_window.py
 	dbus-run-session -- xvfb-run -a python3 tests/check_desktop_tray.py
+	dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
 	dbus-run-session -- xvfb-run -a env SANITIZE=1 integration/nm-applet/test.sh
 
 override_dh_auto_install:

@@ -30,13 +30,13 @@ class TraySessionInstallTests(unittest.TestCase):
     def test_starts_as_user_with_clean_environment_and_fixed_unit(self):
         account = SimpleNamespace(pw_name='desktop-user', pw_uid=1000, pw_dir='/home/desktop-user')
         with patch.object(hook, 'run') as run:
-            hook.user_systemctl(account, '--no-block', 'start', hook.UNIT)
+            hook.user_systemctl(account, '--no-block', 'restart', hook.UNIT)
         command = run.call_args.args[0]
         self.assertEqual(command[:4], ['/usr/sbin/runuser', '-u', 'desktop-user', '--'])
         self.assertEqual(command[4:6], ['/usr/bin/env', '-i'])
         self.assertIn('XDG_RUNTIME_DIR=/run/user/1000', command)
         self.assertIn('DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus', command)
-        self.assertEqual(command[-5:], ['/usr/bin/systemctl', '--user', '--no-block', 'start', hook.UNIT])
+        self.assertEqual(command[-5:], ['/usr/bin/systemctl', '--user', '--no-block', 'restart', hook.UNIT])
 
     def test_skips_gnome_missing_environment_and_headless_managers(self):
         for environment in ['', 'XDG_CURRENT_DESKTOP=XFCE\n',
@@ -53,7 +53,7 @@ class TraySessionInstallTests(unittest.TestCase):
                     patch.object(hook, 'user_systemctl', return_value=SimpleNamespace(stdout='XDG_CURRENT_DESKTOP=XFCE\n'+display)) as control:
                 self.assertTrue(hook.start_user(1000))
                 self.assertEqual([call.args[1:] for call in control.call_args_list],
-                                 [('show-environment',), ('daemon-reload',), ('--no-block', 'start', hook.UNIT)])
+                                 [('show-environment',), ('daemon-reload',), ('--no-block', 'restart', hook.UNIT)])
 
     def test_missing_session_manager_and_user_start_failure_are_nonfatal(self):
         with patch.object(hook.os, 'geteuid', return_value=0), patch.object(hook, 'active_desktop_users', side_effect=FileNotFoundError), patch('sys.stderr'):

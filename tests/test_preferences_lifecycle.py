@@ -78,3 +78,64 @@ class CodeRemovalTests(unittest.TestCase):
             path.unlink()
             self.assertFalse(revision.removed(now=110))
             self.assertTrue(revision.removed(now=120))
+
+
+class TrayReplacementTests(unittest.TestCase):
+    def invoke(self, uid=1000, command=b'/usr/bin/python3\0/usr/share/wifi-hotspot/settings/tray.py\0', owner_changed=False, exited=True):
+        from gi.repository import Gio, GLib
+        from settings.lifecycle import replace_tray_instance
+        from unittest.mock import Mock
+        import contextlib
+        bus = Mock()
+        owners = iter([':1.123', ':1.124' if owner_changed else ':1.123'])
+        def reply(_destination, _path, _interface, method, *_args):
+            values = {'NameHasOwner': ('b', True), 'GetConnectionUnixUser': ('u', uid),
+                      'GetConnectionUnixProcessID': ('u', 4321)}
+            signature, value = ('s', next(owners)) if method == 'GetNameOwner' else values[method]
+            return GLib.Variant('('+signature+')', (value,))
+        bus.call_sync.side_effect = reply
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(Gio, 'bus_get_sync', return_value=bus))
+            stack.enter_context(patch('os.geteuid', return_value=1000))
+            stack.enter_context(patch('os.getpid', return_value=9999))
+            stack.enter_context(patch('os.pidfd_open', return_value=99))
+            stack.enter_context(patch('pathlib.Path.read_bytes', return_value=command))
+            send = stack.enter_context(patch('signal.pidfd_send_signal'))
+            close = stack.enter_context(patch('os.close'))
+            stack.enter_context(patch('select.select', return_value=([99] if exited else [], [], [])))
+            try:
+                replace_tray_instance('io.github.erhanzeyrek.WifiHotspot.Tray', '/usr/share/wifi-hotspot/settings/tray.py')
+            finally:
+                self.send = send
+                self.close = close
+                self.bus = bus
+
+    def test_only_matching_user_tray_is_retired_without_hotspot_call(self):
+        import signal
+        self.invoke()
+        self.send.assert_called_once_with(99, signal.SIGTERM)
+        self.close.assert_called_once_with(99)
+        self.assertTrue(all(call.args[0] == 'org.freedesktop.DBus' for call in self.bus.call_sync.call_args_list))
+
+    def test_another_user_or_another_application_is_never_signalled(self):
+        with self.assertRaises(PermissionError):
+            self.invoke(uid=1001)
+        self.send.assert_not_called()
+        with self.assertRaises(PermissionError):
+            self.invoke(command=b'/usr/bin/python3\0/usr/bin/wifi-hotspot-settings\0')
+        self.send.assert_not_called()
+        self.close.assert_called_once_with(99)
+
+    def test_owner_change_prevents_signalling_stale_instance(self):
+        self.invoke(owner_changed=True)
+        self.send.assert_not_called()
+
+    def test_shutdown_has_a_bounded_wait(self):
+        with self.assertRaises(TimeoutError):
+            self.invoke(exited=False)
+        self.close.assert_called_once_with(99)
+
+    def test_root_replacement_is_refused(self):
+        from settings.lifecycle import replace_tray_instance
+        with patch('os.geteuid', return_value=0), self.assertRaises(PermissionError):
+            replace_tray_instance('io.github.erhanzeyrek.WifiHotspot.Tray', '/usr/share/wifi-hotspot/settings/tray.py')

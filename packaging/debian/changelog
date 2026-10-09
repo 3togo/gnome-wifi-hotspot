@@ -1,3 +1,12 @@
+gnome-wifi-hotspot (1.0.0-21) stonking; urgency=medium
+
+  * Replace an older tray instance during package session startup so the
+    installed controls remain visible without toggling the icon preference.
+  * Preserve hidden-icon and disabled-startup choices during handover.
+  * Add private-bus startup, visibility, and process-ownership regressions.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 18:40:19 -0000
+
 gnome-wifi-hotspot (1.0.0-20) stonking; urgency=medium
 
   * Start tray controls as eligible logged-in desktop users after APT

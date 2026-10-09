@@ -12,7 +12,7 @@ from gi.repository import Gtk, Gio, GLib, AyatanaAppIndicator3 as AppIndicator
 
 from startup import get_auto_start
 from visibility import get_tray_visible
-from lifecycle import CodeRevision
+from lifecycle import CodeRevision, replace_tray_instance
 from service_client import decode_reply
 
 BUS_NAME = 'io.github.erhanzeyrek.WifiHotspot'
@@ -20,11 +20,15 @@ OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
 
 
 class HotspotTray(Gtk.Application):
-    def __init__(self):
-        super().__init__(application_id=BUS_NAME + '.Tray',
-                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+    def __init__(self, session_start=False):
+        flags = Gio.ApplicationFlags.HANDLES_COMMAND_LINE | Gio.ApplicationFlags.ALLOW_REPLACEMENT
+        if session_start:
+            flags |= Gio.ApplicationFlags.REPLACE
+        super().__init__(application_id=BUS_NAME + '.Tray', flags=flags)
         self.add_main_option('show-icon', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
                              'Show the tray icon in this session', None)
+        self.add_main_option('session-start', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
+                             'Refresh tray controls after package installation', None)
         self.manual_start = False
         self.proxy = None
         self.indicator = None
@@ -306,4 +310,13 @@ class HotspotTray(Gtk.Application):
 
 
 if __name__ == '__main__':
-    sys.exit(HotspotTray().run(sys.argv))
+    session_start = '--session-start' in sys.argv
+    if session_start:
+        if not get_auto_start():
+            sys.exit(0)
+        try:
+            replace_tray_instance(BUS_NAME + '.Tray', Path(__file__).resolve())
+        except (OSError, GLib.Error) as error:
+            print(f'Wi-Fi Relay tray could not take over: {error}', file=sys.stderr)
+            sys.exit(1)
+    sys.exit(HotspotTray(session_start=session_start).run(sys.argv))
