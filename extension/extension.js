@@ -354,27 +354,9 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
 
     _openSettings() {
         try {
-            this._extension.openPreferences();
-            return;
-        } catch (e) {
-            console.log(`[Hotspot] openPreferences failed, trying subprocess: ${e}`);
-        }
-
-        try {
-            const devScript = GLib.build_filenamev([
-                GLib.get_home_dir(),
-                'source',
-                'gnome-wifi-hotspot',
-                'settings',
-                'main.py',
-            ]);
-            const proc = new Gio.Subprocess({
-                argv: ['python3', devScript],
-                flags: Gio.SubprocessFlags.NONE,
-            });
-            proc.init(null);
-        } catch (err) {
-            console.error(`[Hotspot] Could not launch settings: ${err}`);
+            Gio.Subprocess.new(['wifi-hotspot-settings'], Gio.SubprocessFlags.NONE);
+        } catch (error) {
+            Main.notify(_('Wi-Fi Relay'), _('Could not open network settings: ') + error.message);
         }
     }
 

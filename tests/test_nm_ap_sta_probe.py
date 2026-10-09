@@ -41,6 +41,7 @@ class ProbeTests(unittest.TestCase):
         self.nm.device.return_value = "/device/probe"
         self.nm.activate.return_value = "/active/probe"
         self.nm.state.return_value = 2
+        self.nm.user_disconnected.return_value = False
         self.nm.device_state.return_value = (30, 0)
 
     def execute(self, command_failure=None, snapshots=None, observation=None, hold=0, **options):
@@ -121,6 +122,79 @@ class ProbeTests(unittest.TestCase):
         self.assertFalse(any("wlo2" in c.args[0] and "del" in c.args[0]
                              for c in self.commands.call_args_list))
 
+    def test_native_activation_never_creates_or_deletes_interfaces(self):
+        self.report["api_compatibility"] = {"native_wifi_relay": True}
+        self.nm.compatibility.return_value = {"native_wifi_relay": True}
+        with patch.object(probe.Path, "exists", return_value=False):
+            result = self.execute()
+        device, profile = self.nm.activate.call_args.args
+        self.assertEqual(device, "/")
+        self.assertEqual(profile["user"]["data"].unpack(),
+                         {probe.NATIVE_RELAY_PARENT_KEY: "wlo2"})
+        self.assertEqual(profile["802-11-wireless"]["assigned-mac-address"].unpack(), "preserve")
+        self.assertEqual(result["interface_lifecycle"], "networkmanager")
+        self.assertTrue(result["cleanup_verification"]["interface_removed"])
+        self.nm.device.assert_not_called()
+        self.nm.deactivate.assert_called_once()
+        self.nm.close.assert_called_once()
+        self.assertFalse(any("add" in c.args[0] or "del" in c.args[0]
+                             or "set" in c.args[0] for c in self.commands.call_args_list))
+
+    def test_native_profiles_parse_and_verify_with_real_libnm(self):
+        try:
+            probe.gi.require_version("NM", "1.0")
+            from gi.repository import NM
+        except (ValueError, ImportError):
+            self.skipTest("libnm introspection is required for the D-Bus profile contract test")
+        config = {"SSID": "Relay", "PASSPHRASE": "private-password", "HIDDEN": "0",
+                  "ISOLATE_CLIENTS": "0", "GATEWAY": "10.42.0.1", "USE_PSK": "0"}
+        self.report["api_compatibility"] = {"native_wifi_relay": True}
+        self.nm.compatibility.return_value = {"native_wifi_relay": True}
+        for service_config in (None, config):
+            with self.subTest(service=service_config is not None), \
+                    patch.object(probe.Path, "exists", return_value=False):
+                self.execute(service_config=service_config)
+                profile = self.nm.activate.call_args.args[1]
+                connection = NM.SimpleConnection.new_from_dbus(
+                    probe.GLib.Variant("a{sa{sv}}", profile))
+                self.assertTrue(connection.verify())
+                self.assertEqual(connection.get_setting_wireless().get_cloned_mac_address(),
+                                 "preserve")
+                self.assertEqual(connection.get_setting_by_name("user").get_data(
+                    probe.NATIVE_RELAY_PARENT_KEY), "wlo2")
+
+    def test_native_support_loss_does_not_fall_back_to_helper_creation(self):
+        self.report["api_compatibility"] = {"native_wifi_relay": True}
+        self.nm.compatibility.return_value = {"native_wifi_relay": False}
+        with patch.object(probe.Path, "exists", return_value=False), \
+                self.assertRaisesRegex(probe.ProbeFailure, "support disappeared"):
+            self.execute()
+        self.nm.activate.assert_not_called()
+        self.nm.close.assert_called_once()
+        self.assertFalse(any("add" in c.args[0] or "del" in c.args[0]
+                             for c in self.commands.call_args_list))
+
+    def test_native_activation_failure_closes_bus_without_helper_deletion(self):
+        self.report["api_compatibility"] = {"native_wifi_relay": True}
+        self.nm.compatibility.return_value = {"native_wifi_relay": True}
+        self.nm.activate.side_effect = RuntimeError("Native AP activation rejected")
+        with patch.object(probe.Path, "exists", return_value=False), \
+                self.assertRaisesRegex(probe.ProbeFailure, "activation rejected"):
+            self.execute()
+        self.nm.close.assert_called_once()
+        self.nm.deactivate.assert_not_called()
+        self.assertFalse(any("del" in c.args[0] for c in self.commands.call_args_list))
+
+    def test_native_service_does_not_write_helper_interface_ownership(self):
+        self.report["api_compatibility"] = {"native_wifi_relay": True}
+        self.nm.compatibility.return_value = {"native_wifi_relay": True}
+        owned = Mock()
+        config = {"SSID": "Relay", "PASSPHRASE": "private-password", "HIDDEN": "0",
+                  "ISOLATE_CLIENTS": "0", "GATEWAY": "10.42.0.1", "USE_PSK": "0"}
+        with patch.object(probe.Path, "exists", return_value=False):
+            self.execute(service_config=config, ownership_callback=owned)
+        owned.assert_not_called()
+
     def test_creation_failure_never_deletes_existing_interface(self):
         def fail(args):
             raise RuntimeError("Interface creation failed")
@@ -192,7 +266,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_api_preflight_rejects_missing_activation_method(self):
         nm = probe.NetworkManager.__new__(probe.NetworkManager)
-        nm.call = Mock(side_effect=[("<node/>",), ("1.58.1",)])
+        nm.call = Mock(side_effect=[("<node/>",), ("1.58.1",), ([],)])
         result = nm.compatibility()
         self.assertFalse(result["add_and_activate_connection2"])
 
@@ -203,9 +277,10 @@ class ProbeTests(unittest.TestCase):
         <arg type="a{sv}" direction="in"/><arg type="o" direction="out"/>
         </method></interface></node>'''
         nm = probe.NetworkManager.__new__(probe.NetworkManager)
-        nm.call = Mock(side_effect=[(xml,), ("1.58.1",)])
+        nm.call = Mock(side_effect=[(xml,), ("1.58.1",), ([probe.NATIVE_RELAY_CAPABILITY],)])
         result = nm.compatibility()
         self.assertTrue(result["add_and_activate_connection2"])
+        self.assertTrue(result["native_wifi_relay"])
         self.assertEqual(result["daemon_version"], "1.58.1")
 
     def test_credentials_private_and_exclusive(self):
@@ -424,6 +499,46 @@ Station aa:bb:cc:dd:ee:04 (on wrnmtest)
         with self.assertRaisesRegex(probe.ProbeFailure, 'stopped during observation'):
             self.execute()
         self.nm.deactivate.assert_called_once()
+
+    def test_gui_disconnect_is_a_clean_stop(self):
+        self.nm.state.side_effect = [2, 3]
+        self.nm.user_disconnected.side_effect = [False, True]
+        result = self.execute()
+        self.assertEqual(result['outcome'], 'stopped')
+        self.assertTrue(result['user_disconnected'])
+        self.assertNotIn('error', result)
+        self.nm.deactivate.assert_called_once()
+
+    def test_gui_disconnect_survives_active_object_removal(self):
+        self.nm.state.side_effect = [2, RuntimeError('UnknownObject')]
+        self.nm.user_disconnected.side_effect = [False, True]
+        result = self.execute()
+        self.assertEqual(result['outcome'], 'stopped')
+        self.assertTrue(result['user_disconnected'])
+
+    def test_user_disconnect_signal_is_scoped_and_latched(self):
+        nm = probe.NetworkManager.__new__(probe.NetworkManager)
+        nm._active = '/active/probe'
+        nm._user_disconnected = False
+        def signal(path, state, reason):
+            nm._active_state_changed(None, None, path, None, None,
+                                     probe.GLib.Variant('(uu)', (state, reason)))
+        signal('/active/other', 3, 2)
+        signal('/active/probe', 3, 3)
+        self.assertFalse(nm.user_disconnected())
+        signal('/active/probe', 3, 2)
+        signal('/active/probe', 4, 3)
+        self.assertTrue(nm.user_disconnected())
+
+    def test_deactivation_only_ignores_already_inactive_connection(self):
+        nm = probe.NetworkManager.__new__(probe.NetworkManager)
+        nm.call = Mock(side_effect=probe.Gio.DBusError.new_for_dbus_error(
+            probe.NM_NAME + '.ConnectionNotActive', 'Already stopped'))
+        nm.deactivate('/active/probe')
+        nm.call.side_effect = probe.Gio.DBusError.new_for_dbus_error(
+            probe.NM_NAME + '.PermissionDenied', 'Denied')
+        with self.assertRaises(probe.GLib.Error):
+            nm.deactivate('/active/probe')
 
     def test_cleanup_runs_even_when_status_observer_fails(self):
         def callback(event):

@@ -11,7 +11,6 @@ import json
 import subprocess
 import shutil
 import re
-import ipaddress
 import tempfile
 import importlib.util
 import signal
@@ -28,77 +27,10 @@ INTERFACE_NAME = "io.github.erhanzeyrek.WifiHotspot"
 MANAGE_ACTION = INTERFACE_NAME + ".manage"
 PROTECTED_METHODS = frozenset({"Start", "Stop", "SetConfig", "GetConfig",
                                "SwitchBandAndReconnect", "PrepareFirewall"})
-CONFIG_DEFAULTS = {
-    "WIFI_IFACE": "wlan0", "INTERNET_IFACE": "wlan0", "SSID": "Hotspot",
-    "PASSPHRASE": "12345678", "FREQ_BAND": "auto", "CHANNEL": "default",
-    "GATEWAY": "192.168.12.1", "WPA_VERSION": "2", "ETC_HOSTS": "0",
-    "DHCP_DNS": "gateway", "NO_DNS": "0", "NO_DNSMASQ": "0", "HIDDEN": "0",
-    "MAC_FILTER": "0", "MAC_FILTER_ACCEPT": "/etc/hostapd/hostapd.accept",
-    "ISOLATE_CLIENTS": "0", "SHARE_METHOD": "nat", "IEEE80211N": "0",
-    "IEEE80211AC": "0", "IEEE80211AX": "0", "NO_VIRT": "0", "USE_PSK": "0",
-    "BACKEND": "create_ap",
-}
-CONFIG_FLAGS = frozenset({"ETC_HOSTS", "NO_DNS", "NO_DNSMASQ", "HIDDEN", "MAC_FILTER",
-                          "ISOLATE_CLIENTS", "IEEE80211N", "IEEE80211AC", "IEEE80211AX",
-                          "NO_VIRT", "USE_PSK"})
-
-
-def validate_config(conf, partial=False):
-    """Accept only supported, single-line values before persisting or starting."""
-    if not isinstance(conf, dict):
-        raise ValueError("Configuration must be a JSON object.")
-    allowed = set(CONFIG_DEFAULTS) | {"COUNTRY"}
-    for key, value in conf.items():
-        if key not in allowed:
-            raise ValueError("Unsupported configuration key.")
-        if not isinstance(value, str) or len(value) > 4096 or not value.isprintable():
-            raise ValueError(f"{key} must contain printable text on a single line.")
-    if partial:
-        return conf
-    result = {**CONFIG_DEFAULTS, **conf}
-    if result["BACKEND"] not in {"create_ap", "networkmanager"}:
-        raise ValueError("BACKEND must be create_ap or networkmanager.")
-    for key in CONFIG_FLAGS:
-        if result[key] not in {"0", "1"}:
-            raise ValueError(f"{key} must be 0 or 1.")
-    for key in ("WIFI_IFACE", "INTERNET_IFACE"):
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,14}", result[key]):
-            raise ValueError(f"{key} must be a valid interface name (1–15 characters).")
-    if not 1 <= len(result["SSID"].encode("utf-8")) <= 32:
-        raise ValueError("SSID must be 1–32 bytes in UTF-8.")
-    password = result["PASSPHRASE"]
-    if result["USE_PSK"] == "1":
-        if not re.fullmatch(r"[0-9a-fA-F]{64}", password):
-            raise ValueError("PASSPHRASE must be a 64-digit hexadecimal PSK.")
-    elif not password.isascii() or not 8 <= len(password) <= 63:
-        raise ValueError("PASSPHRASE must be 8–63 printable ASCII characters.")
-    if result["FREQ_BAND"] not in {"auto", "2.4", "5"}:
-        raise ValueError("FREQ_BAND must be auto, 2.4, or 5.")
-    channel = result["CHANNEL"]
-    if channel != "default" and not (re.fullmatch(r"[0-9]{1,3}", channel) and 1 <= int(channel) <= 196):
-        raise ValueError("CHANNEL must be default or a number from 1 to 196.")
-    if result["WPA_VERSION"] not in {"1", "2", "3"}:
-        raise ValueError("WPA_VERSION must be 1, 2, or 3.")
-    if result["SHARE_METHOD"] not in {"nat", "bridge", "none"}:
-        raise ValueError("SHARE_METHOD must be nat, bridge, or none.")
-    try:
-        gateway = ipaddress.IPv4Address(result["GATEWAY"])
-        if gateway.is_multicast or gateway.is_unspecified or gateway.is_loopback or (int(gateway) & 255) in (0, 255):
-            raise ValueError()
-    except ValueError:
-        raise ValueError("GATEWAY must be a usable IPv4 host address in a /24 subnet.") from None
-    if result["DHCP_DNS"] != "gateway":
-        try:
-            for address in result["DHCP_DNS"].split(","):
-                ipaddress.IPv4Address(address)
-        except ValueError:
-            raise ValueError("DHCP_DNS must be gateway or comma-separated IPv4 addresses.") from None
-    path = result["MAC_FILTER_ACCEPT"]
-    if not re.fullmatch(r"/etc/hostapd/[A-Za-z0-9_./-]+", path) or ".." in path.split("/"):
-        raise ValueError("MAC_FILTER_ACCEPT must be a path inside /etc/hostapd.")
-    if "COUNTRY" in result and not re.fullmatch(r"[A-Z]{2}", result["COUNTRY"]):
-        raise ValueError("COUNTRY must be a two-letter uppercase country code.")
-    return result
+try:
+    from configuration import CONFIG_DEFAULTS, CONFIG_FLAGS, validate_config
+except ModuleNotFoundError:
+    from daemon.configuration import CONFIG_DEFAULTS, CONFIG_FLAGS, validate_config
 
 # Config file paths
 SYSTEM_CONFIG = "/etc/wifi-hotspot.conf"
@@ -723,6 +655,8 @@ class WifiHotspotDaemon:
                 invocation.return_value(GLib.Variant("(s)", (json.dumps(conf),)))
             elif method_name == "SetConfig":
                 json_str = parameters.unpack()[0]
+                if len(json_str.encode("utf-8")) > 65536:
+                    raise ValueError("Configuration exceeds the 64 KiB limit")
                 conf = json.loads(json_str)
                 res = self._write_config_dict(conf)
                 invocation.return_value(GLib.Variant("(b)", (res,)))

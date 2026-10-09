@@ -1,0 +1,11 @@
+The upstream tree contains the application and optional integration patches.
+The source builder derives debian/control and maintainer scripts from the same
+templates used by the standalone binary builder. Both installers use the same
+payload builder. The build runs isolated desktop and protocol tests, never
+starts the host daemon, and never modifies host networking.
+
+One source package builds gnome-wifi-hotspot (standalone app/service),
+gnome-wifi-hotspot-gnome (optional Shell controls), and gnome-wifi-hotspot-tray
+(optional StatusNotifier controls). Integrations depend on the exact app version.
+The monolithic upgrade fixture in tests/build_legacy_package.py is solely for
+disposable-container tests and must never be published.

@@ -3,7 +3,9 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source_version=1.36.0-4ubuntu1
-version=${1:-1.36.0-4ubuntu1+relay3}
+version=${1:-1.36.0-4ubuntu1+relay6}
+all_packages=${2:-}
+[[ -z $all_packages || $all_packages == --all ]] || { echo 'Usage: build-deb.sh [version] [--all]' >&2; exit 2; }
 dpkg --validate-version "$version"
 make -C "$repo_dir" test
 if [[ -n ${DISPLAY:-} || -n ${WAYLAND_DISPLAY:-} ]]; then
@@ -16,7 +18,9 @@ build_dir=$(mktemp -d "$repo_dir/dist/nm-applet-build.XXXXXX")
 cd "$build_dir"
 apt-get source "network-manager-applet=$source_version"
 cd network-manager-applet-1.36.0
+python3 "$repo_dir/packaging/minimize-integrations.py" applet "$source_version" debian/control
 patch -p1 < "$repo_dir/integration/nm-applet/relay-menu.patch"
+patch -p1 < "$repo_dir/integration/nm-applet/hotspot-icon.patch"
 install -m 0644 "$repo_dir/integration/nm-applet/wifi-relay.c" src/wifi-relay.c
 install -m 0644 "$repo_dir/integration/nm-applet/wifi-relay.h" src/wifi-relay.h
 python3 - "$version" <<'PY'
@@ -29,15 +33,17 @@ path.write_text('network-manager-applet (' + sys.argv[1] + ') stonking; urgency=
     ' -- Wi-Fi Relay <3togo@users.noreply.github.com>  ' + formatdate(localtime=True) + '\n\n'
     + path.read_text())
 PY
-dpkg-buildpackage -b -uc -us > "$build_dir/build.log" 2>&1 || {
+env -u LD_PRELOAD dpkg-buildpackage -b -uc -us > "$build_dir/build.log" 2>&1 || {
     tail -80 "$build_dir/build.log"
     exit 1
 }
-for package in network-manager-applet network-manager-gnome nm-connection-editor; do
+packages=(network-manager-applet network-manager-gnome)
+[[ $all_packages != --all ]] || packages+=(nm-connection-editor)
+for package in "${packages[@]}"; do
     cp ../"${package}_${version}_"*.deb "$repo_dir/dist/"
 done
 cd "$repo_dir/dist"
-for package in network-manager-applet network-manager-gnome nm-connection-editor; do
+for package in "${packages[@]}"; do
     for deb in "${package}_${version}_"*.deb; do
         sha256sum "$deb" > "$deb.sha256"
         printf '%s\n' "$repo_dir/dist/$deb"

@@ -1,8 +1,13 @@
 #!/bin/sh
 set -e
+dpkg-maintscript-helper rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot -- "$@"
 if [ "$1" = configure ]; then
     if [ -f /etc/wifi-hotspot.conf ] && [ ! -L /etc/wifi-hotspot.conf ]; then
         chmod 0600 /etc/wifi-hotspot.conf
+    fi
+    if [ -z "${2:-}" ]; then
+        python3 /usr/libexec/wifi-hotspot-daemon/configuration.py \
+            /etc/wifi-hotspot.conf /usr/share/wifi-hotspot/default.conf
     fi
     deb-systemd-helper unmask wifi-hotspot-daemon.service >/dev/null || true
     deb-systemd-helper enable wifi-hotspot-daemon.service >/dev/null || true

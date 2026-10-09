@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """StatusNotifier tray for desktops that do not run GNOME Shell."""
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -10,6 +11,9 @@ gi.require_version('AyatanaAppIndicator3', '0.1')
 from gi.repository import Gtk, Gio, GLib, AyatanaAppIndicator3 as AppIndicator
 
 from startup import get_auto_start
+from visibility import get_tray_visible
+from lifecycle import CodeRevision
+from service_client import decode_reply
 
 BUS_NAME = 'io.github.erhanzeyrek.WifiHotspot'
 OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
@@ -17,7 +21,11 @@ OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
 
 class HotspotTray(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id=BUS_NAME + '.Tray')
+        super().__init__(application_id=BUS_NAME + '.Tray',
+                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.add_main_option('show-icon', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
+                             'Show the tray icon in this session', None)
+        self.manual_start = False
         self.proxy = None
         self.indicator = None
         self.status = {'active': False}
@@ -25,11 +33,29 @@ class HotspotTray(Gtk.Application):
         self.busy = False
         self.revision = 0
         self.query_pending = False
+        self.closed = False
+        self.cancel = Gio.Cancellable()
+        self.poll_timer = 0
+        self.restarting = False
+        directory = Path(__file__).resolve().parent
+        self.code_revision = CodeRevision(directory / name for name in
+            ('tray.py', 'startup.py', 'visibility.py', 'preferences.py', 'lifecycle.py', 'service_client.py'))
+
+    def do_command_line(self, command_line):
+        if command_line.get_options_dict().contains('show-icon'):
+            self.manual_start = True
+        self.activate()
+        return 0
+
+    def _update_visibility(self):
+        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE if get_tray_visible()
+                                  else AppIndicator.IndicatorStatus.PASSIVE)
 
     def do_activate(self):
         if self.indicator:
+            self._update_visibility()
             return
-        if not get_auto_start():
+        if not get_auto_start() and not self.manual_start:
             self.quit()
             return
         self.hold()
@@ -39,24 +65,34 @@ class HotspotTray(Gtk.Application):
             AppIndicator.IndicatorCategory.HARDWARE, str(icon_dir))
         self.indicator.set_title('Wi-Fi Relay')
         self._render()
-        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
+        self._update_visibility()
         Gio.DBusProxy.new_for_bus(
             Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, None,
-            BUS_NAME, OBJECT_PATH, BUS_NAME, None, self._proxy_ready)
-        GLib.timeout_add_seconds(3, self._poll)
+            BUS_NAME, OBJECT_PATH, BUS_NAME, self.cancel, self._proxy_ready)
+        self.poll_timer = GLib.timeout_add_seconds(3, self._poll)
 
     def _proxy_ready(self, _source, result):
         try:
             self.proxy = Gio.DBusProxy.new_for_bus_finish(result)
+            if self.closed:
+                return
             self.proxy.set_default_timeout(60000)
             self.proxy.connect('g-signal', self._signal)
+            self.proxy.connect('notify::g-name-owner', self._owner_changed)
             self._query()
         except GLib.Error as error:
-            self._error(str(error))
+            if not self.closed:
+                self._error(str(error))
+
+    def _owner_changed(self, *_args):
+        self.revision += 1
+        self._query()
 
     def _signal(self, _proxy, _sender, name, parameters):
         try:
-            data = json.loads(parameters.unpack()[0])
+            if self.closed or name not in ('StatusChanged', 'ClientsChanged'):
+                return
+            data = decode_reply('GetStatus' if name == 'StatusChanged' else 'GetClients', parameters)
             if name == 'StatusChanged':
                 self.status = data
                 self.revision += 1
@@ -70,45 +106,89 @@ class HotspotTray(Gtk.Application):
             pass
 
     def _poll(self):
-        if not get_auto_start():
+        if self.closed:
+            return GLib.SOURCE_REMOVE
+        if self.code_revision.removed():
+            self.quit()
+            return GLib.SOURCE_REMOVE
+        if self.code_revision.changed() and not self.busy and not self.query_pending:
+            if not self.restarting:
+                self.restarting = True
+                GLib.idle_add(self._restart_after_upgrade)
+            return GLib.SOURCE_CONTINUE
+        if not get_auto_start() and not self.manual_start:
             self.indicator.set_status(AppIndicator.IndicatorStatus.PASSIVE)
             self.quit()
             return GLib.SOURCE_REMOVE
+        self._update_visibility()
         self._query()
         return GLib.SOURCE_CONTINUE
+
+    def _close(self):
+        if self.closed:
+            return
+        self.closed = True
+        if self.poll_timer:
+            GLib.source_remove(self.poll_timer)
+            self.poll_timer = 0
+        self.cancel.cancel()
+        if self.proxy:
+            self.proxy.disconnect_by_func(self._signal)
+            self.proxy.disconnect_by_func(self._owner_changed)
+
+    def do_shutdown(self):
+        self._close()
+        Gtk.Application.do_shutdown(self)
+
+    def _restart_after_upgrade(self):
+        arguments = list(sys.argv)
+        if self.manual_start and '--show-icon' not in arguments:
+            arguments.append('--show-icon')
+        self._close()
+        try:
+            os.execv(sys.executable, [sys.executable, *arguments])
+        except OSError as error:
+            print(f'Wi-Fi Relay tray could not reload after upgrade: {error}', file=sys.stderr)
+            self.quit()
+        return GLib.SOURCE_REMOVE
 
     def _query(self):
         if not self.proxy or self.busy or self.query_pending:
             return
         revision = self.revision
         self.query_pending = True
+        client_revision = None
         def finished(proxy, result):
+            nonlocal client_revision
             self.query_pending = False
             try:
-                status = json.loads(proxy.call_finish(result).unpack()[0])
-                if revision != self.revision:
+                status = decode_reply('GetStatus', proxy.call_finish(result))
+                if self.closed or revision != self.revision:
                     return
                 self.status = status
                 self.revision += 1
                 self._render()
                 if status.get('active'):
+                    client_revision = self.revision
                     self.proxy.call('GetClients', None, Gio.DBusCallFlags.NONE,
-                                    10000, None, clients_finished)
+                                    10000, self.cancel, clients_finished)
             except (GLib.Error, ValueError, TypeError):
-                if revision == self.revision:
+                if not self.closed and revision == self.revision:
                     self.status = {'active': False, 'unavailable': True}
                     self._render()
         def clients_finished(proxy, result):
             try:
-                if not self.status.get('active') or self.busy:
+                clients = decode_reply('GetClients', proxy.call_finish(result))
+                if (self.closed or not self.status.get('active') or self.busy
+                        or client_revision != self.revision):
                     return
-                self.clients = json.loads(proxy.call_finish(result).unpack()[0])
+                self.clients = clients
                 self.status['client_count'] = len(self.clients)
                 self._render()
             except (GLib.Error, ValueError, TypeError):
                 pass
         self.proxy.call('GetStatus', None, Gio.DBusCallFlags.NONE,
-                        10000, None, finished)
+                        10000, self.cancel, finished)
 
     def _render(self):
         stopping = self.status.get('state') == 'stopping'
@@ -163,12 +243,14 @@ class HotspotTray(Gtk.Application):
         self.revision += 1
         self._render()
         def finished(proxy, result):
+            if self.closed:
+                return
             self.busy = False
             self.status.pop('state', None)
             try:
-                value = proxy.call_finish(result).unpack()[0]
+                value = decode_reply(method, proxy.call_finish(result))
                 if method == 'Start':
-                    response = json.loads(value)
+                    response = value
                     if not response.get('success'):
                         self._error(response.get('error', 'Hotspot failed to start.'))
                     elif response.get('status'):
@@ -180,10 +262,10 @@ class HotspotTray(Gtk.Application):
             self.revision += 1
             self._render()
             self._query()
-        self.proxy.call(method, None, Gio.DBusCallFlags.NONE, 60000, None, finished)
+        self.proxy.call(method, None, Gio.DBusCallFlags.NONE, 60000, self.cancel, finished)
 
     def _open_settings(self, _item):
-        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'main.py')],
+        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py')],
                            Gio.SubprocessFlags.NONE)
 
     def _error(self, message):

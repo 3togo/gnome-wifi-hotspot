@@ -1,0 +1,13 @@
+Package: gnome-wifi-hotspot-tray
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: all
+Maintainer: Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>
+Depends: gnome-wifi-hotspot (= @VERSION@), python3, python3-gi, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1
+Breaks: gnome-wifi-hotspot (<< 1.0.0-16~)
+Replaces: gnome-wifi-hotspot (<< 1.0.0-16~)
+Homepage: https://github.com/3togo/gnome-wifi-hotspot
+Description: desktop tray controls for Wi-Fi Relay
+ Optional launch, status, and hotspot controls using the Wi-Fi Relay service.
+ Removing these controls leaves the standalone application and service intact.

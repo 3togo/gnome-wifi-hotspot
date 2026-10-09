@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+export PYBUILD_DISABLE=1
+
+%:
+	dh $@ --with python3
+
+override_dh_auto_build:
+	:
+
+override_dh_auto_test:
+	python3 -m unittest discover -s tests
+	node tests/test_tray.mjs
+	dbus-run-session -- xvfb-run -a python3 tests/check_settings_window.py
+	dbus-run-session -- xvfb-run -a python3 tests/check_desktop_tray.py
+	dbus-run-session -- xvfb-run -a env SANITIZE=1 integration/nm-applet/test.sh
+
+override_dh_auto_install:
+	WIFI_RELAY_BUILD_OUTPUT=$(CURDIR)/debian/.build bash packaging/build-deb.sh $$(dpkg-parsechangelog -S Version)
+	for package in gnome-wifi-hotspot gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray; do \
+		dpkg-deb --extract debian/.build/$${package}_$$(dpkg-parsechangelog -S Version)_all.deb debian/$$package; \
+	done
+
+execute_after_dh_fixperms:
+	chmod 0644 debian/gnome-wifi-hotspot/usr/libexec/wifi-hotspot-daemon/configuration.py \
+		debian/gnome-wifi-hotspot/usr/libexec/wifi-hotspot-daemon/nm_client.py
+
+override_dh_installsystemd:
+	dh_installsystemd --no-scripts
+
+override_dh_auto_clean:
+	rm -rf debian/.build

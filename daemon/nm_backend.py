@@ -169,6 +169,10 @@ class Backend:
                     self.status["client_count"] = event["authorized_clients"]
                 elif event["event"] == "result":
                     result = event["result"]
+                    if result.get("user_disconnected") is True:
+                        self._desired_config = None
+                        self._upstream_uuid = None
+                        self._candidate = None
                     self.status.update(active=False, state="off", client_count=0)
                     self.status["error"] = result.get("error") or "; ".join(result.get("cleanup_errors", []))
                 elif event["event"] == "error":
@@ -182,7 +186,7 @@ class Backend:
             raise ValueError("Invalid worker event")
         kind = event.get("event")
         if kind == "stage":
-            if (event.get("stage") not in {"preparing", "interface-created", "waiting-for-device",
+            if (event.get("stage") not in {"preparing", "native-interface-request", "interface-created", "waiting-for-device",
                     "restoring-ap-mode", "activating", "active", "stopping", "failed", "passed", "stopped"}
                     or not isinstance(event.get("interface"), str)
                     or not re.fullmatch(r"wrnm[0-9a-f]{6}", event["interface"])
@@ -195,7 +199,8 @@ class Backend:
             result = event.get("result")
             if (not isinstance(result, dict) or not isinstance(result.get("cleanup_errors", []), list)
                     or any(not isinstance(item, str) for item in result.get("cleanup_errors", []))
-                    or (result.get("error") is not None and not isinstance(result["error"], str))):
+                    or (result.get("error") is not None and not isinstance(result["error"], str))
+                    or ("user_disconnected" in result and type(result["user_disconnected"]) is not bool)):
                 raise ValueError("Invalid worker result")
         elif kind != "error" or not isinstance(event.get("message"), str):
             raise ValueError("Invalid worker event")

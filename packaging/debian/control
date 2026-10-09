@@ -4,11 +4,11 @@ Section: net
 Priority: optional
 Architecture: all
 Maintainer: Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>
-Depends: python3, python3-gi, gir1.2-glib-2.0, gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1, gnome-shell (>= 45), network-manager, hostapd, dnsmasq-base, iw, iproute2, iptables, polkitd, dbus, procps, psmisc
+Depends: python3, python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, network-manager, hostapd, dnsmasq-base, iw, iproute2, iptables, polkitd, dbus
+Suggests: gnome-wifi-hotspot-gnome (= @VERSION@), gnome-wifi-hotspot-tray (= @VERSION@)
 Homepage: https://github.com/3togo/gnome-wifi-hotspot
-Description: Wi-Fi Relay hotspot with concurrent Wi-Fi connection sharing
- Share a Wi-Fi connection through a virtual access point from GNOME Shell
- Quick Settings or a desktop tray on XFCE. Includes a GTK4 settings application,
- a system D-Bus daemon,
- and automatic fallback to a permitted 2.4 GHz upstream access point.
+Description: Wi-Fi Relay service and standalone hotspot settings
+ Share a Wi-Fi connection through a virtual access point. Includes a GTK4
+ settings application and a system D-Bus daemon with a shared NetworkManager
+ client. Desktop controls are available in separate optional packages.
  Concurrent operation requires compatible wireless hardware and drivers.

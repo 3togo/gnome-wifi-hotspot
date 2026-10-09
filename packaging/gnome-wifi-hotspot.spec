@@ -3,7 +3,7 @@ Version:        1.0.0
 Release:        1%{?dist}
 Summary:        Native GNOME Shell Wi-Fi Hotspot with simultaneous AP+STA support
 
-License:        MIT
+License:        MIT AND BSD-2-Clause
 URL:            https://github.com/3togo/gnome-wifi-hotspot
 Source0:        %{name}-%{version}.tar.gz
 
@@ -13,7 +13,7 @@ Requires:       hostapd
 Requires:       dnsmasq
 Requires:       iw
 Requires:       iproute
-Requires:       gnome-shell >= 45
+Suggests:       gnome-shell >= 45
 Requires:       gtk4
 Requires:       gtk3
 Requires:       libayatana-appindicator-gtk3
@@ -44,18 +44,22 @@ install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon
 install -m 0755 daemon/wifi-hotspot-daemon.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/create_ap %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/nm_backend.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
+install -m 0644 daemon/configuration.py daemon/nm_client.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools
 install -m 0755 tools/nm_ap_sta_probe.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools/
 
 # Install settings app
 install -d -m 0755 %{buildroot}%{_datadir}/wifi-hotspot/settings
-install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
+install -m 0755 settings/main.py settings/launcher.py settings/enable-extension.py settings/tray.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
+install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py settings/wifi_qr.py settings/qrcodegen.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
 cp -r settings/icons %{buildroot}%{_datadir}/wifi-hotspot/settings/
 install -d -m 0755 %{buildroot}%{_bindir}
-ln -s %{_datadir}/wifi-hotspot/settings/main.py %{buildroot}%{_bindir}/wifi-hotspot-settings
+ln -s %{_datadir}/wifi-hotspot/settings/launcher.py %{buildroot}%{_bindir}/wifi-hotspot-settings
 ln -s %{_datadir}/wifi-hotspot/settings/enable-extension.py %{buildroot}%{_bindir}/wifi-hotspot-enable-extension
 install -d -m 0755 %{buildroot}%{_sysconfdir}/xdg/autostart
 install -m 0644 data/wifi-hotspot-autostart.desktop %{buildroot}%{_sysconfdir}/xdg/autostart/
+
+install -m 0644 data/wifi-hotspot.conf %{buildroot}%{_datadir}/wifi-hotspot/default.conf
 
 # Install system configuration files
 install -d -m 0755 %{buildroot}%{_sysconfdir}/dbus-1/system.d
@@ -83,6 +87,10 @@ install -d -m 0755 %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
 install -m 0644 data/icons/hotspot.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.github.erhanzeyrek.WifiHotspot.svg
 
 %post
+if [ "$1" = 1 ]; then
+    python3 %{_libexecdir}/wifi-hotspot-daemon/configuration.py \
+        %{_sysconfdir}/wifi-hotspot.conf %{_datadir}/wifi-hotspot/default.conf
+fi
 if [ -f %{_sysconfdir}/wifi-hotspot.conf ] && [ ! -L %{_sysconfdir}/wifi-hotspot.conf ]; then
     chmod 0600 %{_sysconfdir}/wifi-hotspot.conf
 fi
@@ -96,7 +104,7 @@ systemctl enable --now wifi-hotspot-daemon.service 2>/dev/null || :
 %systemd_postun_with_restart wifi-hotspot-daemon.service
 
 %files
-%license LICENSE
+%license LICENSE packaging/licenses/*.BSD-2-Clause
 %doc README.md
 %{_datadir}/gnome-shell/extensions/wifi-relay@3togo.github.io
 %{_libexecdir}/wifi-hotspot-daemon/

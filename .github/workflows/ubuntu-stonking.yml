@@ -41,11 +41,11 @@ jobs:
           sed -i 's|archive.ubuntu.com|azure.archive.ubuntu.com|g; s|security.ubuntu.com|azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
           apt-get update --error-on=any
           apt-get install -y --no-install-recommends \
-            ca-certificates git dpkg-dev python3 python3-gi \
+            ca-certificates git dpkg-dev debhelper dh-python python3 python3-gi \
             gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gtk-3.0 \
             gir1.2-ayatanaappindicator3-0.1 nodejs gjs iptables \
             dbus xvfb xauth lintian appstream \
-            gcc pkgconf libgtk-3-dev libjansson-dev
+            build-essential pkgconf libgtk-3-dev libjansson-dev
 
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,13 +54,15 @@ jobs:
 
       - name: Run automated and real-widget checks
         run: |
+          # Checkout runs with a temporary HOME; later container steps use root HOME.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           python3 -m unittest discover -s tests
           node tests/test_tray.mjs
           for script in extension/*.js; do
             node --input-type=module --check < "$script"
           done
           bash -n daemon/create_ap packaging/build-deb.sh
-          sh -n packaging/debian/postinst packaging/debian/prerm \
+          sh -n packaging/debian/preinst packaging/debian/postinst packaging/debian/prerm \
             packaging/debian/postrm tests/check_package_lifecycle.sh
           dbus-run-session -- xvfb-run -a python3 tests/check_settings_window.py
           dbus-run-session -- xvfb-run -a python3 tests/check_desktop_tray.py
@@ -75,15 +77,14 @@ jobs:
           base_version="${INPUT_VERSION:-$(dpkg-parsechangelog -l packaging/debian/changelog -S Version)}"
           dpkg --validate-version "$base_version"
           version="${base_version}+ubuntu26.10.${GITHUB_RUN_NUMBER}"
-          previous_version="${version}~ci.previous"
-          ./packaging/build-deb.sh "$previous_version"
-          ./packaging/build-deb.sh "$version"
+          python3 packaging/build-source.py "$version" --binary
           package="gnome-wifi-hotspot_${version}_all.deb"
-          previous="gnome-wifi-hotspot_${previous_version}_all.deb"
+          previous="legacy-split-fixture.deb"
+          python3 tests/build_legacy_package.py dist "$version" "dist/$previous"
           printf 'deb_path=dist/%s\n' "$package" >> "$GITHUB_OUTPUT"
           printf 'previous_path=dist/%s\n' "$previous" >> "$GITHUB_OUTPUT"
-          (cd dist && sha256sum "$package" > SHA256SUMS)
-          lintian --tag-display-limit 0 "dist/$package"
+          (cd dist && sha256sum gnome-wifi-hotspot*_"${version}"_all.deb > SHA256SUMS)
+          lintian --tag-display-limit 0 dist/gnome-wifi-hotspot*_"${version}"_all.deb
 
       - name: Verify installation, upgrade, removal, and purge
         env:
@@ -99,7 +100,12 @@ jobs:
         with:
           name: wifi-relay-ubuntu-stonking-${{ github.run_number }}
           path: |
-            ${{ steps.package.outputs.deb_path }}
+            dist/gnome-wifi-hotspot*_all.deb
             dist/SHA256SUMS
+            dist/*.dsc
+            dist/*.tar.xz
+            dist/*.changes
+            dist/*.buildinfo
+            dist/*-source-build.log
           if-no-files-found: error
           retention-days: 30

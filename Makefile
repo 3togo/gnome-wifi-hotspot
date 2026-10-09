@@ -27,7 +27,7 @@ all:
 	@echo "  dev-test-dbus     - Call D-Bus GetStatus method"
 	@echo "  dev-monitor-dbus  - Monitor live D-Bus traffic"
 	@echo "  dev-clean         - Remove dev symlinks and /etc configs"
-	@echo "  install           - Install to system (/usr/local or root)"
+	@echo "  install           - Install standalone app to system (/usr/local or root)"
 	@echo "  uninstall         - Uninstall from system"
 
 dev-setup:
@@ -92,7 +92,7 @@ dev-watch-shell:
 
 dev-run-settings:
 	@echo "==> Launching Settings UI..."
-	python3 settings/main.py
+	python3 settings/launcher.py
 
 dev-test-dbus:
 	@echo "==> Querying D-Bus GetStatus..."
@@ -119,23 +119,20 @@ SYSCONFDIR ?= /etc
 
 install:
 	@echo "==> Installing system components to $(PREFIX)..."
-	install -d -m 0755 $(PREFIX)/share/gnome-shell/extensions/$(UUID)
-	cp -r extension/* $(PREFIX)/share/gnome-shell/extensions/$(UUID)/
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon
 	install -m 0755 daemon/wifi-hotspot-daemon.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/create_ap $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/nm_backend.py $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -m 0644 daemon/configuration.py daemon/nm_client.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon/tools
 	install -m 0755 tools/nm_ap_sta_probe.py $(PREFIX)/libexec/wifi-hotspot-daemon/tools/
 	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
-	install -m 0755 settings/main.py settings/enable-extension.py settings/startup.py settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
-	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0755 settings/main.py settings/launcher.py settings/enable-extension.py $(PREFIX)/share/wifi-hotspot/settings/
+	install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py settings/wifi_qr.py settings/qrcodegen.py $(PREFIX)/share/wifi-hotspot/settings/
 	install -d -m 0755 $(PREFIX)/bin
-	ln -sf $(PREFIX)/share/wifi-hotspot/settings/main.py $(PREFIX)/bin/wifi-hotspot-settings
+	ln -sf $(PREFIX)/share/wifi-hotspot/settings/launcher.py $(PREFIX)/bin/wifi-hotspot-settings
 	ln -sf $(PREFIX)/share/wifi-hotspot/settings/enable-extension.py $(PREFIX)/bin/wifi-hotspot-enable-extension
 	ln -sf $(PREFIX)/libexec/wifi-hotspot-daemon/tools/nm_ap_sta_probe.py $(PREFIX)/bin/wifi-relay-nm-probe
-	install -d -m 0755 $(SYSCONFDIR)/xdg/autostart
-	install -m 0644 data/wifi-hotspot-autostart.desktop $(SYSCONFDIR)/xdg/autostart/
 	install -d -m 0755 $(SYSCONFDIR)/dbus-1/system.d
 	install -m 0644 data/io.github.erhanzeyrek.WifiHotspot.conf $(SYSCONFDIR)/dbus-1/system.d/
 	install -d -m 0755 $(PREFIX)/share/dbus-1/system-services
@@ -149,10 +146,10 @@ install:
 	sed "s|/usr/libexec|$(PREFIX)/libexec|g" data/wifi-hotspot-daemon.service > /tmp/systemd.service
 	install -m 0644 /tmp/systemd.service $(SYSCONFDIR)/systemd/system/wifi-hotspot-daemon.service
 	if [ ! -f $(SYSCONFDIR)/wifi-hotspot.conf ]; then \
+		install -m 0600 data/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
 		HOST=$$(hostname 2>/dev/null || echo "Hotspot"); \
 		[ "$$HOST" = "localhost" ] && HOST="Hotspot"; \
-		sed "s|SSID=.*|SSID=$${HOST}-Hotspot|g" data/wifi-hotspot.conf > /tmp/wifi-hotspot.conf; \
-		install -m 0600 /tmp/wifi-hotspot.conf $(SYSCONFDIR)/wifi-hotspot.conf; \
+		python3 daemon/configuration.py $(SYSCONFDIR)/wifi-hotspot.conf data/wifi-hotspot.conf --ssid "$${HOST}-Hotspot"; \
 	fi
 	chmod 0600 $(SYSCONFDIR)/wifi-hotspot.conf
 	install -d -m 0755 $(PREFIX)/share/applications
@@ -165,6 +162,23 @@ install:
 	systemctl reload dbus 2>/dev/null || true
 	systemctl enable wifi-hotspot-daemon.service 2>/dev/null || true
 
+.PHONY: install-gnome install-tray install-all
+
+install-gnome:
+	install -d -m 0755 $(PREFIX)/share/gnome-shell/extensions/$(UUID)
+	cp -r extension/* $(PREFIX)/share/gnome-shell/extensions/$(UUID)/
+	install -d -m 0755 $(SYSCONFDIR)/xdg/autostart
+	install -m 0644 data/wifi-relay-gnome.desktop $(SYSCONFDIR)/xdg/autostart/
+
+install-tray:
+	install -d -m 0755 $(PREFIX)/share/wifi-hotspot/settings
+	install -m 0755 settings/tray.py $(PREFIX)/share/wifi-hotspot/settings/
+	cp -r settings/icons $(PREFIX)/share/wifi-hotspot/settings/
+	install -d -m 0755 $(SYSCONFDIR)/xdg/autostart
+	install -m 0644 data/wifi-relay-tray.desktop $(SYSCONFDIR)/xdg/autostart/
+
+install-all: install install-gnome install-tray
+
 uninstall:
 	@echo "==> Uninstalling system components from $(PREFIX)..."
 	rm -rf $(PREFIX)/share/gnome-shell/extensions/$(UUID)
@@ -173,6 +187,7 @@ uninstall:
 	rm -f $(PREFIX)/bin/wifi-hotspot-settings $(PREFIX)/bin/wifi-hotspot-enable-extension
 	rm -f $(PREFIX)/bin/wifi-relay-nm-probe
 	rm -f $(SYSCONFDIR)/xdg/autostart/wifi-hotspot-autostart.desktop
+	rm -f $(SYSCONFDIR)/xdg/autostart/wifi-relay-gnome.desktop $(SYSCONFDIR)/xdg/autostart/wifi-relay-tray.desktop
 	rm -f $(SYSCONFDIR)/dbus-1/system.d/io.github.erhanzeyrek.WifiHotspot.conf
 	rm -f $(PREFIX)/share/dbus-1/system-services/io.github.erhanzeyrek.WifiHotspot.service
 	rm -f $(PREFIX)/share/polkit-1/actions/io.github.erhanzeyrek.WifiHotspot.policy

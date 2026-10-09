@@ -1,6 +1,49 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /* Protocol and asynchronous lifecycle tests on a private D-Bus; no host networking. */
 #include "wifi-relay.c"
+#include <glib/gstdio.h>
+
+static void test_tray_visibility (void)
+{
+    GError *error = NULL;
+    gchar *directory = g_dir_make_tmp ("relay-tray-test-XXXXXX", &error);
+    gchar *path = g_build_filename (directory, "preferences", "tray.json", NULL);
+    gchar *parent = g_path_get_dirname (path);
+    GStatBuf st;
+    g_assert_no_error (error);
+    g_assert_true (read_tray_visible (path));
+    g_assert_true (write_tray_visible (path, FALSE, &error));
+    g_assert_no_error (error);
+    g_assert_false (read_tray_visible (path));
+    g_assert_cmpint (g_stat (path, &st), ==, 0);
+    g_assert_cmpint (st.st_mode & 0777, ==, 0600);
+    g_assert_true (g_file_set_contents (path, "{\"visible\":false,\"future\":\"keep\"}", -1, &error));
+    g_assert_no_error (error);
+    g_assert_true (write_tray_visible (path, TRUE, &error));
+    g_assert_no_error (error);
+    g_assert_true (read_tray_visible (path));
+    {
+        json_t *preferences = json_load_file (path, 0, NULL);
+        g_assert_cmpstr (json_string_value (json_object_get (preferences, "future")), ==, "keep");
+        json_decref (preferences);
+    }
+    {
+        gchar *oversized = g_strnfill (16385, ' ');
+        g_assert_true (g_file_set_contents (path, oversized, -1, &error));
+        g_assert_no_error (error);
+        g_assert_null (load_tray_preferences (path));
+        g_assert_true (read_tray_visible (path));
+        g_free (oversized);
+    }
+    g_file_set_contents (path, "invalid", -1, &error);
+    g_assert_no_error (error);
+    g_assert_true (read_tray_visible (path));
+    g_assert_false (write_tray_visible (parent, FALSE, &error));
+    g_assert_nonnull (error);
+    g_clear_error (&error);
+    g_remove (path); g_rmdir (parent); g_rmdir (directory);
+    g_free (parent); g_free (path); g_free (directory);
+}
 
 static GTestDBus *bus;
 static GDBusNodeInfo *info;
@@ -428,6 +471,7 @@ int main (int argc, char **argv)
         "</interface></node>", &error);
     g_assert_no_error (error);
     g_test_add_func ("/relay/status/invalid", test_invalid_status);
+    g_test_add_func ("/relay/tray/visibility", test_tray_visibility);
     g_test_add_func ("/relay/status/count-normalization", test_normalized_count);
     g_test_add_func ("/relay/status/changes", test_status_changes);
     g_test_add_func ("/relay/replies/start", test_start_reply);

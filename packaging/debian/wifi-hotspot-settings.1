@@ -3,13 +3,21 @@
 wifi-hotspot-settings \- configure and manage a GNOME Wi-Fi hotspot
 .SH SYNOPSIS
 .B wifi-hotspot-settings
+.RB [ --standalone ]
 .SH DESCRIPTION
-Open the GTK4 preferences application to configure hotspot credentials,
+On GNOME with the optional Relay Wi-Fi panel integration installed, open
+GNOME Settings Wi-Fi. Its Wi-Fi Relay button opens the shared editor.
+On stock GNOME and other desktops, open the GTK4 preferences application
+to configure hotspot credentials,
 network interfaces, frequency band, and client isolation, and view clients.
 The system daemon can share an existing Wi-Fi connection through a virtual
 access point if the wireless hardware and driver support concurrent AP+STA.
 If necessary, startup switches the existing connection to a reachable
 2.4 GHz access point with the same SSID on a permitted hotspot channel.
+.SH OPTIONS
+.TP
+.B --standalone
+Open the shared Relay editor directly, bypassing GNOME Settings.
 .SH FILES
 .TP
 .I /etc/wifi-hotspot.conf
