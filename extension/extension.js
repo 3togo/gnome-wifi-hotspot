@@ -82,6 +82,8 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
             this._openSettings();
         });
 
+        this.menu.addAction(_('About'), () => this._openAbout());
+
         // 4. Primary Button Click Event
         this.connect('clicked', () => this._onToggleClicked());
 
@@ -353,10 +355,18 @@ class HotspotToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _openSettings() {
+        this._launchWindow([], _('Could not open network settings: '));
+    }
+
+    _openAbout() {
+        this._launchWindow(['--about'], _('Could not open About: '));
+    }
+
+    _launchWindow(arguments_, errorMessage) {
         try {
-            Gio.Subprocess.new(['wifi-hotspot-settings'], Gio.SubprocessFlags.NONE);
+            Gio.Subprocess.new(['wifi-hotspot-settings', ...arguments_], Gio.SubprocessFlags.NONE);
         } catch (error) {
-            Main.notify(_('Wi-Fi Relay'), _('Could not open network settings: ') + error.message);
+            Main.notify(_('Wi-Fi Relay'), errorMessage + error.message);
         }
     }
 
@@ -399,6 +409,7 @@ class HotspotTray extends PanelMenu.Button {
         this.menu.addMenuItem(this._details);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction(_('Hotspot Settings'), () => extension._indicator?._toggle._openSettings());
+        this.menu.addAction(_('About'), () => extension._indicator?._toggle._openAbout());
         this.update({active: false}, [], false);
     }
 

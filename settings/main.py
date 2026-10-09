@@ -594,6 +594,35 @@ class HotspotSettingsApp(Adw.Application):
         win.present()
 
 
+class HotspotAboutApp(Adw.Application):
+    """A separate window that needs neither configuration nor service access."""
+    def __init__(self):
+        super().__init__(application_id=BUS_NAME + ".About",
+                         flags=Gio.ApplicationFlags.FLAGS_NONE)
+
+    def do_activate(self):
+        win = self.props.active_window
+        if not win:
+            win = Adw.AboutWindow(
+                application=self,
+                application_name="Wi-Fi Relay",
+                application_icon=BUS_NAME,
+                version="1.0.0",
+                developer_name="Erhan Zeyrek and Wi-Fi Relay contributors",
+                developers=["Erhan Zeyrek", "Wi-Fi Relay contributors"],
+                copyright="© 2026 Wi-Fi Relay contributors",
+                license_type=Gtk.License.MIT_X11,
+                website="https://github.com/3togo/gnome-wifi-hotspot",
+                issue_url="https://github.com/3togo/gnome-wifi-hotspot/issues",
+                comments="Share your internet connection with optional desktop controls.",
+            )
+            win.add_acknowledgement_section("Third-party components", [
+                "create_ap — oblique and lakinduaksh (BSD-2-Clause)",
+                "QR Code generator — Project Nayuki (MIT)",
+            ])
+        win.present()
+
+
 if __name__ == "__main__":
     app = HotspotSettingsApp()
     sys.exit(app.run(sys.argv))

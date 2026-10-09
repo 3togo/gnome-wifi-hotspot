@@ -104,6 +104,10 @@ gnome-extensions enable wifi-relay@3togo.github.io
 GNOME compatibility is declared for Shell 45–51, with automated loading checked
 on 51. Tray controls require a desktop supporting StatusNotifier/AppIndicator.
 The stable packages leave the distribution's network menu and Settings intact.
+Starting with package revision **1.0.0-19**, **About** in either desktop menu opens the app version, license, credits, project
+page, and issue-report link. It is also available with `wifi-hotspot-settings --about`
+and does not require the hotspot service.
+
 Version-specific downstream [applet patches](../integration/nm-applet/README.md)
 and [GNOME Settings patches](../integration/gnome-settings/README.md) are separate
 maintainer experiments. Their old beta binary downloads have been retired.

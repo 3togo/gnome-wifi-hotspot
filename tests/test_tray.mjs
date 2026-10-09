@@ -24,6 +24,7 @@ class Item {
     setSensitive(value) { this.sensitive = value; }
 }
 let query, start, stop;
+const launches = [];
 const proxy = {
     GetStatusRemote(callback) { query = callback; },
     StartRemote(callback) { start = callback; },
@@ -32,7 +33,7 @@ const proxy = {
 };
 const context = {
     GObject: {registerClass: cls => cls},
-    Gio: {DBus: {system: {}}, DBusProxy: {makeProxyWrapper: () => class {constructor() {return proxy;}}}},
+    Gio: {Subprocess: {new: args => launches.push(Array.from(args))}, SubprocessFlags: {NONE: 0}, DBus: {system: {}}, DBusProxy: {makeProxyWrapper: () => class {constructor() {return proxy;}}}},
     GLib: {source_remove() {}},
     St: {Icon: class {constructor(props) {Object.assign(this, props);}}},
     PanelMenu: {Button: Actor},
@@ -51,6 +52,14 @@ const toggle = new context.classes.HotspotToggle(extension);
 const tray = extension.tray;
 assert.match(tray._icon.style_class, /hotspot-tray-off/);
 assert.equal(tray._switch.sensitive, true);
+
+extension._indicator = {_toggle: toggle};
+for (const menu of [tray.menu, toggle.menu]) {
+    menu.items.find(item => item.label === 'About').action();
+}
+assert.deepEqual(launches, [['wifi-hotspot-settings', '--about'], ['wifi-hotspot-settings', '--about']]);
+assert.equal(start, undefined);
+assert.equal(stop, undefined);
 
 toggle._onToggleClicked();
 assert.match(tray._icon.style_class, /hotspot-tray-connecting/);

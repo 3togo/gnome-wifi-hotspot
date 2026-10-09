@@ -1,9 +1,11 @@
 """Run separately: GTK3 tray and GTK4 settings cannot share one process."""
 from pathlib import Path
 import sys
+import os
 from unittest.mock import Mock, patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'settings'))
+sys.path.insert(0, os.environ.get('WIFI_RELAY_TEST_SETTINGS_DIR') or
+                str(Path(__file__).resolve().parents[1] / 'settings'))
 from tray import HotspotTray, GLib, AppIndicator
 
 app = HotspotTray()
@@ -108,3 +110,20 @@ assert removed._poll() == GLib.SOURCE_REMOVE
 removed.quit.assert_called_once()
 removed.proxy.call.assert_not_called()
 print('Tray removal exits controls without a network operation.')
+
+# About remains usable with an unavailable service and performs no network call.
+about_tray = HotspotTray()
+about_tray.indicator = Mock()
+about_tray.status = {'active': False, 'unavailable': True}
+about_tray._render()
+about_item = next(item for item in about_tray.menu.get_children()
+                  if item.get_label() == 'About')
+assert about_item.get_sensitive()
+with patch('tray.Gio.Subprocess.new') as launch:
+    about_item.activate()
+    command = launch.call_args.args[0]
+    assert command[-1] == '--about'
+    assert Path(command[1]).name == 'launcher.py'
+assert about_tray.proxy is None
+assert about_tray.status == {'active': False, 'unavailable': True}
+print('About opens independently of the hotspot service.')

@@ -229,6 +229,9 @@ class HotspotTray(Gtk.Application):
         settings = Gtk.MenuItem(label='Hotspot Settings')
         settings.connect('activate', self._open_settings)
         menu.append(settings)
+        about = Gtk.MenuItem(label='About')
+        about.connect('activate', self._open_about)
+        menu.append(about)
         menu.show_all()
         self.menu = menu
         self.indicator.set_menu(menu)
@@ -265,8 +268,17 @@ class HotspotTray(Gtk.Application):
         self.proxy.call(method, None, Gio.DBusCallFlags.NONE, 60000, self.cancel, finished)
 
     def _open_settings(self, _item):
-        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py')],
-                           Gio.SubprocessFlags.NONE)
+        self._launch_window()
+
+    def _open_about(self, _item):
+        self._launch_window('--about')
+
+    def _launch_window(self, *arguments):
+        try:
+            Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py'), *arguments],
+                               Gio.SubprocessFlags.NONE)
+        except GLib.Error as error:
+            self._error(str(error))
 
     def _error(self, message):
         dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR,
