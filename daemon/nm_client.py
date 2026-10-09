@@ -92,4 +92,3 @@ class NetworkManager:
     def close(self):
         self.bus.signal_unsubscribe(self._state_subscription)
         self.bus.close_sync(None)
-
