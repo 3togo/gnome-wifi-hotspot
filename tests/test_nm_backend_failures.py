@@ -250,6 +250,51 @@ class WorkerFailureTests(unittest.TestCase):
         self.assertIn('Invalid worker event', status['error'])
         self.assertLess(len(self.backend.buffer), 65536)
 
+    def test_continuous_partial_output_is_rejected_on_first_full_chunk(self):
+        self.backend.process = self.process
+        with patch.object(module.os, 'read', return_value=b'x' * module.MAX_EVENT_BYTES) as read:
+            self.backend.get_status()
+        self.assertEqual(read.call_count, 1)
+        self.process.terminate.assert_called_once()
+        self.assertEqual(self.backend.buffer, b'')
+
+    def test_continuous_valid_output_yields_with_a_bounded_read_budget(self):
+        self.backend.process = self.process
+        event = b'{"event":"clients","authorized_clients":2}\n'
+        with patch.object(module.os, 'read', return_value=event) as read:
+            status = self.backend.get_status()
+        self.assertEqual(status['client_count'], 2)
+        self.assertLessEqual(read.call_count * len(event), module.MAX_DRAIN_BYTES + len(event))
+        self.process.terminate.assert_not_called()
+
+    def test_protocol_failure_escalates_without_blocking_and_recovers_after_exit(self):
+        self.backend.process = self.process
+        self.send(b'not-json\n')
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.backend.get_status()
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=139):
+            self.backend.get_status()
+        self.process.kill.assert_not_called()
+        with patch.object(module.time, 'monotonic', return_value=140):
+            self.backend.get_status()
+            self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.process.wait.assert_not_called()
+        self.process.poll.return_value = -9
+        self.process.returncode = -9
+        calls = self.recovery.call_count
+        self.backend.get_status()
+        self.assertIsNone(self.backend.process)
+        self.assertGreater(self.recovery.call_count, calls)
+        self.assertIsNone(self.backend._termination_deadline)
+
+    def test_deeply_nested_event_is_rejected_without_crashing_service(self):
+        self.backend.process = self.process
+        self.send(b'[' * 2000 + b'0' + b']' * 2000 + b'\n')
+        self.assertIn('Invalid worker event', self.backend.get_status()['error'])
+        self.process.terminate.assert_called_once()
+
 
 class OwnershipFailureTests(unittest.TestCase):
     def setUp(self):

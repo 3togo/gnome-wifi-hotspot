@@ -30,7 +30,7 @@ class PreferenceTests(unittest.TestCase):
     def test_oversized_or_nonobject_file_is_ignored(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'tray.json'
-            for contents in ['[]', 'x' * (MAX_PREFERENCE_BYTES + 1)]:
+            for contents in ['[]', 'x' * (MAX_PREFERENCE_BYTES + 1), '[' * 2000 + '0' + ']' * 2000]:
                 path.write_text(contents)
                 self.assertEqual(read_preferences(path), {})
 

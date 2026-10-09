@@ -35,6 +35,25 @@ Nayuki encoder. Payloads escape special characters and identify hidden networks;
 UTF-8 encoding supports international network names. GTK4 displays opaque RGB
 pixels with a white quiet zone. No imaging or QR package is required at runtime.
 
+## Service hardening
+
+create_ap startup logs live under the private, service-owned
+`/run/wifi-relay` directory with mode 0600. Startup refuses symlinked runtime
+paths, unsafe directory permissions, foreign ownership, linked log files, and
+nonregular logs before truncation. Failure replies read only the last 16 KiB
+and retain up to four lines. The service no longer opens a predictable file in
+the shared `/tmp` directory with root privileges.
+
+The NetworkManager worker protocol limits each event to 64 KiB and each poll's
+read budget to 256 KiB. Continuous output yields back to the service loop;
+oversized or deeply nested messages stop the worker. A worker that ignores
+SIGTERM after a protocol failure receives SIGKILL after 40 seconds through
+nonblocking polling, then ownership recovery runs after the process exits.
+Malformed, excessively nested per-user JSON preferences fall back to defaults.
+
+These checks use fake network transports and temporary files. Live driver,
+suspend/resume, and extended traffic testing remain release gates below.
+
 ## Build and verification
 
 Build the standalone binary without installing or restarting anything:

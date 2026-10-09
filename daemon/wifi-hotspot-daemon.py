@@ -14,6 +14,7 @@ import re
 import tempfile
 import importlib.util
 import signal
+import stat
 from pathlib import Path
 import gi
 
@@ -36,6 +37,43 @@ except ModuleNotFoundError:
 SYSTEM_CONFIG = "/etc/wifi-hotspot.conf"
 LOCAL_CONFIG = os.path.expanduser("~/.config/wifi-hotspot.conf")
 DEV_CONFIG = os.path.join(os.path.dirname(__file__), "..", "data", "wifi-hotspot.conf")
+
+RUNTIME_DIRECTORY = Path("/run/wifi-relay")
+MAX_STARTUP_LOG_BYTES = 16384
+
+
+def prepare_startup_log():
+    """Open logs only inside a private, service-owned runtime directory."""
+    RUNTIME_DIRECTORY.mkdir(mode=0o700, parents=True, exist_ok=True)
+    directory = os.open(RUNTIME_DIRECTORY, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        info = os.fstat(directory)
+        if info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o700:
+            raise RuntimeError("Hotspot runtime directory must be private and service-owned.")
+        descriptor = os.open("create_ap.log", os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
+                             0o600, dir_fd=directory)
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_uid != os.geteuid():
+                raise RuntimeError("Unsafe hotspot startup log.")
+            os.fchmod(descriptor, 0o600)
+            os.ftruncate(descriptor, 0)
+        finally:
+            os.close(descriptor)
+    finally:
+        os.close(directory)
+    return str(RUNTIME_DIRECTORY / "create_ap.log")
+
+
+def startup_log_error(path):
+    # Bound both memory use and the D-Bus error reply, including a single long line.
+    with open(path, "rb") as stream:
+        stream.seek(0, os.SEEK_END)
+        stream.seek(max(0, stream.tell() - MAX_STARTUP_LOG_BYTES))
+        lines = [line.strip() for line in stream.read(MAX_STARTUP_LOG_BYTES).decode("utf-8", errors="replace").splitlines()
+                 if line.strip()]
+    return " \n".join(lines[-4:])
+
 
 INTROSPECTION_XML = f"""
 <node>
@@ -753,7 +791,7 @@ class WifiHotspotDaemon:
 
             # 4. Start create_ap process with logfile
             config_path = get_config_path(for_write=False)
-            log_path = "/tmp/create_ap.log"
+            log_path = prepare_startup_log()
             cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
             code, out, err = self._run_cmd(cmd)
@@ -783,9 +821,7 @@ class WifiHotspotDaemon:
                 err_msg = ""
                 if os.path.exists(log_path):
                     try:
-                        with open(log_path, "r") as f:
-                            lines = [line.strip() for line in f if line.strip()]
-                            err_msg = " \n".join(lines[-4:])
+                        err_msg = startup_log_error(log_path)
                     except Exception:
                         pass
                 if not err_msg:

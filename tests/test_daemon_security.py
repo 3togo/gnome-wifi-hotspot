@@ -155,3 +155,71 @@ class ConfigurationTests(unittest.TestCase):
     def test_valid_hex_psk_and_multibyte_ssid(self):
         result = module.validate_config({'SSID': '😀' * 8, 'USE_PSK': '1', 'PASSPHRASE': 'a' * 64})
         self.assertEqual(result['USE_PSK'], '1')
+
+
+class StartupLogTests(unittest.TestCase):
+    def setUp(self):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.runtime = self.root / 'runtime'
+        patcher = patch.object(module, 'RUNTIME_DIRECTORY', self.runtime)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_log_is_private_and_previous_contents_are_truncated(self):
+        path = Path(module.prepare_startup_log())
+        self.assertEqual(self.runtime.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        path.write_text('previous failure')
+        self.assertEqual(module.prepare_startup_log(), str(path))
+        self.assertEqual(path.read_bytes(), b'')
+
+    def test_symlink_and_hardlink_targets_are_never_truncated(self):
+        self.runtime.mkdir(mode=0o700)
+        target = self.root / 'victim'
+        target.write_text('preserve me')
+        log = self.runtime / 'create_ap.log'
+        for link in ('symlink', 'hardlink'):
+            with self.subTest(link=link):
+                if link == 'symlink':
+                    log.symlink_to(target)
+                else:
+                    os.link(target, log)
+                with self.assertRaises((OSError, RuntimeError)):
+                    module.prepare_startup_log()
+                self.assertEqual(target.read_text(), 'preserve me')
+                log.unlink()
+
+    def test_unsafe_runtime_directory_is_rejected(self):
+        self.runtime.mkdir(mode=0o755)
+        self.runtime.chmod(0o755)
+        with self.assertRaisesRegex(RuntimeError, 'private'):
+            module.prepare_startup_log()
+        self.assertFalse((self.runtime / 'create_ap.log').exists())
+
+    def test_symlinked_runtime_directory_is_rejected(self):
+        self.runtime.symlink_to(self.root, target_is_directory=True)
+        with self.assertRaises(OSError):
+            module.prepare_startup_log()
+        self.assertFalse((self.root / 'create_ap.log').exists())
+
+    def test_runtime_directory_owned_by_another_user_is_rejected(self):
+        self.runtime.mkdir(mode=0o700)
+        with patch.object(module.os, 'geteuid', return_value=os.geteuid() + 1):
+            with self.assertRaisesRegex(RuntimeError, 'service-owned'):
+                module.prepare_startup_log()
+        self.assertFalse((self.runtime / 'create_ap.log').exists())
+
+    def test_fifo_log_is_rejected_without_blocking(self):
+        self.runtime.mkdir(mode=0o700)
+        os.mkfifo(self.runtime / 'create_ap.log')
+        with self.assertRaises((OSError, RuntimeError)):
+            module.prepare_startup_log()
+
+    def test_failure_reply_reads_only_bounded_log_tail(self):
+        path = Path(module.prepare_startup_log())
+        path.write_bytes(b'x' * (module.MAX_STARTUP_LOG_BYTES * 2) + b'\nlast failure\n')
+        error = module.startup_log_error(path)
+        self.assertTrue(error.endswith('last failure'))
+        self.assertLessEqual(len(error), module.MAX_STARTUP_LOG_BYTES + 2)

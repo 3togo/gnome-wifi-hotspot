@@ -23,6 +23,7 @@ spec.loader.exec_module(probe)
 STATE_FILE = Path("/run/wifi-relay/nm-owned.json")
 SYS_NET = Path("/sys/class/net")
 MAX_EVENT_BYTES = 65536
+MAX_DRAIN_BYTES = 4 * MAX_EVENT_BYTES
 
 
 def validate_ownership(data):
@@ -114,6 +115,7 @@ class Backend:
         self.process = None
         self.buffer = b""
         self._protocol_error = False
+        self._termination_deadline = None
         self._recovery_pending = True
         self._desired_config = None
         self._upstream_uuid = None
@@ -138,13 +140,19 @@ class Backend:
     def _drain(self):
         if self.process is None or self._protocol_error:
             return
-        while True:
+        if len(self.buffer) >= MAX_EVENT_BYTES:
+            self._invalid_event()
+            return
+        drained = 0
+        # Yield to the service loop even when a worker continuously writes.
+        while drained < MAX_DRAIN_BYTES:
             try:
-                data = os.read(self.process.stdout.fileno(), 65536)
+                data = os.read(self.process.stdout.fileno(), MAX_EVENT_BYTES)
             except BlockingIOError:
                 break
             if not data:
                 break
+            drained += len(data)
             self.buffer += data
             while b"\n" in self.buffer:
                 line, self.buffer = self.buffer.split(b"\n", 1)
@@ -153,7 +161,7 @@ class Backend:
                         raise ValueError("Oversized worker event")
                     event = json.loads(line)
                     self._validate_event(event)
-                except (ValueError, TypeError, UnicodeError) as exc:
+                except (ValueError, TypeError, UnicodeError, RecursionError):
                     self._invalid_event()
                     return
                 if event["event"] == "stage":
@@ -177,8 +185,9 @@ class Backend:
                     self.status["error"] = result.get("error") or "; ".join(result.get("cleanup_errors", []))
                 elif event["event"] == "error":
                     self.status.update(active=False, state="off", client_count=0, error=event["message"])
-        if len(self.buffer) >= MAX_EVENT_BYTES:
-            self._invalid_event()
+            if len(self.buffer) >= MAX_EVENT_BYTES:
+                self._invalid_event()
+                return
 
     @staticmethod
     def _validate_event(event):
@@ -211,15 +220,23 @@ class Backend:
         self.status.update(active=False, state="stopping", client_count=0, error="Invalid worker event.")
         if self.process.poll() is None:
             self.process.terminate()
+            self._termination_deadline = time.monotonic() + 40
 
     def get_status(self):
         self._drain()
+        if (self.process and self._termination_deadline is not None
+                and time.monotonic() >= self._termination_deadline
+                and self.process.poll() is None):
+            # Protocol failures must not strand a worker that ignores SIGTERM.
+            self.process.kill()
+            self._termination_deadline = None
         if self.process and self.process.poll() is not None:
             self.status.update(active=False, state="off", client_count=0)
             if self.process.returncode and not self.status.get("error"):
                 self.status["error"] = "NetworkManager worker exited unexpectedly."
             self.process.stdout.close()
             self.process = None
+            self._termination_deadline = None
             self._recovery_pending = True
         if self.process is None and self._recovery_pending:
             try:
@@ -242,6 +259,7 @@ class Backend:
                        "ssid": config["SSID"], "phy_iface": config["WIFI_IFACE"], "client_count": 0}
         self.buffer = b""
         self._protocol_error = False
+        self._termination_deadline = None
         try:
             self.process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker"],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE)
