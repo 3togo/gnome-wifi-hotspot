@@ -1,3 +1,12 @@
+gnome-wifi-hotspot (1.0.0-18) stonking; urgency=medium
+
+  * Publish stable Wi-Fi Relay 1.0.0 with matching optional desktop packages.
+  * Preserve Debian payload templates in source exports without Git metadata.
+  * Refresh installation, upgrade, validation, and release documentation.
+  * Include the current user guide and release notes in the main package.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 15:53:32 -0000
+
 gnome-wifi-hotspot (1.0.0-17) stonking; urgency=medium
 
   * Secure privileged create_ap startup logs in the private runtime directory.
