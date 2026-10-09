@@ -3,6 +3,10 @@ gnome-wifi-hotspot (1.0.0-17) stonking; urgency=medium
   * Secure privileged create_ap startup logs in the private runtime directory.
   * Bound worker output processing and escalate stalled protocol shutdowns.
   * Tolerate deeply nested malformed desktop preference files.
+  * Isolate legacy state, track owned processes, and handle service termination.
+  * Scope DHCP/DNS rules; preserve firewalld and AppArmor policies.
+  * Supervise automatic activation and suspend shutdown without blocking.
+  * Remove blocking reverse DNS; declare legacy command dependencies.
 
  -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 12:00:00 +0000
 

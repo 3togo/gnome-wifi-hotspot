@@ -53,6 +53,7 @@ install_file packaging/debian/copyright usr/share/doc/gnome-wifi-hotspot/copyrig
 install_file README.md usr/share/doc/gnome-wifi-hotspot/README.md 0644
 install_file docs/dependency-review.md usr/share/doc/gnome-wifi-hotspot/dependency-review.md 0644
 install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/production-readiness.md 0644
+install_file docs/releases/1.0.0-17.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-17.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 

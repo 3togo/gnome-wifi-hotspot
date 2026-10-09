@@ -49,7 +49,22 @@ read budget to 256 KiB. Continuous output yields back to the service loop;
 oversized or deeply nested messages stop the worker. A worker that ignores
 SIGTERM after a protocol failure receives SIGKILL after 40 seconds through
 nonblocking polling, then ownership recovery runs after the process exits.
-Malformed, excessively nested per-user JSON preferences fall back to defaults.
+Automatic NetworkManager recovery also times out activation after 55 seconds;
+suspend termination receives the same 40-second kill deadline. Successful
+activation cancels its watchdog, and Stop cancels recovery intent.
+
+Legacy backend locks and state now live in `/run/wifi-relay/create-ap`. Relay
+tracks a private PID marker and verifies the command and process owner before
+reporting or stopping it. Separately started hotspots are not adopted. The
+backend balances recursive locks even when no instance remains, and searches
+for a free file descriptor without expanding the entire process limit.
+
+DHCP/DNS rules are scoped to the hotspot interface. The firewall compatibility
+method leaves permanent policies untouched, and startup does not reload
+firewalld or put dnsmasq AppArmor policy into complain mode. Client names come
+from DHCP leases without synchronous reverse DNS. Transient polling failures
+are logged once until they change or recover. Malformed, excessively nested
+per-user JSON preferences fall back to defaults.
 
 These checks use fake network transports and temporary files. Live driver,
 suspend/resume, and extended traffic testing remain release gates below.
@@ -109,3 +124,5 @@ users should choose a strong password before broadcasting.
 RPM installation and full GNOME Shell integration require platform validation.
 Source artifacts are unsigned; repository publication and signing are separate
 release steps. This refactor does not replace those release gates.
+
+Release preparation and rollback are documented in [the 1.0.0-17 candidate notes](releases/1.0.0-17.md).

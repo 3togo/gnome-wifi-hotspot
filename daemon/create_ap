@@ -125,8 +125,9 @@ fi
 # on success it echos a non-zero unused FD
 # on error it echos 0
 get_avail_fd() {
-    local x
-    for x in $(seq 1 $(ulimit -n)); do
+    local x limit
+    limit=$(ulimit -n)
+    for ((x = 3; x < limit; x++)); do
         if [[ ! -a "/proc/$BASHPID/fd/$x" ]]; then
             echo $x
             return
@@ -135,15 +136,25 @@ get_avail_fd() {
     echo 0
 }
 
-# lock file for the mutex counter
-COUNTER_LOCK_FILE=/tmp/create_ap.$$.lock
+# Only the privileged backend uses these files; desktop clients use D-Bus.
+CREATE_AP_RUNTIME=/run/wifi-relay/create-ap
+COUNTER_LOCK_FILE=$CREATE_AP_RUNTIME/create_ap.$$.lock
+
+init_runtime() {
+    local directory
+    for directory in "${CREATE_AP_RUNTIME%/*}" "$CREATE_AP_RUNTIME"; do
+        [[ ! -L "$directory" ]] || return 1
+        mkdir -m 700 -p "$directory" || return 1
+        [[ $(stat -c '%u:%a' "$directory") == "$(id -u):700" ]] || return 1
+    done
+}
 
 cleanup_lock() {
     rm -f $COUNTER_LOCK_FILE
 }
 
 init_lock() {
-    local LOCK_FILE=/tmp/create_ap.all.lock
+    local LOCK_FILE=$CREATE_AP_RUNTIME/create_ap.all.lock
 
     # we initialize only once
     [[ $LOCK_FD -ne 0 ]] && return 0
@@ -151,17 +162,9 @@ init_lock() {
     LOCK_FD=$(get_avail_fd)
     [[ $LOCK_FD -eq 0 ]] && return 1
 
-    # open/create lock file with write access for all users
-    # otherwise normal users will not be able to use it.
-    # to avoid race conditions on creation, we need to
-    # use umask to set the permissions.
-    umask 0555
-    eval "exec $LOCK_FD>$LOCK_FILE" > /dev/null 2>&1 || return 1
-    umask $SCRIPT_UMASK
-
-    # there is a case where lock file was created from a normal
-    # user. change the owner to root as soon as we can.
-    [[ $(id -u) -eq 0 ]] && chown 0:0 $LOCK_FILE
+    # A private runtime directory prevents unprivileged lock-file substitution.
+    init_runtime || return 1
+    eval "exec $LOCK_FD>\"$LOCK_FILE\"" > /dev/null 2>&1 || return 1
 
     # create mutex counter lock file
     echo 0 > $COUNTER_LOCK_FILE
@@ -712,14 +715,14 @@ _cleanup() {
 
     if [[ "$SHARE_METHOD" != "bridge" ]]; then
         if [[ $NO_DNS -eq 0 ]]; then
-            iptables -w -D INPUT -p tcp -m tcp --dport $DNS_PORT -j ACCEPT
-            iptables -w -D INPUT -p udp -m udp --dport $DNS_PORT -j ACCEPT
-            iptables -w -t nat -D PREROUTING -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
+            iptables -w -D INPUT -i ${WIFI_IFACE} -p tcp -m tcp --dport $DNS_PORT -j ACCEPT
+            iptables -w -D INPUT -i ${WIFI_IFACE} -p udp -m udp --dport $DNS_PORT -j ACCEPT
+            iptables -w -t nat -D PREROUTING -i ${WIFI_IFACE} -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
                 -p tcp -m tcp --dport 53 -j REDIRECT --to-ports $DNS_PORT
-            iptables -w -t nat -D PREROUTING -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
+            iptables -w -t nat -D PREROUTING -i ${WIFI_IFACE} -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
                 -p udp -m udp --dport 53 -j REDIRECT --to-ports $DNS_PORT
         fi
-        iptables -w -D INPUT -p udp -m udp --dport 67 -j ACCEPT
+        iptables -w -D INPUT -i ${WIFI_IFACE} -p udp -m udp --dport 67 -j ACCEPT
     fi
 
     if [[ $NO_VIRT -eq 0 ]]; then
@@ -772,7 +775,7 @@ clean_exit() {
 list_running_conf() {
     local x
     mutex_lock
-    for x in /tmp/create_ap.*; do
+    for x in "$CREATE_AP_RUNTIME"/create_ap.*; do
         if [[ -f $x/pid && -f $x/wifi_iface && -d /proc/$(cat $x/pid) ]]; then
             echo $x
         fi
@@ -876,7 +879,7 @@ has_running_instance() {
     local PID x
 
     mutex_lock
-    for x in /tmp/create_ap.*; do
+    for x in "$CREATE_AP_RUNTIME"/create_ap.*; do
         if [[ -f $x/pid ]]; then
             PID=$(cat $x/pid)
             if [[ -d /proc/$PID ]]; then
@@ -885,7 +888,7 @@ has_running_instance() {
             fi
         fi
     done
-    mutex_lock
+    mutex_unlock
 
     return 1
 }
@@ -1269,7 +1272,7 @@ fi
 
 # if the user press ctrl+c or we get USR1 signal
 # then run clean_exit()
-trap "clean_exit" SIGINT SIGUSR1
+trap "clean_exit" SIGINT SIGTERM SIGUSR1
 # if we get USR2 signal then run die().
 trap "die" SIGUSR2
 
@@ -1305,10 +1308,10 @@ if [[ $DAEMONIZE -eq 1 && $RUNNING_AS_DAEMON -eq 0 ]]; then
         echo "Running as Daemon..."
     fi
     # run a detached create_ap
-    RUNNING_AS_DAEMON=1 setsid "$0" "${ARGS[@]}" >>$DAEMON_LOGFILE 2>&1 &
+    RUNNING_AS_DAEMON=1 setsid "$0" "${ARGS[@]}" >>"$DAEMON_LOGFILE" 2>&1 &
     exit 0
 elif [[ $RUNNING_AS_DAEMON -eq 1 && -n "$DAEMON_PIDFILE" ]]; then
-    echo $$ >$DAEMON_PIDFILE
+    echo $$ >"$DAEMON_PIDFILE"
 fi
 
 if [[ $FREQ_BAND_SET != 0 ]]; then
@@ -1505,7 +1508,7 @@ fi
 
 mutex_lock
 trap "cleanup" EXIT
-CONFDIR=$(mktemp -d /tmp/create_ap.${WIFI_IFACE}.conf.XXXXXXXX)
+CONFDIR=$(mktemp -d "$CREATE_AP_RUNTIME/create_ap.${WIFI_IFACE}.conf.XXXXXXXX")
 echo "Config dir: $CONFDIR"
 echo "PID: $$"
 echo $$ > $CONFDIR/pid
@@ -1515,7 +1518,7 @@ echo $$ > $CONFDIR/pid
 chmod 755 $CONFDIR
 chmod 444 $CONFDIR/pid
 
-COMMON_CONFDIR=/tmp/create_ap.common.conf
+COMMON_CONFDIR=$CREATE_AP_RUNTIME/create_ap.common.conf
 mkdir -p $COMMON_CONFDIR
 
 if [[ "$SHARE_METHOD" == "nat" ]]; then
@@ -1884,26 +1887,22 @@ fi
 if [[ "$SHARE_METHOD" != "bridge" ]]; then
     if [[ $NO_DNS -eq 0 ]]; then
         DNS_PORT=5353
-        iptables -w -I INPUT -p tcp -m tcp --dport $DNS_PORT -j ACCEPT || die
-        iptables -w -I INPUT -p udp -m udp --dport $DNS_PORT -j ACCEPT || die
-        iptables -w -t nat -I PREROUTING -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
+        iptables -w -I INPUT -i ${WIFI_IFACE} -p tcp -m tcp --dport $DNS_PORT -j ACCEPT || die
+        iptables -w -I INPUT -i ${WIFI_IFACE} -p udp -m udp --dport $DNS_PORT -j ACCEPT || die
+        iptables -w -t nat -I PREROUTING -i ${WIFI_IFACE} -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
             -p tcp -m tcp --dport 53 -j REDIRECT --to-ports $DNS_PORT || die
-        iptables -w -t nat -I PREROUTING -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
+        iptables -w -t nat -I PREROUTING -i ${WIFI_IFACE} -s ${GATEWAY%.*}.0/24 -d ${GATEWAY} \
             -p udp -m udp --dport 53 -j REDIRECT --to-ports $DNS_PORT || die
     else
         DNS_PORT=0
     fi
 
     if [[ $NO_DNSMASQ -eq 0 ]]; then
-      iptables -w -I INPUT -p udp -m udp --dport 67 -j ACCEPT || die
+      iptables -w -I INPUT -i ${WIFI_IFACE} -p udp -m udp --dport 67 -j ACCEPT || die
 
 
-      # apparmor does not allow dnsmasq to read files.
-      # remove restriction.
-
-      if COMPLAIN_CMD=$(command -v complain || command -v aa-complain); then
-        $COMPLAIN_CMD dnsmasq
-      fi
+      # Keep mandatory access control enforced. Administrators can grant this
+      # runtime path in their local dnsmasq policy when confinement requires it.
 
       umask 0033
       dnsmasq -C $CONFDIR/dnsmasq.conf -x $CONFDIR/dnsmasq.pid -l $CONFDIR/dnsmasq.leases -p $DNS_PORT || die

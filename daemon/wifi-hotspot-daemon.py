@@ -40,6 +40,8 @@ DEV_CONFIG = os.path.join(os.path.dirname(__file__), "..", "data", "wifi-hotspot
 
 RUNTIME_DIRECTORY = Path("/run/wifi-relay")
 MAX_STARTUP_LOG_BYTES = 16384
+CREATE_AP_PIDFILE = RUNTIME_DIRECTORY / "create-ap.pid"
+PROC_DIRECTORY = Path("/proc")
 
 
 def prepare_startup_log():
@@ -273,7 +275,13 @@ class WifiHotspotDaemon:
                     self.cached_clients = []
                     self._emit_signal("ClientsChanged", json.dumps([]))
         except Exception as e:
-            pass
+            # Keep polling after transient failures, but make them diagnosable.
+            error = str(e)
+            if error != getattr(self, "_last_poll_error", None):
+                print(f"[!] Hotspot status poll failed: {error}", flush=True)
+                self._last_poll_error = error
+        else:
+            self._last_poll_error = None
         return GLib.SOURCE_CONTINUE
 
     # ------------------ Wi-Fi & System Helpers ------------------ #
@@ -287,24 +295,48 @@ class WifiHotspotDaemon:
         except Exception as e:
             return -1, "", str(e)
 
+    def _owned_create_ap_pid(self):
+        """Never adopt or stop a separately launched hotspot or a reused PID."""
+        try:
+            with CREATE_AP_PIDFILE.open("rb") as stream:
+                value = stream.read(32).strip()
+            if not re.fullmatch(rb"[1-9][0-9]{0,9}", value):
+                return None
+            pid = int(value)
+            process = PROC_DIRECTORY / str(pid)
+            if process.stat().st_uid != os.geteuid():
+                return None
+            with (process / "cmdline").open("rb") as stream:
+                args = stream.read(8192).decode("utf-8").split("\0")
+            marker = args.index("--pidfile")
+            if (args[marker + 1] != str(CREATE_AP_PIDFILE)
+                    or self.create_ap_bin not in args):
+                return None
+            return pid
+        except (OSError, ValueError, IndexError, UnicodeError):
+            return None
+
     def _get_status_dict(self):
         nm = getattr(self, "nm_backend", None)
         if nm is not None:
             status = nm.get_status()
             if nm.process or self._read_config_dict().get("BACKEND", "create_ap") == "networkmanager":
                 return status
-        code, out, _ = self._run_cmd([self.create_ap_bin, "--list-running"])
-        if code == 0 and out.strip():
-            # Output format: <PID> <PHYSICAL_IFACE> [(<VIRTUAL_IFACE>)]
-            lines = out.strip().split("\n")
-            first = lines[0].split()
-            pid = int(first[0]) if first[0].isdigit() else 0
-            phy_iface = first[1] if len(first) > 1 else "wlan0"
-            virt_iface = phy_iface
-            if "(" in out and ")" in out:
-                m = re.search(r"\(([^)]+)\)", out)
-                if m:
-                    virt_iface = m.group(1)
+        pid = self._owned_create_ap_pid()
+        out = ""
+        if pid is not None:
+            code, out, _ = self._run_cmd([self.create_ap_bin, "--list-running"])
+            if code:
+                out = ""
+        owned = None
+        for line in out.splitlines():
+            row = re.fullmatch(r"([1-9][0-9]*)\s+([a-zA-Z0-9_.:-]{1,15})(?:\s+\(([a-zA-Z0-9_.:-]{1,15})\))?", line.strip())
+            if row and int(row[1]) == pid:
+                owned = row
+                break
+        if owned is not None:
+            phy_iface = owned[2]
+            virt_iface = owned[3] or phy_iface
 
             config = self._read_config_dict()
             # Report the actual AP band, including runtime fallback from a 5 GHz preference.
@@ -376,7 +408,7 @@ class WifiHotspotDaemon:
         leases = {}
         try:
             import glob
-            for lease_file in glob.glob("/tmp/create_ap.*/dnsmasq.leases"):
+            for lease_file in glob.glob(str(RUNTIME_DIRECTORY / "create-ap/create_ap.*/dnsmasq.leases")):
                 with open(lease_file, "r") as f:
                     for line in f:
                         parts = line.strip().split()
@@ -408,15 +440,7 @@ class WifiHotspotDaemon:
             ip = leases.get(mac, {}).get("ip") or arp_table.get(mac, "")
             hostname = leases.get(mac, {}).get("hostname", "")
 
-            # If hostname is not in lease, try reverse DNS
-            if not hostname and ip:
-                try:
-                    import socket
-                    host = socket.gethostbyaddr(ip)[0]
-                    if host and host != ip:
-                        hostname = host.split(".")[0]
-                except Exception:
-                    pass
+            # Names come from DHCP leases. Reverse DNS must not block D-Bus polling.
 
             clients.append({
                 "mac": mac,
@@ -467,15 +491,9 @@ class WifiHotspotDaemon:
         return True
 
     def prepare_firewall(self):
-        """Auto-configure firewalld for DHCP/DNS; create_ap owns its dnsmasq lifecycle."""
-        print("[*] Preparing firewall rules...")
-        # Check if firewalld is running
-        code, out, _ = self._run_cmd(["firewall-cmd", "--state"])
-        if code == 0 and "running" in out:
-            self._run_cmd(["firewall-cmd", "--add-service=dhcp", "--permanent"])
-            self._run_cmd(["firewall-cmd", "--add-service=dns", "--permanent"])
-            self._run_cmd(["firewall-cmd", "--reload"])
-
+        """Compatibility entry point; the selected backend owns runtime rules."""
+        # Never open DHCP/DNS globally or reload an administrator's firewall.
+        # create_ap installs/removes its runtime rules; NM owns shared-IP policy.
         return True
 
     @staticmethod
@@ -792,7 +810,7 @@ class WifiHotspotDaemon:
             # 4. Start create_ap process with logfile
             config_path = get_config_path(for_write=False)
             log_path = prepare_startup_log()
-            cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
+            cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--pidfile", str(CREATE_AP_PIDFILE), "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
             code, out, err = self._run_cmd(cmd)
 
@@ -844,7 +862,7 @@ class WifiHotspotDaemon:
         if not status["active"]:
             return True
 
-        iface_to_stop = status.get("phy_iface") or status.get("iface") or str(status.get("pid"))
+        iface_to_stop = str(status["pid"])
         print(f"[*] Stopping hotspot for: {iface_to_stop}")
         code, out, err = self._run_cmd([self.create_ap_bin, "--stop", iface_to_stop])
 
@@ -916,7 +934,7 @@ def on_name_acquired(connection, name):
 def on_name_lost(connection, name):
     print(f"[!] Name lost on D-Bus: {name}. Exiting.")
     if _daemon_instance:
-        _daemon_instance.nm_backend.stop()
+        _daemon_instance.method_stop()
     sys.exit(1)
 
 
@@ -933,7 +951,7 @@ def main():
     loop = GLib.MainLoop()
     def shutdown(signum, frame):
         if _daemon_instance:
-            _daemon_instance.nm_backend.stop()
+            _daemon_instance.method_stop()
         loop.quit()
     signal.signal(signal.SIGTERM, shutdown)
     try:
@@ -944,7 +962,7 @@ def main():
         loop.quit()
     finally:
         if _daemon_instance:
-            _daemon_instance.nm_backend.stop()
+            _daemon_instance.method_stop()
 
 
 if __name__ == "__main__":

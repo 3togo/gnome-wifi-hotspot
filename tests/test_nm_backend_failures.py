@@ -30,13 +30,64 @@ class WorkerFailureTests(unittest.TestCase):
         self.backend._desired_config = dict(CONFIG)
         self.backend._upstream_uuid = PROFILE
         with patch.object(module.subprocess, 'Popen', return_value=self.process), \
-                patch.object(module.time, 'monotonic', side_effect=AssertionError('Blocking startup loop')):
+                patch.object(module.time, 'monotonic', return_value=0), \
+                patch.object(module.select, 'select') as select:
             status = self.backend.start(CONFIG, automatic=True)
         self.assertTrue(status['desired_active'])
         self.assertEqual(status['state'], 'connecting')
         self.assertFalse(status['active'])
         payload = json.loads(self.process.stdin.write.call_args.args[0])
         self.assertEqual(payload['EXPECTED_UPSTREAM_UUID'], PROFILE)
+        self.process.wait.assert_not_called()
+        select.assert_not_called()
+
+    def test_automatic_start_timeout_terminates_then_escalates_and_recovers(self):
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        with patch.object(module.subprocess, 'Popen', return_value=self.process), \
+                patch.object(module.time, 'monotonic', return_value=0):
+            self.backend.start(CONFIG, automatic=True)
+        with patch.object(module.time, 'monotonic', return_value=54):
+            self.backend.get_status()
+        self.process.terminate.assert_not_called()
+        with patch.object(module.time, 'monotonic', return_value=55):
+            status = self.backend.get_status()
+        self.assertIn('timed out', status['error'])
+        self.assertTrue(status['desired_active'])
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=95):
+            self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.process.wait.assert_not_called()
+        self.process.poll.return_value = -9
+        self.backend.get_status()
+        self.assertIsNone(self.backend.process)
+        self.assertIsNone(self.backend._activation_deadline)
+
+    def test_successful_automatic_activation_cancels_watchdog(self):
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        with patch.object(module.subprocess, 'Popen', return_value=self.process), \
+                patch.object(module.time, 'monotonic', return_value=0):
+            self.backend.start(CONFIG, automatic=True)
+        self.send({'event': 'stage', 'stage': 'active', 'interface': 'wrnm123abc'})
+        with patch.object(module.time, 'monotonic', return_value=10):
+            self.backend.get_status()
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.assertTrue(self.backend.get_status()['active'])
+        self.process.terminate.assert_not_called()
+        self.assertIsNone(self.backend._activation_deadline)
+
+    def test_sleep_shutdown_has_a_kill_deadline_without_losing_intent(self):
+        self.backend.process = self.process
+        self.backend._desired_config = dict(CONFIG)
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.backend.prepare_for_sleep(True)
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=140):
+            status = self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.assertTrue(status['desired_active'])
         self.process.wait.assert_not_called()
 
     def test_spawn_failure_leaves_backend_off(self):

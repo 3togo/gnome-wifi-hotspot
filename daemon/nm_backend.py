@@ -24,6 +24,8 @@ STATE_FILE = Path("/run/wifi-relay/nm-owned.json")
 SYS_NET = Path("/sys/class/net")
 MAX_EVENT_BYTES = 65536
 MAX_DRAIN_BYTES = 4 * MAX_EVENT_BYTES
+STARTUP_TIMEOUT = 55
+STOP_TIMEOUT = 40
 
 
 def validate_ownership(data):
@@ -116,6 +118,7 @@ class Backend:
         self.buffer = b""
         self._protocol_error = False
         self._termination_deadline = None
+        self._activation_deadline = None
         self._recovery_pending = True
         self._desired_config = None
         self._upstream_uuid = None
@@ -220,10 +223,21 @@ class Backend:
         self.status.update(active=False, state="stopping", client_count=0, error="Invalid worker event.")
         if self.process.poll() is None:
             self.process.terminate()
-            self._termination_deadline = time.monotonic() + 40
+            self._termination_deadline = time.monotonic() + STOP_TIMEOUT
 
     def get_status(self):
         self._drain()
+        if self.status.get("active"):
+            self._activation_deadline = None
+        if (self.process and self._activation_deadline is not None
+                and time.monotonic() >= self._activation_deadline):
+            self._activation_deadline = None
+            self.status.update(active=False, state="stopping", client_count=0,
+                               error="NetworkManager hotspot startup timed out.")
+            self._protocol_error = True
+            if self.process.poll() is None:
+                self.process.terminate()
+                self._termination_deadline = time.monotonic() + STOP_TIMEOUT
         if (self.process and self._termination_deadline is not None
                 and time.monotonic() >= self._termination_deadline
                 and self.process.poll() is None):
@@ -237,6 +251,7 @@ class Backend:
             self.process.stdout.close()
             self.process = None
             self._termination_deadline = None
+            self._activation_deadline = None
             self._recovery_pending = True
         if self.process is None and self._recovery_pending:
             try:
@@ -260,6 +275,7 @@ class Backend:
         self.buffer = b""
         self._protocol_error = False
         self._termination_deadline = None
+        self._activation_deadline = None
         try:
             self.process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker"],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -272,8 +288,9 @@ class Backend:
             finally:
                 self.process.stdin.close()
             if automatic:
+                self._activation_deadline = time.monotonic() + STARTUP_TIMEOUT
                 return self.get_status()
-            deadline = time.monotonic() + 55
+            deadline = time.monotonic() + STARTUP_TIMEOUT
             while self.process and time.monotonic() < deadline:
                 status = self.get_status()
                 if status["active"]:
@@ -294,6 +311,7 @@ class Backend:
             raise RuntimeError(error) from exc
 
     def stop(self, *, preserve_intent=False):
+        self._activation_deadline = None
         if not preserve_intent:
             if self._desired_config is not None:
                 print("Wi-Fi Relay: sharing request cancelled.", flush=True)
@@ -304,7 +322,7 @@ class Backend:
             if self.process.poll() is None:
                 self.process.terminate()
             try:
-                self.process.wait(timeout=40)
+                self.process.wait(timeout=STOP_TIMEOUT)
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait(timeout=5)
@@ -318,7 +336,9 @@ class Backend:
         self._candidate = None
         self._resume_after = time.monotonic() + 4
         if sleeping and self.process and self.process.poll() is None:
+            self._activation_deadline = None
             self.process.terminate()
+            self._termination_deadline = time.monotonic() + STOP_TIMEOUT
 
     def poll(self, config):
         """Resume only previously authorized sharing, never from a status read."""
