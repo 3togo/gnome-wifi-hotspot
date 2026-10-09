@@ -46,6 +46,9 @@ def capabilities(freq=5180):
 class BandFallbackTests(unittest.TestCase):
     def setUp(self):
         self.daemon = Daemon.__new__(Daemon)
+        log = patch.object(module, "prepare_startup_log", return_value="/nonexistent/relay-test.log")
+        log.start()
+        self.addCleanup(log.stop)
         self.daemon.create_ap_bin = "create_ap"
         self.daemon._read_config_dict = Mock(return_value={
             "WIFI_IFACE": "wlo2", "INTERNET_IFACE": "wlo2", "FREQ_BAND": "auto"
@@ -127,6 +130,7 @@ class BandFallbackTests(unittest.TestCase):
 
     def test_status_reports_runtime_band_after_fallback(self):
         self.daemon.cached_clients = []
+        self.daemon._owned_create_ap_pid = Mock(return_value=123)
         self.daemon._read_config_dict.return_value['FREQ_BAND'] = '5'
         self.daemon._run_cmd.side_effect = [
             (0, '123 wlo2 (ap0)', ''), (0, 'channel 6 (2437 MHz), width: 20 MHz', '')

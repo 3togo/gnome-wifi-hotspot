@@ -53,6 +53,7 @@ install_file packaging/debian/copyright usr/share/doc/gnome-wifi-hotspot/copyrig
 install_file README.md usr/share/doc/gnome-wifi-hotspot/README.md 0644
 install_file docs/dependency-review.md usr/share/doc/gnome-wifi-hotspot/dependency-review.md 0644
 install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/production-readiness.md 0644
+install_file docs/releases/1.0.0-17.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-17.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 
@@ -77,6 +78,9 @@ finish_package() {
     installed_size=$(du -sk "$stage_dir" | awk '{print $1}')
     printf 'Installed-Size: %s\n' "$installed_size" >> "$stage_dir/DEBIAN/control"
     mkdir -p "$output_dir"
+    # dpkg only clamps mtimes newer than SOURCE_DATE_EPOCH. Normalize every
+    # member explicitly, including when the supplied epoch is in the future.
+    find "$stage_dir" -exec touch --no-dereference --date="@$SOURCE_DATE_EPOCH" {} +
     dpkg-deb --root-owner-group --build "$stage_dir" "$output_dir/${package}_${version}_all.deb"
 }
 

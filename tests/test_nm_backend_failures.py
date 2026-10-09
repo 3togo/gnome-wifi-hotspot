@@ -30,13 +30,64 @@ class WorkerFailureTests(unittest.TestCase):
         self.backend._desired_config = dict(CONFIG)
         self.backend._upstream_uuid = PROFILE
         with patch.object(module.subprocess, 'Popen', return_value=self.process), \
-                patch.object(module.time, 'monotonic', side_effect=AssertionError('Blocking startup loop')):
+                patch.object(module.time, 'monotonic', return_value=0), \
+                patch.object(module.select, 'select') as select:
             status = self.backend.start(CONFIG, automatic=True)
         self.assertTrue(status['desired_active'])
         self.assertEqual(status['state'], 'connecting')
         self.assertFalse(status['active'])
         payload = json.loads(self.process.stdin.write.call_args.args[0])
         self.assertEqual(payload['EXPECTED_UPSTREAM_UUID'], PROFILE)
+        self.process.wait.assert_not_called()
+        select.assert_not_called()
+
+    def test_automatic_start_timeout_terminates_then_escalates_and_recovers(self):
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        with patch.object(module.subprocess, 'Popen', return_value=self.process), \
+                patch.object(module.time, 'monotonic', return_value=0):
+            self.backend.start(CONFIG, automatic=True)
+        with patch.object(module.time, 'monotonic', return_value=54):
+            self.backend.get_status()
+        self.process.terminate.assert_not_called()
+        with patch.object(module.time, 'monotonic', return_value=55):
+            status = self.backend.get_status()
+        self.assertIn('timed out', status['error'])
+        self.assertTrue(status['desired_active'])
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=95):
+            self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.process.wait.assert_not_called()
+        self.process.poll.return_value = -9
+        self.backend.get_status()
+        self.assertIsNone(self.backend.process)
+        self.assertIsNone(self.backend._activation_deadline)
+
+    def test_successful_automatic_activation_cancels_watchdog(self):
+        self.backend._desired_config = dict(CONFIG)
+        self.backend._upstream_uuid = PROFILE
+        with patch.object(module.subprocess, 'Popen', return_value=self.process), \
+                patch.object(module.time, 'monotonic', return_value=0):
+            self.backend.start(CONFIG, automatic=True)
+        self.send({'event': 'stage', 'stage': 'active', 'interface': 'wrnm123abc'})
+        with patch.object(module.time, 'monotonic', return_value=10):
+            self.backend.get_status()
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.assertTrue(self.backend.get_status()['active'])
+        self.process.terminate.assert_not_called()
+        self.assertIsNone(self.backend._activation_deadline)
+
+    def test_sleep_shutdown_has_a_kill_deadline_without_losing_intent(self):
+        self.backend.process = self.process
+        self.backend._desired_config = dict(CONFIG)
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.backend.prepare_for_sleep(True)
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=140):
+            status = self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.assertTrue(status['desired_active'])
         self.process.wait.assert_not_called()
 
     def test_spawn_failure_leaves_backend_off(self):
@@ -250,6 +301,51 @@ class WorkerFailureTests(unittest.TestCase):
         self.assertIn('Invalid worker event', status['error'])
         self.assertLess(len(self.backend.buffer), 65536)
 
+    def test_continuous_partial_output_is_rejected_on_first_full_chunk(self):
+        self.backend.process = self.process
+        with patch.object(module.os, 'read', return_value=b'x' * module.MAX_EVENT_BYTES) as read:
+            self.backend.get_status()
+        self.assertEqual(read.call_count, 1)
+        self.process.terminate.assert_called_once()
+        self.assertEqual(self.backend.buffer, b'')
+
+    def test_continuous_valid_output_yields_with_a_bounded_read_budget(self):
+        self.backend.process = self.process
+        event = b'{"event":"clients","authorized_clients":2}\n'
+        with patch.object(module.os, 'read', return_value=event) as read:
+            status = self.backend.get_status()
+        self.assertEqual(status['client_count'], 2)
+        self.assertLessEqual(read.call_count * len(event), module.MAX_DRAIN_BYTES + len(event))
+        self.process.terminate.assert_not_called()
+
+    def test_protocol_failure_escalates_without_blocking_and_recovers_after_exit(self):
+        self.backend.process = self.process
+        self.send(b'not-json\n')
+        with patch.object(module.time, 'monotonic', return_value=100):
+            self.backend.get_status()
+        self.process.terminate.assert_called_once()
+        with patch.object(module.time, 'monotonic', return_value=139):
+            self.backend.get_status()
+        self.process.kill.assert_not_called()
+        with patch.object(module.time, 'monotonic', return_value=140):
+            self.backend.get_status()
+            self.backend.get_status()
+        self.process.kill.assert_called_once()
+        self.process.wait.assert_not_called()
+        self.process.poll.return_value = -9
+        self.process.returncode = -9
+        calls = self.recovery.call_count
+        self.backend.get_status()
+        self.assertIsNone(self.backend.process)
+        self.assertGreater(self.recovery.call_count, calls)
+        self.assertIsNone(self.backend._termination_deadline)
+
+    def test_deeply_nested_event_is_rejected_without_crashing_service(self):
+        self.backend.process = self.process
+        self.send(b'[' * 2000 + b'0' + b']' * 2000 + b'\n')
+        self.assertIn('Invalid worker event', self.backend.get_status()['error'])
+        self.process.terminate.assert_called_once()
+
 
 class OwnershipFailureTests(unittest.TestCase):
     def setUp(self):
@@ -333,6 +429,22 @@ class OwnershipFailureTests(unittest.TestCase):
         temporary.write_text('stale');temporary.chmod(0o644)
         module.write_ownership(self.data)
         self.assertEqual(self.record.stat().st_mode & 0o777, 0o600)
+
+    def test_interface_replaced_during_profile_delete_is_not_removed(self):
+        self.record.write_text(json.dumps(self.data))
+        def command(args):
+            if args == ['nmcli', '-g', 'UUID', 'connection', 'show']:
+                return PROFILE
+            if args == ['nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', PROFILE]:
+                return 'Wi-Fi Relay Hotspot'
+            if args == ['nmcli', 'connection', 'delete', 'uuid', PROFILE]:
+                (self.iface / 'ifindex').write_text('456\n')
+                return ''
+            self.fail('Unexpected interface deletion: ' + str(args))
+        self.command.side_effect = command
+        with self.assertRaisesRegex(RuntimeError, 'identity changed'):
+            module.recover()
+        self.assertTrue(self.record.exists())
 
     def test_invalid_ownership_schema_never_replaces_journal(self):
         self.save()

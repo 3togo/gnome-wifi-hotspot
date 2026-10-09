@@ -4,12 +4,12 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Wi-Fi Relay</name>
-  <summary>Native GNOME Shell Wi-Fi Hotspot with simultaneous AP+STA support</summary>
+  <summary>Share Wi-Fi with optional desktop controls</summary>
   <description>
     <p>
-      Share your Wi-Fi internet connection like in Windows 10/11 directly from GNOME Shell Quick Settings.
-      Supports concurrent Wi-Fi reception and Access Point broadcasting (AP+STA mode), automatic 2.4GHz/5GHz
-      band detection, and automatic firewall configuration.
+      Share your internet connection through a compatible Wi-Fi adapter. Includes standalone
+      settings with optional GNOME Shell and desktop tray controls. Concurrent Wi-Fi reception
+      and hotspot broadcasting require hardware and driver support.
     </p>
   </description>
   <launchable type="desktop-id">io.github.erhanzeyrek.WifiHotspot.desktop</launchable>

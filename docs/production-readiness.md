@@ -35,6 +35,40 @@ Nayuki encoder. Payloads escape special characters and identify hidden networks;
 UTF-8 encoding supports international network names. GTK4 displays opaque RGB
 pixels with a white quiet zone. No imaging or QR package is required at runtime.
 
+## Service hardening
+
+create_ap startup logs live under the private, service-owned
+`/run/wifi-relay` directory with mode 0600. Startup refuses symlinked runtime
+paths, unsafe directory permissions, foreign ownership, linked log files, and
+nonregular logs before truncation. Failure replies read only the last 16 KiB
+and retain up to four lines. The service no longer opens a predictable file in
+the shared `/tmp` directory with root privileges.
+
+The NetworkManager worker protocol limits each event to 64 KiB and each poll's
+read budget to 256 KiB. Continuous output yields back to the service loop;
+oversized or deeply nested messages stop the worker. A worker that ignores
+SIGTERM after a protocol failure receives SIGKILL after 40 seconds through
+nonblocking polling, then ownership recovery runs after the process exits.
+Automatic NetworkManager recovery also times out activation after 55 seconds;
+suspend termination receives the same 40-second kill deadline. Successful
+activation cancels its watchdog, and Stop cancels recovery intent.
+
+Legacy backend locks and state now live in `/run/wifi-relay/create-ap`. Relay
+tracks a private PID marker and verifies the command and process owner before
+reporting or stopping it. Separately started hotspots are not adopted. The
+backend balances recursive locks even when no instance remains, and searches
+for a free file descriptor without expanding the entire process limit.
+
+DHCP/DNS rules are scoped to the hotspot interface. The firewall compatibility
+method leaves permanent policies untouched, and startup does not reload
+firewalld or put dnsmasq AppArmor policy into complain mode. Client names come
+from DHCP leases without synchronous reverse DNS. Transient polling failures
+are logged once until they change or recover. Malformed, excessively nested
+per-user JSON preferences fall back to defaults.
+
+These checks use fake network transports and temporary files. Live driver,
+suspend/resume, and extended traffic testing remain release gates below.
+
 ## Build and verification
 
 Build the standalone binary without installing or restarting anything:
@@ -56,7 +90,9 @@ Ayatana AppIndicator, Node.js, D-Bus, Xvfb/xauth, GCC, pkgconf, GTK3 development
 headers, and Jansson development headers. Its quilt source tree is isolated
 under dist and removed after building; logs and artifacts remain. Both package
 builders share the same payload templates. SOURCE_DATE_EPOCH controls archive
-timestamps. Debian attribution includes both create_ap copyright notices; RPM
+timestamps; the direct builder normalizes every staged archive member to that
+epoch, including future epochs. Repeated builds are compared byte for byte.
+Debian attribution includes both create_ap copyright notices; RPM
 and Make installation include the shared modules. GNOME Shell is optional for
 the standalone desktop app. CI additionally exercises install, upgrade, remove,
 and purge inside its disposable Stonking environment.
@@ -90,3 +126,5 @@ users should choose a strong password before broadcasting.
 RPM installation and full GNOME Shell integration require platform validation.
 Source artifacts are unsigned; repository publication and signing are separate
 release steps. This refactor does not replace those release gates.
+
+Release preparation and rollback are documented in [the 1.0.0-17 candidate notes](releases/1.0.0-17.md).

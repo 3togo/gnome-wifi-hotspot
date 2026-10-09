@@ -192,7 +192,7 @@ keep `create_ap` until the NetworkManager backend is explicitly selected.
 - 🛡️ **IPv4 Sharing:** The selected backend manages AP activation, DHCP/DNS, and forwarding.
 - 📶 **Wi-Fi Standards Control:** The create_ap backend exposes **IEEE 802.11n/ac/ax** options where supported by the hardware and hostapd. The NetworkManager backend rejects generation overrides.
 - 🎛️ **Libadwaita Preferences App:** Beautiful native GNOME preferences window for configuring credentials, interfaces, hidden SSIDs, client isolation, and gateways.
-- 📷 **Connection Details:** Display credentials and Wi-Fi connection text for sharing. Rendering a scannable QR image is planned.
+- 📷 **Connection Details:** Display credentials and a locally generated Wi-Fi QR image for sharing.
 
 ### Name and upgrade compatibility
 
@@ -205,7 +205,7 @@ are retained for compatibility.
 ### Authorization and configuration
 
 The daemon checks Polkit before starting, stopping, changing network settings,
-preparing firewall rules, or returning configuration (which includes the password).
+calling the firewall compatibility entry point, or returning configuration (which includes the password).
 Active local users in `sudo` or `wheel` are authorized without a prompt; other
 active local users must authenticate as an administrator. Status queries remain
 available without authentication. Configuration is stored with owner-only

@@ -20,7 +20,7 @@ def read_preferences(path):
             return {}
         values = json.loads(data)
         return values if isinstance(values, dict) else {}
-    except (OSError, ValueError, UnicodeError):
+    except (OSError, ValueError, UnicodeError, RecursionError):
         return {}
 
 
