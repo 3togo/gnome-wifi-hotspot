@@ -34,7 +34,12 @@ Each downloaded package must report `OK`. APT installs dependencies. When
 upgrading, stop sharing first and install the main and selected optional packages
 in one APT command so their exact versions match. Existing credentials and
 preferences are preserved. Upgrade stops sharing; enable it again afterward.
-Log out and back in to load newly installed desktop controls. Older bundled
+Starting with revision **1.0.0-20**, installing the tray package also starts it
+in an active local non-GNOME desktop session when startup is enabled and the
+user service manager has display information. It runs as that user, not root;
+it does not start hotspot broadcasting. Headless installs and disabled startup
+preferences are left alone. Other sessions load controls at their next login.
+GNOME controls may still require logging out and back in. Older bundled
 beta installs require an explicit choice of an optional control package.
 
 ## Configure sharing
@@ -92,6 +97,12 @@ All controls operate the same service and reflect changes made in other clients.
 | Standalone Settings | Service Status switch; available without optional packages |
 | GNOME package | Quick Settings → Wi-Fi Relay, with settings and client information |
 | Tray package | Relay icon → Enable hotspot or Hotspot Settings |
+
+Starting with revision **1.0.0-20**, the desktop tray's **Quit** option stops the
+hotspot, cancels a waiting recovery request, and closes the tray only after the
+service confirms success. A failed or denied Stop leaves the tray open with an
+error. Quit keeps the login preference unchanged, so controls can return at the
+next login without starting sharing.
 
 **Start desktop controls at login** shows the controls at login; it does not
 start broadcasting. On GNOME, an explicit disable choice in Extensions is

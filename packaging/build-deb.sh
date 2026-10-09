@@ -100,6 +100,10 @@ for integration in gnome tray; do
         find "$stage_dir/$extension_dir" -type f -exec chmod 0644 {} +
     else
         install_file settings/tray.py usr/share/wifi-hotspot/settings/tray.py 0755
+        install_file data/wifi-relay-tray.service usr/lib/systemd/user/wifi-relay-tray.service 0644
+        install_file packaging/start-tray-sessions.py usr/libexec/wifi-relay-tray/start-tray-sessions.py 0755
+        install_file packaging/debian/postinst-tray DEBIAN/postinst 0755
+        install_file packaging/debian/prerm-tray DEBIAN/prerm 0755
         for icon in off connecting on; do
             install_file "settings/icons/wifi-hotspot-$icon.svg" "usr/share/wifi-hotspot/settings/icons/wifi-hotspot-$icon.svg" 0644
         done

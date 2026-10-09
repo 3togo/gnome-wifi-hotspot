@@ -42,7 +42,10 @@ For XFCE or another desktop with a compatible tray, use:
 sudo apt install ./gnome-wifi-hotspot_1.0.0-18_all.deb ./gnome-wifi-hotspot-tray_1.0.0-18_all.deb
 ```
 
-Log out and back in after installing desktop controls. GNOME compatibility is
+Log out and back in after installing GNOME controls. Starting with package
+revision 1.0.0-20, tray installation also starts controls in an eligible active
+local non-GNOME graphical session, respecting the startup preference. It runs
+as the desktop user and does not start sharing; otherwise login autostart applies. GNOME compatibility is
 declared for Shell 45–51; the automated Shell check covers version 51. The main
 package works without either optional integration. These downloads do not
 replace NetworkManager, GNOME Settings, or the distribution's network applet.

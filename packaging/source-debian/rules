@@ -27,5 +27,9 @@ execute_after_dh_fixperms:
 override_dh_installsystemd:
 	dh_installsystemd --no-scripts
 
+# Session activation is handled by the tray hook, never global enable/restart.
+override_dh_installsystemduser:
+	:
+
 override_dh_auto_clean:
 	rm -rf debian/.build

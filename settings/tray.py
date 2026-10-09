@@ -232,6 +232,12 @@ class HotspotTray(Gtk.Application):
         about = Gtk.MenuItem(label='About')
         about.connect('activate', self._open_about)
         menu.append(about)
+        menu.append(Gtk.SeparatorMenuItem())
+        quit_item = Gtk.MenuItem(label='Quit')
+        quit_item.set_tooltip_text('Stop the hotspot and close the tray')
+        quit_item.set_sensitive(not self.busy and self.proxy is not None)
+        quit_item.connect('activate', self._quit_hotspot)
+        menu.append(quit_item)
         menu.show_all()
         self.menu = menu
         self.indicator.set_menu(menu)
@@ -241,6 +247,14 @@ class HotspotTray(Gtk.Application):
                 (self.status.get('state') == 'connecting' and not self.status.get('desired_active'))):
             return
         method = 'Stop' if (self.status.get('active') or self.status.get('desired_active')) else 'Start'
+        self._request_change(method)
+
+    def _quit_hotspot(self, _item):
+        if self.busy or self.proxy is None or self.closed:
+            return
+        self._request_change('Stop', quit_after_stop=True)
+
+    def _request_change(self, method, quit_after_stop=False):
         self.busy = True
         self.status['state'] = 'stopping' if method == 'Stop' else 'connecting'
         self.revision += 1
@@ -260,6 +274,9 @@ class HotspotTray(Gtk.Application):
                         self.status = response['status']
                 elif not value:
                     self._error('Hotspot could not be stopped.')
+                elif quit_after_stop:
+                    self.quit()
+                    return
             except (GLib.Error, ValueError) as error:
                 self._error(str(error))
             self.revision += 1

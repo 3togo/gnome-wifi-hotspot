@@ -127,3 +127,54 @@ with patch('tray.Gio.Subprocess.new') as launch:
 assert about_tray.proxy is None
 assert about_tray.status == {'active': False, 'unavailable': True}
 print('About opens independently of the hotspot service.')
+
+# Quit stops sharing (including pending recovery) before closing controls.
+for status in [{'active': True}, {'active': False, 'desired_active': True, 'state': 'waiting'}, {'active': False}]:
+    quitting = HotspotTray()
+    quitting.indicator = Mock()
+    quitting.proxy = Mock()
+    quitting.quit = Mock()
+    quitting._query = Mock()
+    quitting.status = status.copy()
+    quitting._render()
+    next(item for item in quitting.menu.get_children() if item.get_label() == 'Quit').activate()
+    assert quitting.proxy.call.call_args.args[0] == 'Stop'
+    assert quitting.busy
+    quitting.quit.assert_not_called()
+    callback = quitting.proxy.call.call_args.args[-1]
+    quitting.proxy.call_finish.return_value = GLib.Variant('(b)', (True,))
+    callback(quitting.proxy, None)
+    quitting.quit.assert_called_once()
+    quitting._query.assert_not_called()
+
+# A denied or failed Stop must leave the tray available for retry.
+failed_quit = HotspotTray()
+failed_quit.indicator = Mock()
+failed_quit.proxy = Mock()
+failed_quit.quit = Mock()
+failed_quit._error = Mock()
+failed_quit._query = Mock()
+failed_quit._quit_hotspot(None)
+callback = failed_quit.proxy.call.call_args.args[-1]
+failed_quit.proxy.call_finish.return_value = GLib.Variant('(b)', (False,))
+callback(failed_quit.proxy, None)
+failed_quit.quit.assert_not_called()
+failed_quit._error.assert_called_once()
+assert not failed_quit.busy
+failed_quit._quit_hotspot(None)
+callback = failed_quit.proxy.call.call_args.args[-1]
+failed_quit.proxy.call_finish.side_effect = GLib.Error('Authorization denied')
+callback(failed_quit.proxy, None)
+failed_quit.quit.assert_not_called()
+assert not failed_quit.busy
+print('Quit stops active or waiting sharing; failed Stop keeps controls available.')
+
+# A package-started instance honors disabled login startup before contacting D-Bus.
+disabled = HotspotTray()
+disabled.quit = Mock()
+with patch('tray.get_auto_start', return_value=False), patch('tray.Gio.DBusProxy.new_for_bus') as connect:
+    disabled.do_activate()
+    disabled.quit.assert_called_once()
+    connect.assert_not_called()
+assert disabled.indicator is None
+print('Package-started tray respects disabled startup without contacting the service.')

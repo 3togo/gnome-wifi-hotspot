@@ -1,3 +1,13 @@
+gnome-wifi-hotspot (1.0.0-20) stonking; urgency=medium
+
+  * Start tray controls as eligible logged-in desktop users after APT
+    installation.
+  * Respect startup preferences and keep graphical processes unprivileged.
+  * Add Quit: stop sharing and cancel recovery before closing tray controls.
+  * Keep controls open when stopping fails or authorization is denied.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Fri, 09 Oct 2026 18:16:49 -0000
+
 gnome-wifi-hotspot (1.0.0-19) stonking; urgency=medium
 
   * Add About to desktop tray, GNOME top-bar, and Quick Settings menus.
