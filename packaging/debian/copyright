@@ -6,6 +6,11 @@ Files: *
 Copyright: 2026 Erhan Zeyrek
 License: MIT
 
+Files: settings/qrcodegen.py
+Copyright: Project Nayuki
+License: MIT
+Comment: Bundled version 1.8.0; full upstream notice retained in the file.
+
 Files: data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml
 Copyright: 2026 Erhan Zeyrek
 License: CC0-1.0

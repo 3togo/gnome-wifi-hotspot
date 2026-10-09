@@ -35,7 +35,7 @@ install_file settings/tray.py usr/share/wifi-hotspot/settings/tray.py 0755
 for icon in off connecting on; do
     install_file "settings/icons/wifi-hotspot-$icon.svg" "usr/share/wifi-hotspot/settings/icons/wifi-hotspot-$icon.svg" 0644
 done
-for module in startup visibility preferences lifecycle service_client; do
+for module in startup visibility preferences lifecycle service_client wifi_qr qrcodegen; do
     install_file "settings/$module.py" "usr/share/wifi-hotspot/settings/$module.py" 0644
 done
 install_file settings/enable-extension.py usr/share/wifi-hotspot/settings/enable-extension.py 0755
@@ -54,6 +54,7 @@ install_file data/wifi-hotspot-daemon.service usr/lib/systemd/system/wifi-hotspo
 install_file data/io.github.erhanzeyrek.WifiHotspot.desktop usr/share/applications/io.github.erhanzeyrek.WifiHotspot.desktop 0644
 install_file data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml usr/share/metainfo/io.github.erhanzeyrek.WifiHotspot.metainfo.xml 0644
 install_file data/icons/hotspot.svg usr/share/icons/hicolor/scalable/apps/io.github.erhanzeyrek.WifiHotspot.svg 0644
+install_file settings/QR-ENCODER.md usr/share/doc/gnome-wifi-hotspot/QR-ENCODER.md 0644
 install_file packaging/debian/copyright usr/share/doc/gnome-wifi-hotspot/copyright 0644
 install_file README.md usr/share/doc/gnome-wifi-hotspot/README.md 0644
 install_file docs/dependency-review.md usr/share/doc/gnome-wifi-hotspot/dependency-review.md 0644

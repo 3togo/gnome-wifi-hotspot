@@ -40,6 +40,20 @@ assert not window.combo_inet_iface.get_sensitive()
 window._populate_fields({**window.config_data, 'BACKEND': 'create_ap'})
 assert window.combo_backend.get_selected() == 0
 assert window.combo_inet_iface.get_sensitive()
+window._loading_fields = True
+window.entry_ssid.set_text('Test relay')
+window.entry_pass.set_text('synthetic-test-password')
+window._loading_fields = False
+dialog = window._on_show_qr(None)
+assert dialog is not None
+picture = dialog.get_extra_child()
+texture = picture.get_paintable()
+assert texture.get_width() >= 250
+assert texture.get_width() == texture.get_height()
+assert picture.get_size_request() == (texture.get_width(), texture.get_height())
+assert picture.get_alternative_text() == 'Wi-Fi connection QR code for Test relay'
+dialog.destroy()
+window._pending_config = None
 window._on_close()
 window.destroy()
 assert window.client.closed

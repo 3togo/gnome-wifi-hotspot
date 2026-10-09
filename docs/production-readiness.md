@@ -30,6 +30,11 @@ failed preference save. The standalone tray tracks and cancels requests and
 poll sources at shutdown. It reloads itself after all watched modules are
 present and changed, while preserving a manual Show Icon request.
 
+Settings generates Wi-Fi QR images locally using the bundled MIT-licensed
+Nayuki encoder. Payloads escape special characters and identify hidden networks;
+UTF-8 encoding supports international network names. GTK4 displays opaque RGB
+pixels with a white quiet zone. No imaging or QR package is required at runtime.
+
 ## Build and verification
 
 Build the standalone binary without installing or restarting anything:

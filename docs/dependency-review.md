@@ -100,7 +100,6 @@ avoids installing a second system dnsmasq daemon.
 
 The native core remains a hardware-dependent prototype with the release gates
 in production-readiness.md. Dependency simulation cannot validate AP+STA driver
-behavior. Another product issue found in the review is that the Show QR action
-currently displays connection text rather than a scannable QR image; generating
-one is a separate feature change and must not introduce an unexplained runtime
-dependency during packaging minimization.
+behavior. The Show QR issue identified by this review is fixed in 1.0.0-15+qr1:
+Settings renders a scannable image using the bundled MIT-licensed Nayuki encoder,
+without adding QR or imaging packages to the runtime dependencies.

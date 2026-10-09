@@ -51,7 +51,7 @@ install -m 0755 tools/nm_ap_sta_probe.py %{buildroot}%{_libexecdir}/wifi-hotspot
 # Install settings app
 install -d -m 0755 %{buildroot}%{_datadir}/wifi-hotspot/settings
 install -m 0755 settings/main.py settings/enable-extension.py settings/tray.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
-install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
+install -m 0644 settings/startup.py settings/visibility.py settings/preferences.py settings/lifecycle.py settings/service_client.py settings/wifi_qr.py settings/qrcodegen.py %{buildroot}%{_datadir}/wifi-hotspot/settings/
 cp -r settings/icons %{buildroot}%{_datadir}/wifi-hotspot/settings/
 install -d -m 0755 %{buildroot}%{_bindir}
 ln -s %{_datadir}/wifi-hotspot/settings/main.py %{buildroot}%{_bindir}/wifi-hotspot-settings

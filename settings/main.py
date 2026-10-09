@@ -11,10 +11,11 @@ import json
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
-from gi.repository import Gtk, Adw, Gio, GLib
+from gi.repository import Gtk, Adw, Gio, GLib, Gdk
 
 try:
     from startup import get_auto_start, set_auto_start, is_gnome, launch_tray
@@ -25,6 +26,11 @@ try:
     from service_client import ServiceClient, ConfigurationWriter
 except ModuleNotFoundError:
     from settings.service_client import ServiceClient, ConfigurationWriter
+
+try:
+    from wifi_qr import wifi_payload, qr_rgb
+except ModuleNotFoundError:
+    from settings.wifi_qr import wifi_payload, qr_rgb
 
 BUS_NAME = "io.github.erhanzeyrek.WifiHotspot"
 OBJECT_PATH = "/io/github/erhanzeyrek/WifiHotspot"
@@ -540,17 +546,33 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         return conf
 
     def _on_show_qr(self, button):
-        ssid = self.entry_ssid.get_text() or get_default_ssid()
-        pwd = self.entry_pass.get_text() or "12345678"
-        qr_text = f"WIFI:T:WPA;S:{ssid};P:{pwd};;"
-
+        if not self._loaded:
+            self.add_toast(Adw.Toast.new("Wait for the hotspot settings to load before sharing."))
+            return
+        ssid = self.entry_ssid.get_text()
+        pwd = self.entry_pass.get_text()
+        try:
+            payload = wifi_payload(ssid, pwd, self.switch_hidden.get_active())
+            width, pixels = qr_rgb(payload)
+        except ValueError as error:
+            self.add_toast(Adw.Toast.new(str(error)))
+            return
+        texture = Gdk.MemoryTexture.new(width, width, Gdk.MemoryFormat.R8G8B8,
+                                        GLib.Bytes.new(pixels), width * 3)
+        picture = Gtk.Picture.new_for_paintable(texture)
+        picture.set_alternative_text("Wi-Fi connection QR code for " + ssid)
+        picture.set_can_shrink(True)
+        picture.set_size_request(width, width)
+        picture.set_halign(Gtk.Align.CENTER)
         dialog = Adw.MessageDialog(
             transient_for=self,
             heading="Wi-Fi Connection Code",
-            body=f"Network Name: {ssid}\nPassword: {pwd}\n\nYou can scan or share the text below with your camera:\n{qr_text}",
+            body=f"Network Name: {ssid}\nPassword: {pwd}\n\nScan the QR code with your phone’s camera to connect.",
         )
+        dialog.set_extra_child(picture)
         dialog.add_response("ok", "Close")
         dialog.present()
+        return dialog
 
 
 class HotspotSettingsApp(Adw.Application):

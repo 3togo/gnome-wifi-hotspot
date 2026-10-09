@@ -211,7 +211,7 @@ Build the package from this checkout without root:
 
 ```bash
 ./packaging/build-deb.sh
-sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-14+minimal1_all.deb
+sudo apt install ./dist/gnome-wifi-hotspot_1.0.0-15+qr1_all.deb
 ```
 
 The package includes the current working-tree changes. An optional first argument
