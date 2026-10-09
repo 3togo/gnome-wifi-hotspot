@@ -39,6 +39,10 @@ in an active local non-GNOME desktop session when startup is enabled and the
 user service manager has display information. It runs as that user, not root;
 it does not start hotspot broadcasting. Headless installs and disabled startup
 preferences are left alone. Other sessions load controls at their next login.
+Starting with revision **1.0.0-22**, installation waits for the tray restart,
+checks that its process remains running through the initial polling callbacks,
+and retries once if it exits. A failed activation prints a warning without
+failing the package installation. The verification does not start or stop sharing.
 GNOME controls may still require logging out and back in. Older bundled
 beta installs require an explicit choice of an optional control package.
 
@@ -146,6 +150,7 @@ request; desktop client restart alone does not stop a service-owned hotspot.
 | Problem | Action |
 | :--- | :--- |
 | Missing desktop controls | Install the optional package, log out/in, enable startup controls; check GNOME Extensions. Settings remains available. |
+| Tray missing on XFCE after installation | With startup enabled, run `systemctl --user restart wifi-relay-tray.service` as your desktop user. Inspect `journalctl --user -u wifi-relay-tray.service` if it exits. Restarting `nm-applet` is unnecessary for Relay's separate icon. |
 | Wrong adapter | Select the actual interface listed by `nmcli device status`. |
 | Unsupported NetworkManager options | Stop sharing and clear unsupported advanced overrides. |
 | Ineligible channel | Connect upstream on a permitted channel, often 2.4 GHz. Disabled, no-IR, and DFS/radar channels are excluded. |

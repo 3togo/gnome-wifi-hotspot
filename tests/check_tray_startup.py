@@ -94,6 +94,13 @@ for visible, auto_start in ((True, True), (False, True), (True, False)):
                         Gio.DBusCallFlags.NONE, 1000, None)
                     return result.unpack()[0] == expected
                 wait_for(indicator_ready)
+                # Registration alone missed processes exiting on the first
+                # preference/code polling callback after package startup.
+                deadline = time.monotonic() + 7
+                while time.monotonic() < deadline:
+                    assert updated.poll() is None, 'Tray exited after initial registration'
+                    assert indicator_ready()
+                    time.sleep(0.25)
                 assert updated.poll() is None
                 assert preference.read_text() == original
                 print(f'Legacy tray replaced by a live instance; initial visibility {expected}; preferences unchanged.')
