@@ -12,7 +12,7 @@ from gi.repository import Gtk, Gio, GLib, AyatanaAppIndicator3 as AppIndicator
 
 from startup import get_auto_start
 from visibility import get_tray_visible
-from lifecycle import CodeRevision
+from lifecycle import CodeRevision, replace_tray_instance
 from service_client import decode_reply
 
 BUS_NAME = 'io.github.erhanzeyrek.WifiHotspot'
@@ -20,11 +20,15 @@ OBJECT_PATH = '/io/github/erhanzeyrek/WifiHotspot'
 
 
 class HotspotTray(Gtk.Application):
-    def __init__(self):
-        super().__init__(application_id=BUS_NAME + '.Tray',
-                         flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+    def __init__(self, session_start=False):
+        flags = Gio.ApplicationFlags.HANDLES_COMMAND_LINE | Gio.ApplicationFlags.ALLOW_REPLACEMENT
+        if session_start:
+            flags |= Gio.ApplicationFlags.REPLACE
+        super().__init__(application_id=BUS_NAME + '.Tray', flags=flags)
         self.add_main_option('show-icon', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
                              'Show the tray icon in this session', None)
+        self.add_main_option('session-start', 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
+                             'Refresh tray controls after package installation', None)
         self.manual_start = False
         self.proxy = None
         self.indicator = None
@@ -229,6 +233,15 @@ class HotspotTray(Gtk.Application):
         settings = Gtk.MenuItem(label='Hotspot Settings')
         settings.connect('activate', self._open_settings)
         menu.append(settings)
+        about = Gtk.MenuItem(label='About')
+        about.connect('activate', self._open_about)
+        menu.append(about)
+        menu.append(Gtk.SeparatorMenuItem())
+        quit_item = Gtk.MenuItem(label='Quit')
+        quit_item.set_tooltip_text('Stop the hotspot and close the tray')
+        quit_item.set_sensitive(not self.busy and self.proxy is not None)
+        quit_item.connect('activate', self._quit_hotspot)
+        menu.append(quit_item)
         menu.show_all()
         self.menu = menu
         self.indicator.set_menu(menu)
@@ -238,6 +251,14 @@ class HotspotTray(Gtk.Application):
                 (self.status.get('state') == 'connecting' and not self.status.get('desired_active'))):
             return
         method = 'Stop' if (self.status.get('active') or self.status.get('desired_active')) else 'Start'
+        self._request_change(method)
+
+    def _quit_hotspot(self, _item):
+        if self.busy or self.proxy is None or self.closed:
+            return
+        self._request_change('Stop', quit_after_stop=True)
+
+    def _request_change(self, method, quit_after_stop=False):
         self.busy = True
         self.status['state'] = 'stopping' if method == 'Stop' else 'connecting'
         self.revision += 1
@@ -257,6 +278,9 @@ class HotspotTray(Gtk.Application):
                         self.status = response['status']
                 elif not value:
                     self._error('Hotspot could not be stopped.')
+                elif quit_after_stop:
+                    self.quit()
+                    return
             except (GLib.Error, ValueError) as error:
                 self._error(str(error))
             self.revision += 1
@@ -265,8 +289,17 @@ class HotspotTray(Gtk.Application):
         self.proxy.call(method, None, Gio.DBusCallFlags.NONE, 60000, self.cancel, finished)
 
     def _open_settings(self, _item):
-        Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py')],
-                           Gio.SubprocessFlags.NONE)
+        self._launch_window()
+
+    def _open_about(self, _item):
+        self._launch_window('--about')
+
+    def _launch_window(self, *arguments):
+        try:
+            Gio.Subprocess.new(['/usr/bin/python3', str(Path(__file__).resolve().parent / 'launcher.py'), *arguments],
+                               Gio.SubprocessFlags.NONE)
+        except GLib.Error as error:
+            self._error(str(error))
 
     def _error(self, message):
         dialog = Gtk.MessageDialog(message_type=Gtk.MessageType.ERROR,
@@ -277,4 +310,13 @@ class HotspotTray(Gtk.Application):
 
 
 if __name__ == '__main__':
-    sys.exit(HotspotTray().run(sys.argv))
+    session_start = '--session-start' in sys.argv
+    if session_start:
+        if not get_auto_start():
+            sys.exit(0)
+        try:
+            replace_tray_instance(BUS_NAME + '.Tray', Path(__file__).resolve())
+        except (OSError, GLib.Error) as error:
+            print(f'Wi-Fi Relay tray could not take over: {error}', file=sys.stderr)
+            sys.exit(1)
+    sys.exit(HotspotTray(session_start=session_start).run(sys.argv))

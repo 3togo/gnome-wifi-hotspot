@@ -66,6 +66,7 @@ jobs:
             packaging/debian/postrm tests/check_package_lifecycle.sh
           dbus-run-session -- xvfb-run -a python3 tests/check_settings_window.py
           dbus-run-session -- xvfb-run -a python3 tests/check_desktop_tray.py
+          dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
           dbus-run-session -- xvfb-run -a env SANITIZE=1 integration/nm-applet/test.sh
           appstreamcli validate --no-net data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml
 

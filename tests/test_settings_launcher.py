@@ -53,3 +53,13 @@ class SettingsLauncherTests(unittest.TestCase):
         subprocess.run.side_effect = FileNotFoundError('gnome-control-center')
         with patch('sys.stderr'):
             self.assertEqual(launcher.main([]), 1)
+
+    @patch.object(launcher, 'network_settings_available', return_value=True)
+    def test_about_bypasses_integrated_settings(self, available):
+        about = Mock()
+        editor = Mock()
+        with patch.dict('sys.modules', {'main': Mock(HotspotAboutApp=about, HotspotSettingsApp=editor)}):
+            launcher.main(['--about'])
+        available.assert_not_called()
+        editor.assert_not_called()
+        about.return_value.run.assert_called_once()

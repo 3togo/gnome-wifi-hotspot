@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ] && [ -z "${DPKG_ROOT:-}" ]; then
+    # A missing session manager or disabled user preference is not an APT error.
+    /usr/bin/python3 -I /usr/libexec/wifi-relay-tray/start-tray-sessions.py || true
+fi

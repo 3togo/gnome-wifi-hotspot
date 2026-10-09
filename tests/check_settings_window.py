@@ -61,3 +61,22 @@ window._on_close()
 window.destroy()
 assert window.client.closed
 print('Real GTK4 settings window, backend selector, first-run fields, and startup checks passed.')
+
+# About is a real, reusable window with no service or configuration access.
+from unittest.mock import patch
+with patch.object(main, 'ServiceClient', side_effect=AssertionError('About contacted service')):
+    about_app = main.HotspotAboutApp()
+    about_app.register(None)
+    about_app.activate()
+    while GLib.MainContext.default().pending():
+        GLib.MainContext.default().iteration(False)
+    about = about_app.get_windows()[0]
+    assert about.get_application_name() == 'Wi-Fi Relay'
+    assert about.get_version() == '1.0.0'
+    assert about.get_license_type() == main.Gtk.License.MIT_X11
+    assert about.get_website() == 'https://github.com/3togo/gnome-wifi-hotspot'
+    assert about.get_issue_url().endswith('/issues')
+    about_app.activate()
+    assert about_app.get_windows() == [about]
+    about.close()
+print('About metadata, window reuse, and service independence checks passed.')

@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+[ -z "${DPKG_ROOT:-}" ] || exit 0
+case "$1" in
+    remove|deconfigure)
+        /usr/bin/python3 -I /usr/libexec/wifi-relay-tray/start-tray-sessions.py --stop || true
+        ;;
+esac

@@ -99,6 +99,10 @@ def main():
                               if not line.startswith('dpkg-maintscript-helper rm_conffile '))
             target.write_text(content + '\n#DEBHELPER#\n')
             target.chmod(0o755)
+        for script in ('postinst', 'prerm'):
+            target = debian / f'gnome-wifi-hotspot-tray.{script}'
+            target.write_text((ROOT / f'packaging/debian/{script}-tray').read_text() + '\n#DEBHELPER#\n')
+            target.chmod(0o755)
         (debian / 'gnome-wifi-hotspot.maintscript').write_text(
             'rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot\n')
         with log_path.open('w') as log:

@@ -46,6 +46,8 @@ class PackageSplitTests(unittest.TestCase):
                     self.assertNotIn(name, ownership, f'{name} shared by {suffix} and {ownership.get(name)}')
                     ownership[name] = suffix
         self.assertEqual(ownership['usr/share/wifi-hotspot/settings/tray.py'], '-tray')
+        self.assertEqual(ownership['usr/lib/systemd/user/wifi-relay-tray.service'], '-tray')
+        self.assertEqual(ownership['usr/libexec/wifi-relay-tray/start-tray-sessions.py'], '-tray')
         self.assertEqual(ownership['usr/share/gnome-shell/extensions/wifi-relay@3togo.github.io/metadata.json'], '-gnome')
         self.assertFalse((self.roots[''] / 'etc/xdg/autostart').exists())
 

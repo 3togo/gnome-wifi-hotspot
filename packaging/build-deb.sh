@@ -56,6 +56,7 @@ install_file docs/user-guide.md usr/share/doc/gnome-wifi-hotspot/user-guide.md 0
 install_file docs/dependency-review.md usr/share/doc/gnome-wifi-hotspot/dependency-review.md 0644
 install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/production-readiness.md 0644
 install_file docs/releases/1.0.0-18.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-18.md 0644
+install_file docs/releases/1.0.0-22.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-22.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 
@@ -100,6 +101,10 @@ for integration in gnome tray; do
         find "$stage_dir/$extension_dir" -type f -exec chmod 0644 {} +
     else
         install_file settings/tray.py usr/share/wifi-hotspot/settings/tray.py 0755
+        install_file data/wifi-relay-tray.service usr/lib/systemd/user/wifi-relay-tray.service 0644
+        install_file packaging/start-tray-sessions.py usr/libexec/wifi-relay-tray/start-tray-sessions.py 0755
+        install_file packaging/debian/postinst-tray DEBIAN/postinst 0755
+        install_file packaging/debian/prerm-tray DEBIAN/prerm 0755
         for icon in off connecting on; do
             install_file "settings/icons/wifi-hotspot-$icon.svg" "usr/share/wifi-hotspot/settings/icons/wifi-hotspot-$icon.svg" 0644
         done
