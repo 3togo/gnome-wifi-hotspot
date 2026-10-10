@@ -1,3 +1,10 @@
+gnome-wifi-hotspot (1.0.0-25) stonking; urgency=medium
+
+  * Repair an absent legacy wlan0 adapter setting during package upgrade when
+    the machine has exactly one detected Wi-Fi adapter.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 20:40:00 +0000
+
 gnome-wifi-hotspot (1.0.0-24) stonking; urgency=medium
 
   * Retry upstream band switching with a temporary profile band constraint

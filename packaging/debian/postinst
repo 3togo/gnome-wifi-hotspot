@@ -8,6 +8,9 @@ if [ "$1" = configure ]; then
     if [ -z "${2:-}" ]; then
         python3 /usr/libexec/wifi-hotspot-daemon/configuration.py \
             /etc/wifi-hotspot.conf /usr/share/wifi-hotspot/default.conf
+    else
+        python3 /usr/libexec/wifi-hotspot-daemon/configuration.py \
+            /etc/wifi-hotspot.conf /usr/share/wifi-hotspot/default.conf --repair-interface
     fi
     deb-systemd-helper unmask wifi-hotspot-daemon.service >/dev/null || true
     deb-systemd-helper enable wifi-hotspot-daemon.service >/dev/null || true

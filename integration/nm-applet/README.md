@@ -38,8 +38,8 @@ The patched applet deb reloads an already-running old `nm-applet` in an active
 graphical session when it can identify that user's display and session bus. If
 no such session is active, the new binary loads at the next login. Click the usual network
 icon and open **Wi-Fi Relay**. Relay itself must be installed and configured first.
-When upgrading visibility support, also restart the separate Relay tray process
-to load its updated Python code. Installed-menu Show/Hide was verified to change
+The Relay tray package restarts its user service on upgrade to load updated code.
+Installed-menu Show/Hide was verified to change
 the tray indicator between Active and Passive while sharing stayed active on the
 same interface.
 This integration targets XFCE's nm-applet; GNOME Shell uses the repository's separate

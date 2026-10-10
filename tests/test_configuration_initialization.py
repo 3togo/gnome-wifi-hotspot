@@ -3,7 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from daemon.configuration import detect_wifi_interface, initialize_factory_password
+from daemon.configuration import (detect_wifi_interface, initialize_factory_password,
+                                  repair_legacy_wifi_interface)
 
 
 class FactoryPasswordTests(unittest.TestCase):
@@ -59,3 +60,26 @@ class FactoryPasswordTests(unittest.TestCase):
                 initialize_factory_password(self.path, self.factory)
         self.assertEqual(self.path.read_text(), self.original)
         self.assertEqual(set(Path(self.directory.name).iterdir()), {self.path, self.factory})
+
+    def test_upgrade_repairs_only_absent_legacy_wifi_defaults(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.path.write_text('WIFI_IFACE=INTERNET_IFACE=wlan0\nINTERNET_IFACE=wlan0\n'
+                             'SSID=Mine\nPASSPHRASE=private-password\n')
+        self.assertTrue(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.assertEqual(self.path.read_text(), 'WIFI_IFACE=wlp4s0\nINTERNET_IFACE=wlp4s0\n'
+                         'SSID=Mine\nPASSPHRASE=private-password\n')
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+
+    def test_upgrade_preserves_explicit_interfaces_and_ambiguous_hardware(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.path.write_text('WIFI_IFACE=wlp4s0\nINTERNET_IFACE=eth0\n')
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.path.write_text('WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n')
+        (net / 'wlp5s0' / 'wireless').mkdir(parents=True)
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.assertEqual(self.path.read_text(), 'WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n')
