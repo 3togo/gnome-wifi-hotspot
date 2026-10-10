@@ -115,6 +115,10 @@ the package and is deliberately restricted to the disposable CI environment.
 
 ## Supported scope and remaining validation
 
+Use the [candidate hardware checklist](release-hardware-validation.md) to record
+physical checks for the exact next build. The [fork maintenance policy](fork-maintenance.md)
+defines upstream review, compatible upgrades, and publication evidence.
+
 Passing automated tests does not certify wireless drivers or the patched GNOME
 and NetworkManager stack. For deployment hardware, exercise both
 backends on the supported adapter/driver matrix, AP+STA contention and channel
