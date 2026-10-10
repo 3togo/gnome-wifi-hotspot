@@ -1,3 +1,10 @@
+gnome-wifi-hotspot (1.0.0-23) stonking; urgency=medium
+
+  * Select the sole detected Wi-Fi adapter in a fresh factory configuration.
+  * Build and include the patched XFCE network applet debs in CI artifacts.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 19:40:24 +0000
+
 gnome-wifi-hotspot (1.0.0-22) stonking; urgency=medium
 
   * Wait for the logged-in user's tray restart after package installation.

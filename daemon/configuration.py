@@ -76,8 +76,19 @@ def validate_config(conf, partial=False):
 
 
 
-def initialize_factory_password(path, factory_path, ssid=None):
-    """Replace the shared factory secret once; preserve every customized config."""
+def detect_wifi_interface(sys_class_net="/sys/class/net"):
+    """Choose an adapter only when a fresh install has one unambiguous Wi-Fi device."""
+    from pathlib import Path
+    try:
+        interfaces = [entry.name for entry in Path(sys_class_net).iterdir()
+                      if (entry / "wireless").exists() or (entry / "phy80211").exists()]
+    except OSError:
+        return None
+    return interfaces[0] if len(interfaces) == 1 else None
+
+
+def initialize_factory_password(path, factory_path, ssid=None, wifi_interface=None):
+    """Initialize a factory config once; preserve every customized config."""
     import os
     from pathlib import Path
     import secrets
@@ -96,6 +107,11 @@ def initialize_factory_password(path, factory_path, ssid=None):
         ssid = ssid.encode('utf-8')[:32].decode('utf-8', errors='ignore')
         validate_config({'SSID': ssid})
         updated = updated.replace(b'SSID=Hotspot\n', b'SSID=' + ssid.encode('utf-8') + b'\n', 1)
+    interface = wifi_interface if wifi_interface is not None else detect_wifi_interface()
+    if interface is not None:
+        validate_config({'WIFI_IFACE': interface, 'INTERNET_IFACE': interface})
+        for key in (b'WIFI_IFACE', b'INTERNET_IFACE'):
+            updated = updated.replace(key + b'=wlan0\n', key + b'=' + interface.encode('ascii') + b'\n', 1)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.wifi-hotspot-', delete=False) as stream:

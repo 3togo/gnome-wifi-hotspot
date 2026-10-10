@@ -19,7 +19,11 @@ and regulatory restrictions remain the responsibility of Relay and NetworkManage
 
 ## Build and install
 
-Enable Ubuntu source repositories and install the build dependencies:
+Ubuntu 26.10 CI now includes the patched `network-manager-applet` and
+`network-manager-gnome` debs in its build artifact, alongside the Relay debs.
+Install the matching applet debs with APT; no source patching on the target
+machine is needed. To build the same debs locally, enable Ubuntu source
+repositories and install the build dependencies:
 
 ```sh
 sudo apt-get build-dep network-manager-applet
