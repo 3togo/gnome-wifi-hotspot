@@ -118,8 +118,52 @@ class BandFallbackTests(unittest.TestCase):
         self.assertEqual(self.daemon._run_cmd.call_args.args[0][-1], 'aa:bb:cc:dd:ee:ff')
 
     def test_successful_command_on_wrong_band_is_failure(self):
-        self.switch_setup(r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', verified=capabilities())
+        self.daemon.get_capabilities = Mock(side_effect=[
+            capabilities(), capabilities(), capabilities()
+        ])
+        self.daemon._run_cmd.side_effect = [
+            (0, 'profile-uuid', ''),
+            (0, r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', ''),
+            (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''),
+        ]
         self.assertFalse(json.loads(self.daemon.switch_band_and_reconnect('2.4'))['success'])
+        self.daemon._run_cmd.assert_any_call([
+            'nmcli', 'connection', 'modify', 'uuid', 'profile-uuid',
+            '802-11-wireless.band', ''
+        ])
+
+    def test_wrong_band_retries_with_temporary_profile_constraint(self):
+        self.daemon.get_capabilities = Mock(side_effect=[
+            capabilities(), capabilities(), capabilities(2412)
+        ])
+        self.daemon._run_cmd.side_effect = [
+            (0, 'profile-uuid', ''),
+            (0, r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', ''),
+            (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''),
+        ]
+        self.assertTrue(json.loads(self.daemon.switch_band_and_reconnect('2.4'))['success'])
+        self.daemon._run_cmd.assert_any_call([
+            'nmcli', 'connection', 'modify', 'uuid', 'profile-uuid',
+            '802-11-wireless.band', 'bg'
+        ])
+        self.daemon._run_cmd.assert_any_call([
+            'nmcli', 'connection', 'modify', 'uuid', 'profile-uuid',
+            '802-11-wireless.band', ''
+        ])
+
+    def test_profile_constraint_restore_failure_is_reported(self):
+        self.daemon.get_capabilities = Mock(side_effect=[
+            capabilities(), capabilities(), capabilities(2412)
+        ])
+        self.daemon._run_cmd.side_effect = [
+            (0, 'profile-uuid', ''),
+            (0, r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', ''),
+            (0, '', ''), (0, '', ''), (0, '', ''), (0, '', ''),
+            (1, '', 'Could not restore saved band'),
+        ]
+        result = json.loads(self.daemon.switch_band_and_reconnect('2.4'))
+        self.assertFalse(result['success'])
+        self.assertEqual(result['error'], 'Could not restore saved band')
 
     def test_scan_error_is_reported_without_activation(self):
         self.daemon.get_capabilities = Mock(return_value=capabilities())
