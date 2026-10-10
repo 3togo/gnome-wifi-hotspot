@@ -6,6 +6,13 @@ GNOME Shell or tray controls if desired. All controls use the same authorized
 D-Bus service. Sharing an upstream Wi-Fi connection through the same adapter
 requires simultaneous station/access-point (AP+STA) support from its driver.
 
+Wi-Fi Relay is a maintained fork of
+[Erhan Zeyrek's GNOME Wi-Fi Hotspot](https://github.com/erhanzeyrek/gnome-wifi-hotspot).
+It adds standalone and XFCE controls, Debian release packaging, and reliability
+work while preserving the original attribution. Releases are maintained here;
+see the [fork maintenance policy](docs/fork-maintenance.md) for scope,
+compatibility, and how upstream changes are reviewed.
+
 ## Download and install
 
 **[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-22)**
@@ -136,12 +143,16 @@ version-specific and are not upstream GNOME or NetworkManager features.
 - [Release notes](RELEASE_NOTES.md): changes, scope, and downloads.
 - [Release maintenance and rollback](docs/releases/1.0.0-22.md).
 - [Architecture and production checks](docs/production-readiness.md).
+- [Fork maintenance and upstream contributions](docs/fork-maintenance.md).
+- [Hardware validation checklist](docs/release-hardware-validation.md): candidate
+  release checks and evidence requirements; unchecked cases are not passes.
 - [NetworkManager development](docs/networkmanager-development.md).
 - [Report a problem](https://github.com/3togo/gnome-wifi-hotspot/issues): include package version, desktop, backend, adapter/driver, and relevant errors. Remove passwords and personal network details from reports.
 
 ## License and attribution
 
-Wi-Fi Relay is MIT licensed; see [LICENSE](LICENSE) and
+The original application is by Erhan Zeyrek. Wi-Fi Relay retains its MIT license
+and copyright notice; see [LICENSE](LICENSE) and
 [Debian copyright notices](packaging/debian/copyright). The create_ap backend
 retains its upstream copyright notices. Wi-Fi QR encoding uses the bundled
 MIT-licensed Nayuki encoder; see [QR encoder attribution](settings/QR-ENCODER.md).
