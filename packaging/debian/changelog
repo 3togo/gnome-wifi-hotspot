@@ -3,6 +3,7 @@ gnome-wifi-hotspot (1.0.0-24) stonking; urgency=medium
   * Retry upstream band switching with a temporary profile band constraint
     when NetworkManager ignores the requested BSSID, then restore the saved
     profile preference.
+  * Reload an old running nm-applet from the patched applet deb after install.
 
  -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 20:10:00 +0000
 
