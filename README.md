@@ -125,6 +125,20 @@ Build without installing packages or changing host services:
 python3 packaging/build-source.py --binary
 ```
 
+For a repeatable local build matrix, run `python3 tools/build-matrix.py`. It checks
+Python, JavaScript, and shell syntax, runs the unit/tray tests, compiles and runs
+the C applet harness with installed GCC/Clang at `-O0`, `-O2`, and sanitized
+`-O1` when its GTK/Jansson and display dependencies are available, then
+assembles the standalone Debian packages. The summary reports any skipped C
+checks. Add
+`--full` for a Debian source/binary build, or `--integration nm-core`,
+`--integration nm-applet`, and `--integration gnome-settings` for the pinned
+Ubuntu integration package builds. `--integration all` selects all three;
+`--all-packages` also exports their companion packages. Use `--cc` repeatedly
+to select compilers, `--version` to set the standalone package version, and
+`--dry-run` to inspect the planned commands. Outputs go under `dist/` and the
+script never installs packages or changes host services.
+
 The source builder runs unit and real-widget tests and writes unsigned Debian
 source/binary artifacts into `dist/`. See [build requirements and checks](docs/production-readiness.md).
 Use `/usr/bin/python3` on Ubuntu when a separate Python environment lacks GI.
