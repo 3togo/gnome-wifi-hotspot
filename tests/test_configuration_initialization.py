@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from daemon.configuration import initialize_factory_password
+from daemon.configuration import detect_wifi_interface, initialize_factory_password
 
 
 class FactoryPasswordTests(unittest.TestCase):
@@ -27,6 +27,23 @@ class FactoryPasswordTests(unittest.TestCase):
     def test_make_install_can_keep_its_hostname_ssid(self):
         initialize_factory_password(self.path, self.factory, 'Workstation-Hotspot')
         self.assertTrue(self.path.read_text().startswith('SSID=Workstation-Hotspot\n'))
+
+    def test_fresh_install_uses_the_only_wifi_interface(self):
+        self.original = 'WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n' + self.original
+        self.factory.write_text(self.original)
+        self.path.write_text(self.original)
+        initialize_factory_password(self.path, self.factory, wifi_interface='wlp4s0')
+        saved = self.path.read_text()
+        self.assertIn('WIFI_IFACE=wlp4s0\n', saved)
+        self.assertIn('INTERNET_IFACE=wlp4s0\n', saved)
+
+    def test_detection_requires_exactly_one_wifi_interface(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.assertEqual(detect_wifi_interface(net), 'wlp4s0')
+        (net / 'wlp5s0' / 'phy80211').mkdir(parents=True)
+        self.assertIsNone(detect_wifi_interface(net))
 
     def test_customized_configuration_and_symlink_are_preserved(self):
         self.path.write_text('SSID=Mine\nPASSPHRASE=custom-secret\n')

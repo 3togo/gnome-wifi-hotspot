@@ -39,6 +39,7 @@ jobs:
           printf '%s\n' 'Acquire::ForceIPv4 "true";' 'Acquire::Retries "3";' 'Acquire::http::Timeout "30";' > /etc/apt/apt.conf.d/80-wifi-relay-ci
           # GitHub-hosted Linux runners use Azure; keep archive signature checks enabled.
           sed -i 's|archive.ubuntu.com|azure.archive.ubuntu.com|g; s|security.ubuntu.com|azure.archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+          sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           apt-get update --error-on=any
           apt-get install -y --no-install-recommends \
             ca-certificates git dpkg-dev debhelper dh-python python3 python3-gi \
@@ -46,6 +47,7 @@ jobs:
             gir1.2-ayatanaappindicator3-0.1 nodejs gjs iptables \
             dbus xvfb xauth lintian appstream \
             build-essential pkgconf libgtk-3-dev libjansson-dev
+          apt-get build-dep -y network-manager-applet
 
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,6 +89,14 @@ jobs:
           (cd dist && sha256sum gnome-wifi-hotspot*_"${version}"_all.deb > SHA256SUMS)
           lintian --tag-display-limit 0 dist/gnome-wifi-hotspot*_"${version}"_all.deb
 
+      - name: Build patched XFCE network applet debs
+        run: |
+          bash integration/nm-applet/build-deb.sh
+          test -f dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb
+          test -f dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb
+          (cd dist && sha256sum network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb \
+            network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb >> SHA256SUMS)
+
       - name: Verify installation, upgrade, removal, and purge
         env:
           PREVIOUS_PATH: ${{ steps.package.outputs.previous_path }}
@@ -96,12 +106,23 @@ jobs:
           sh tests/check_package_lifecycle.sh "$GITHUB_WORKSPACE/$PACKAGE_PATH"
           dpkg --audit
 
+      - name: Verify packaged XFCE applet installs
+        run: |
+          apt-get install -y --no-install-recommends \
+            "$GITHUB_WORKSPACE/dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb" \
+            "$GITHUB_WORKSPACE/dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb"
+          test "$(dpkg-query -W -f='${Version}' network-manager-applet)" = '1.36.0-4ubuntu1+relay7'
+          test "$(dpkg-query -W -f='${Version}' network-manager-gnome)" = '1.36.0-4ubuntu1+relay7'
+          test -f /usr/libexec/wifi-relay-nm-applet/restart-applet.py
+
       - name: Upload package and checksum
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wifi-relay-ubuntu-stonking-${{ github.run_number }}
           path: |
             dist/gnome-wifi-hotspot*_all.deb
+            dist/network-manager-applet_*+relay7_amd64.deb
+            dist/network-manager-gnome_*+relay7_amd64.deb
             dist/SHA256SUMS
             dist/*.dsc
             dist/*.tar.xz

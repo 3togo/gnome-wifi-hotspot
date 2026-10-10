@@ -3,7 +3,7 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source_version=1.36.0-4ubuntu1
-version=${1:-1.36.0-4ubuntu1+relay6}
+version=${1:-1.36.0-4ubuntu1+relay7}
 all_packages=${2:-}
 [[ -z $all_packages || $all_packages == --all ]] || { echo 'Usage: build-deb.sh [version] [--all]' >&2; exit 2; }
 dpkg --validate-version "$version"
@@ -19,10 +19,25 @@ cd "$build_dir"
 apt-get source "network-manager-applet=$source_version"
 cd network-manager-applet-1.36.0
 python3 "$repo_dir/packaging/minimize-integrations.py" applet "$source_version" debian/control
+python3 - <<'PY'
+from pathlib import Path
+path = Path('debian/control')
+sections = path.read_text().split('\n\n')
+for index, section in enumerate(sections):
+    if section.startswith('Package: network-manager-applet\n'):
+        sections[index] = section.replace('Depends: ', 'Depends: python3, ', 1)
+        break
+else:
+    raise SystemExit('network-manager-applet stanza missing')
+path.write_text('\n\n'.join(sections))
+PY
 patch -p1 < "$repo_dir/integration/nm-applet/relay-menu.patch"
 patch -p1 < "$repo_dir/integration/nm-applet/hotspot-icon.patch"
 install -m 0644 "$repo_dir/integration/nm-applet/wifi-relay.c" src/wifi-relay.c
 install -m 0644 "$repo_dir/integration/nm-applet/wifi-relay.h" src/wifi-relay.h
+install -m 0755 "$repo_dir/integration/nm-applet/restart-applet.py" debian/restart-applet.py
+install -m 0755 "$repo_dir/integration/nm-applet/postinst" debian/network-manager-applet.postinst
+printf '%s\n' 'debian/restart-applet.py usr/libexec/wifi-relay-nm-applet/' >> debian/network-manager-applet.install
 python3 - "$version" <<'PY'
 from pathlib import Path
 import sys

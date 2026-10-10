@@ -19,18 +19,24 @@ and regulatory restrictions remain the responsibility of Relay and NetworkManage
 
 ## Build and install
 
-Enable Ubuntu source repositories and install the build dependencies:
+Ubuntu 26.10 CI now includes the patched `network-manager-applet` and
+`network-manager-gnome` debs in its build artifact, alongside the Relay debs.
+Install the matching applet debs with APT; no source patching on the target
+machine is needed. To build the same debs locally, enable Ubuntu source
+repositories and install the build dependencies:
 
 ```sh
 sudo apt-get build-dep network-manager-applet
 bash integration/nm-applet/build-deb.sh
-sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay6_amd64.deb \
-  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay6_amd64.deb
+sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb \
+  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb
 ```
 
 The transition package requires its matching applet. The compatible stock editor
 can remain installed, or APT can fetch it from Ubuntu.
-Restart `nm-applet` or log out and in to load the new binary. Click the usual network
+The patched applet deb reloads an already-running old `nm-applet` in an active
+graphical session when it can identify that user's display and session bus. If
+no such session is active, the new binary loads at the next login. Click the usual network
 icon and open **Wi-Fi Relay**. Relay itself must be installed and configured first.
 When upgrading visibility support, also restart the separate Relay tray process
 to load its updated Python code. Installed-menu Show/Hide was verified to change

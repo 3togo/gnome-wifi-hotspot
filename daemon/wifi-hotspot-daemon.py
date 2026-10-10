@@ -632,6 +632,45 @@ class WifiHotspotDaemon:
             "ifname", iface, "ap", target_bssid
         ], timeout=10)
         updated = self.get_capabilities()
+        if (code == 0 and updated["current_sta_band"] != target_band):
+            # Some NetworkManager/driver combinations accept `ap BSSID` but
+            # immediately select a stronger AP on the old band. Constrain the
+            # saved profile for one activation, then restore its saved setting.
+            band_setting = "bg" if target_band == "2.4" else "a"
+            read_code, original_band, _ = self._run_cmd([
+                "nmcli", "-g", "802-11-wireless.band", "connection", "show", "uuid", profile
+            ])
+            if read_code == 0:
+                original_band = original_band.strip()
+                changed_band = False
+                restore_failure = None
+                try:
+                    if original_band != band_setting:
+                        change_code, _, change_error = self._run_cmd([
+                            "nmcli", "connection", "modify", "uuid", profile,
+                            "802-11-wireless.band", band_setting
+                        ])
+                        changed_band = change_code == 0
+                        if change_code:
+                            err = change_error or "Could not restrict the upstream Wi-Fi band."
+                    else:
+                        changed_band = True
+                    if changed_band:
+                        code, _, err = self._run_cmd([
+                            "nmcli", "--wait", "8", "connection", "up", "uuid", profile,
+                            "ifname", iface, "ap", target_bssid
+                        ], timeout=10)
+                        updated = self.get_capabilities()
+                finally:
+                    if original_band != band_setting and changed_band:
+                        restore_code, _, restore_error = self._run_cmd([
+                            "nmcli", "connection", "modify", "uuid", profile,
+                            "802-11-wireless.band", original_band
+                        ])
+                        if restore_code:
+                            restore_failure = restore_error or "Could not restore the upstream Wi-Fi profile band."
+                if restore_failure:
+                    return json.dumps({"success": False, "error": restore_failure})
         if (code or updated["current_sta_band"] != target_band
                 or updated["current_sta_ssid"] != ssid
                 or not updated["current_sta_ap_allowed"]):

@@ -148,7 +148,9 @@ CI environments because they remove and purge packages.
 Desktop integration entry points use the shared Relay service. Optional
 [network applet](integration/nm-applet/README.md) and
 [GNOME Settings](integration/gnome-settings/README.md) downstream patches are
-maintainer experiments, separate from the stable package downloads. They are
+maintainer experiments, separate from the stable 1.0.0-22 downloads. The Ubuntu
+26.10 CI artifact now includes the patched applet debs, so the XFCE menu is
+installed through APT rather than by patching files on the target machine. They are
 version-specific and are not upstream GNOME or NetworkManager features.
 
 ## Documentation and support
