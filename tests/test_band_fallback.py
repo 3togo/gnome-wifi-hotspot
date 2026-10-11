@@ -227,6 +227,7 @@ class BandFallbackTests(unittest.TestCase):
         self.daemon.switch_band_and_reconnect.return_value = json.dumps({'success': True})
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
+        self.daemon._reap_stale_hostapd.assert_called_once_with()
         cmd = self.daemon._run_cmd.call_args.args[0]
         self.assertEqual(cmd[-4:], ['--freq-band', '2.4', '-c', '6'])
 
@@ -236,6 +237,15 @@ class BandFallbackTests(unittest.TestCase):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
         self.daemon.switch_band_and_reconnect.assert_not_called()
         self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
+
+    def test_stale_hostapd_cleanup_failure_cancels_start(self):
+        self.start_setup(capabilities(5745))
+        self.daemon._reap_stale_hostapd.side_effect = RuntimeError('Stale AP did not exit')
+        result = json.loads(self.daemon.method_start())
+        self.assertFalse(result['success'])
+        self.assertIn('Stale AP did not exit', result['error'])
+        self.daemon.prepare_firewall.assert_not_called()
+        self.daemon._run_cmd.assert_not_called()
 
     def test_unsupported_concurrency_stops_before_switch(self):
         caps = capabilities()
