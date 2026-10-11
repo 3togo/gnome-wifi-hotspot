@@ -14,6 +14,7 @@ import re
 import tempfile
 import importlib.util
 import signal
+import select
 import stat
 from pathlib import Path
 import gi
@@ -42,6 +43,37 @@ RUNTIME_DIRECTORY = Path("/run/wifi-relay")
 MAX_STARTUP_LOG_BYTES = 16384
 CREATE_AP_PIDFILE = RUNTIME_DIRECTORY / "create-ap.pid"
 PROC_DIRECTORY = Path("/proc")
+
+
+def stale_relay_hostapd_pids(proc_root=PROC_DIRECTORY, runtime=RUNTIME_DIRECTORY):
+    """Find Relay hostapd processes whose create_ap instance already cleaned up."""
+    found = []
+    try:
+        processes = list(proc_root.iterdir())
+    except OSError:
+        return found
+    for process in processes:
+        if not process.name.isdecimal():
+            continue
+        try:
+            if process.stat().st_uid != os.geteuid():
+                continue
+            if os.readlink(process / "exe") != "/usr/sbin/hostapd":
+                continue
+            args = (process / "cmdline").read_bytes()[:8192].rstrip(b"\0").split(b"\0")
+            if not args or args[0] != b"/usr/sbin/hostapd":
+                continue
+            config = Path(os.fsdecode(args[-1]))
+            if (config.name != "hostapd.conf"
+                    or config.parent.parent != runtime / "create-ap"
+                    or not re.fullmatch(r"create_ap\.[A-Za-z0-9_.:-]{1,15}\.conf\.[A-Za-z0-9]{8}",
+                                        config.parent.name)
+                    or config.parent.exists()):
+                continue
+            found.append(int(process.name))
+        except (OSError, ValueError):
+            continue
+    return found
 
 
 def prepare_startup_log():
@@ -315,6 +347,27 @@ class WifiHotspotDaemon:
             return pid
         except (OSError, ValueError, IndexError, UnicodeError):
             return None
+
+    def _reap_stale_hostapd(self):
+        """Release only orphaned hostapd processes from Relay's private runtime."""
+        for pid in stale_relay_hostapd_pids():
+            try:
+                descriptor = os.pidfd_open(pid)
+            except ProcessLookupError:
+                continue
+            try:
+                if pid not in stale_relay_hostapd_pids():
+                    continue
+                try:
+                    signal.pidfd_send_signal(descriptor, signal.SIGTERM)
+                except ProcessLookupError:
+                    continue
+                watcher = select.poll()
+                watcher.register(descriptor, select.POLLIN)
+                if not watcher.poll(3000):
+                    raise RuntimeError("A stale Relay hostapd process did not exit; hotspot startup was cancelled.")
+            finally:
+                os.close(descriptor)
 
     def _get_status_dict(self):
         nm = getattr(self, "nm_backend", None)
@@ -809,6 +862,12 @@ class WifiHotspotDaemon:
                     return json.dumps({"success": True, "status": status})
                 except Exception as exc:
                     return json.dumps({"success": False, "error": str(exc)})
+            try:
+                self._reap_stale_hostapd()
+            except OSError as exc:
+                return json.dumps({"success": False, "error": f"Could not clear stale Relay AP: {exc}"})
+            except RuntimeError as exc:
+                return json.dumps({"success": False, "error": str(exc)})
             caps = self.get_capabilities()
             req_band = config.get("FREQ_BAND", "auto")
             if req_band not in ("auto", "2.4", "5"):

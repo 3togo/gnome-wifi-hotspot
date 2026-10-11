@@ -55,6 +55,7 @@ class BandFallbackTests(unittest.TestCase):
         })
         self.daemon._emit_signal = Mock()
         self.daemon.prepare_firewall = Mock()
+        self.daemon._reap_stale_hostapd = Mock()
         self.daemon._run_cmd = Mock(return_value=(0, "", ""))
 
     def test_regulatory_restrictions(self):
