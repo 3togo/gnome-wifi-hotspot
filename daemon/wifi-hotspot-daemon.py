@@ -632,7 +632,9 @@ class WifiHotspotDaemon:
             "ifname", iface, "ap", target_bssid
         ], timeout=10)
         updated = self.get_capabilities()
-        if (code == 0 and updated["current_sta_band"] != target_band):
+        if (code or updated["current_sta_band"] != target_band
+                or updated["current_sta_ssid"] != ssid
+                or not updated["current_sta_ap_allowed"]):
             # Some NetworkManager/driver combinations accept `ap BSSID` but
             # immediately select a stronger AP on the old band. Constrain the
             # saved profile for one activation, then restore its saved setting.
@@ -816,15 +818,20 @@ class WifiHotspotDaemon:
                 if not caps["ap_sta_concurrent"] or config.get("NO_VIRT", "0") == "1":
                     return json.dumps({"success": False, "error":
                         "This adapter/configuration cannot run Wi-Fi and a hotspot together. Use a second adapter."})
-                if not caps["current_sta_ap_allowed"] or (req_band == "2.4" and caps["current_sta_band"] != "2.4"):
-                    if not caps["ap_2ghz"]:
-                        return json.dumps({"success": False, "error": "No permitted 2.4 GHz hotspot channel is available."})
-                    print("[*] Switching upstream Wi-Fi to a permitted 2.4 GHz hotspot channel...")
-                    result = json.loads(self.switch_band_and_reconnect("2.4"))
+                target_band = req_band if req_band != "auto" else caps["current_sta_band"]
+                if req_band == "auto" and not caps["current_sta_ap_allowed"]:
+                    target_band = "2.4" if caps["ap_2ghz"] else "5"
+                if (not caps["current_sta_ap_allowed"]
+                        or (req_band != "auto" and caps["current_sta_band"] != req_band)):
+                    if not caps["ap_channels"].get(target_band):
+                        return json.dumps({"success": False, "error":
+                            f"No permitted {target_band} GHz hotspot channel is available."})
+                    print(f"[*] Switching upstream Wi-Fi to a permitted {target_band} GHz hotspot channel...")
+                    result = json.loads(self.switch_band_and_reconnect(target_band))
                     if not result["success"]:
                         return json.dumps(result)
                     caps = self.get_capabilities()
-                    if not caps["current_sta_ap_allowed"] or caps["current_sta_band"] != "2.4":
+                    if not caps["current_sta_ap_allowed"] or caps["current_sta_band"] != target_band:
                         return json.dumps({"success": False, "error": "Wi-Fi changed before hotspot startup; try again."})
                 resolved_band = caps["current_sta_band"]
                 channel = next(c["channel"] for c in caps["ap_channels"][resolved_band]

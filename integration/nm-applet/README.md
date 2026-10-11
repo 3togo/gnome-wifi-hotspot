@@ -28,8 +28,8 @@ repositories and install the build dependencies:
 ```sh
 sudo apt-get build-dep network-manager-applet
 bash integration/nm-applet/build-deb.sh
-sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb \
-  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb
+sudo apt install ./dist/network-manager-applet_1.36.0-4ubuntu1+relay8_amd64.deb \
+  ./dist/network-manager-gnome_1.36.0-4ubuntu1+relay8_amd64.deb
 ```
 
 The transition package requires its matching applet. The compatible stock editor

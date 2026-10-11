@@ -3,7 +3,7 @@
 set -euo pipefail
 repo_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 source_version=1.36.0-4ubuntu1
-version=${1:-1.36.0-4ubuntu1+relay7}
+version=${1:-1.36.0-4ubuntu1+relay8}
 all_packages=${2:-}
 [[ -z $all_packages || $all_packages == --all ]] || { echo 'Usage: build-deb.sh [version] [--all]' >&2; exit 2; }
 dpkg --validate-version "$version"

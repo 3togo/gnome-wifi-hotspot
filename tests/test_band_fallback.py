@@ -112,10 +112,36 @@ class BandFallbackTests(unittest.TestCase):
     def test_failed_reconnection_restores_original(self):
         self.switch_setup(r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90',
                           result=(10, '', 'Activation failed'), verified=capabilities())
+        self.daemon._run_cmd.side_effect = [
+            (0, 'profile-uuid', ''),
+            (0, r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', ''),
+            (10, '', 'Activation failed'),
+            (1, '', 'Profile cannot be read'),
+            (0, '', ''),
+        ]
         result = json.loads(self.daemon.switch_band_and_reconnect('2.4'))
         self.assertFalse(result['success'])
         self.assertEqual(result['error'], 'Activation failed')
         self.assertEqual(self.daemon._run_cmd.call_args.args[0][-1], 'aa:bb:cc:dd:ee:ff')
+
+    def test_failed_first_activation_retries_with_temporary_band_constraint(self):
+        self.daemon.get_capabilities = Mock(side_effect=[
+            capabilities(), capabilities(), capabilities(2412)
+        ])
+        self.daemon._run_cmd.side_effect = [
+            (0, 'profile-uuid', ''),
+            (0, r'Home\:WiFi:aa\:bb\:cc\:dd\:ee\:01:2412 MHz:90', ''),
+            (10, '', 'Activation failed'),
+            (0, '', ''),
+            (0, '', ''),
+            (0, '', ''),
+            (0, '', ''),
+        ]
+        self.assertTrue(json.loads(self.daemon.switch_band_and_reconnect('2.4'))['success'])
+        self.daemon._run_cmd.assert_any_call([
+            'nmcli', 'connection', 'modify', 'uuid', 'profile-uuid',
+            '802-11-wireless.band', 'bg'
+        ])
 
     def test_successful_command_on_wrong_band_is_failure(self):
         self.daemon.get_capabilities = Mock(side_effect=[
@@ -242,6 +268,26 @@ class BandFallbackTests(unittest.TestCase):
         self.daemon._read_config_dict.return_value['FREQ_BAND'] = '2.4'
         self.assertFalse(json.loads(self.daemon.method_start())['success'])
         self.daemon.switch_band_and_reconnect.assert_called_once_with('2.4')
+
+    def test_explicit_5ghz_requests_switch_from_permitted_2ghz(self):
+        self.start_setup(capabilities(2437))
+        self.daemon._read_config_dict.return_value['FREQ_BAND'] = '5'
+        result = json.loads(self.daemon.method_start())
+        self.assertFalse(result['success'])
+        self.daemon.switch_band_and_reconnect.assert_called_once_with('5')
+        self.daemon.prepare_firewall.assert_not_called()
+
+    def test_explicit_5ghz_starts_on_verified_channel_after_switch(self):
+        self.start_setup(capabilities(2437))
+        self.daemon._read_config_dict.return_value['FREQ_BAND'] = '5'
+        self.daemon.get_capabilities.side_effect = [
+            capabilities(2437), capabilities(5745), capabilities(5745)
+        ]
+        self.daemon.switch_band_and_reconnect.return_value = json.dumps({'success': True})
+        with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
+            self.assertTrue(json.loads(self.daemon.method_start())['success'])
+        self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:],
+                         ['--freq-band', '5', '-c', '149'])
 
     def test_invalid_dedicated_channel_is_rejected(self):
         caps = capabilities()

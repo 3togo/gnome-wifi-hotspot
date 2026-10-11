@@ -92,10 +92,10 @@ jobs:
       - name: Build patched XFCE network applet debs
         run: |
           bash integration/nm-applet/build-deb.sh
-          test -f dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb
-          test -f dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb
-          (cd dist && sha256sum network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb \
-            network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb >> SHA256SUMS)
+          test -f dist/network-manager-applet_1.36.0-4ubuntu1+relay8_amd64.deb
+          test -f dist/network-manager-gnome_1.36.0-4ubuntu1+relay8_amd64.deb
+          (cd dist && sha256sum network-manager-applet_1.36.0-4ubuntu1+relay8_amd64.deb \
+            network-manager-gnome_1.36.0-4ubuntu1+relay8_amd64.deb >> SHA256SUMS)
 
       - name: Verify installation, upgrade, removal, and purge
         env:
@@ -109,10 +109,10 @@ jobs:
       - name: Verify packaged XFCE applet installs
         run: |
           apt-get install -y --no-install-recommends \
-            "$GITHUB_WORKSPACE/dist/network-manager-applet_1.36.0-4ubuntu1+relay7_amd64.deb" \
-            "$GITHUB_WORKSPACE/dist/network-manager-gnome_1.36.0-4ubuntu1+relay7_amd64.deb"
-          test "$(dpkg-query -W -f='${Version}' network-manager-applet)" = '1.36.0-4ubuntu1+relay7'
-          test "$(dpkg-query -W -f='${Version}' network-manager-gnome)" = '1.36.0-4ubuntu1+relay7'
+            "$GITHUB_WORKSPACE/dist/network-manager-applet_1.36.0-4ubuntu1+relay8_amd64.deb" \
+            "$GITHUB_WORKSPACE/dist/network-manager-gnome_1.36.0-4ubuntu1+relay8_amd64.deb"
+          test "$(dpkg-query -W -f='${Version}' network-manager-applet)" = '1.36.0-4ubuntu1+relay8'
+          test "$(dpkg-query -W -f='${Version}' network-manager-gnome)" = '1.36.0-4ubuntu1+relay8'
           test -f /usr/libexec/wifi-relay-nm-applet/restart-applet.py
 
       - name: Upload package and checksum
@@ -121,8 +121,8 @@ jobs:
           name: wifi-relay-ubuntu-stonking-${{ github.run_number }}
           path: |
             dist/gnome-wifi-hotspot*_all.deb
-            dist/network-manager-applet_*+relay7_amd64.deb
-            dist/network-manager-gnome_*+relay7_amd64.deb
+            dist/network-manager-applet_*+relay8_amd64.deb
+            dist/network-manager-gnome_*+relay8_amd64.deb
             dist/SHA256SUMS
             dist/*.dsc
             dist/*.tar.xz
