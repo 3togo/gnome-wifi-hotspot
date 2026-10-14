@@ -53,4 +53,4 @@ PY
 }
 
 # Activated session services may print their own messages; return the result line.
-rg '^\{"headless_gnome"' "$relay_test_root/result.log"
+grep '^{"headless_gnome"' "$relay_test_root/result.log"
