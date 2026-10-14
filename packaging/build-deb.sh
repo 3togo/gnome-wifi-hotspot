@@ -58,6 +58,7 @@ install_file docs/production-readiness.md usr/share/doc/gnome-wifi-hotspot/produ
 install_file docs/releases/1.0.0-18.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-18.md 0644
 install_file docs/releases/1.0.0-22.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-22.md 0644
 install_file docs/releases/1.0.0-28.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-28.md 0644
+install_file docs/releases/1.0.0-29.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-29.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 

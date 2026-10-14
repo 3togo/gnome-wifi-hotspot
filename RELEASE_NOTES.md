@@ -1,46 +1,42 @@
-# Wi-Fi Relay 1.0.0 — Debian revision 28
+# Wi-Fi Relay 1.0.0 — Debian revision 29
 
-Maintenance release for Ubuntu 26.10 (Stonking), package **1.0.0-28**.
-The default backend remains create_ap. Native NetworkManager AP+STA and the
+Desktop appearance maintenance release for Ubuntu 26.10 (Stonking), package
+**1.0.0-29**. The stable default remains create_ap. NetworkManager AP+STA and
 separate downstream desktop patches remain experimental.
 
 ## Changes
 
-- Wait for hostapd to enable the AP before reporting successful startup; clean up
-  failed launches and stop the owned worker even before it becomes active.
-- Launch hostapd directly so shutdown reaches the actual process. Recover from
-  stale Relay-owned hostapd processes and release the adapter before reuse.
-- Avoid MAC collisions with unnamed P2P interfaces.
-- Honor an explicit hotspot band, retry upstream activation with a temporary
-  band constraint, and restore the saved profile preference afterward.
-- Detect the sole Wi-Fi adapter on fresh installations and repair obsolete
-  wlan0 configuration during upgrades.
-- Add settings retry controls. Extend private-bus authorization, settings,
-  startup, Android probe parsing, and package lifecycle coverage.
-- Run desktop smoke checks on private buses and preferences so loading test
-  controls cannot stop a live hotspot.
+- XFCE and KDE settings now use native GTK themes, fonts, accent colors, and
+  window-manager decorations. GNOME retains Libadwaita and its desktop styling.
+- Compact tabbed settings fit the full loaded content, including larger text.
+  Scrolling keeps every control reachable on small displays.
+- Notifications, Wi-Fi QR codes, and About dialogs preserve desktop appearance.
+- Follow dark/light theme changes and recover KDE portal preferences after
+  service restarts, including portals that use the legacy Read method.
+- Exercise the actual application across GNOME, KDE, and XFCE settings fixtures,
+  enlarged text, and 800×600 screens.
 
 ## Downloads and upgrade
 
 Download matching standalone and optional GNOME/tray packages from
-[revision 28](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-28).
+[revision 29](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-29).
 Stop sharing before installing or downgrading. Keep a private backup of
 `/etc/wifi-hotspot.conf` and your previous matching packages. See the
-[user guide](docs/user-guide.md) and [rollback instructions](docs/releases/1.0.0-28.md).
+[user guide](docs/user-guide.md) and [rollback instructions](docs/releases/1.0.0-29.md).
 Artifacts are unsigned; this release does not establish a signed APT repository.
 
 ## Validation scope
 
-The merged candidate passes 336 unit tests. Release validation reports record
-exact source hashes, executed checks, package hashes, and unperformed checks.
-The installed revision-28 packages also pass a two-client Intel AX200 physical
-regression: Wi-Fi-only forwarding, three create_ap restart/rejoin cycles, DNS
-comparison with the upstream resolver, HTTPS, invalid TLS rejection, and 448 MiB
-of concurrent integrity-checked transfers across both backends. Network and device
-power settings were restored. See [versioned physical evidence](docs/evidence/hardware-release-1.0.0-28.json)
-for exact payload hashes, the initial Android automation failure, and limits.
-Earlier fixed-payload evidence is retained separately.
+Release reports record exact source and package hashes, executed checks, and
+unperformed checks. Desktop fixtures exercise real GTK windows with simulated
+GNOME/KDE/XFCE preferences; they do not certify separate live desktop sessions.
 
-Hardware coverage is limited to the recorded Intel AX200 and Android 14 bench.
+The daemon and network backend payloads are unchanged from revision 28. Its
+[two-client Intel AX200 physical baseline](docs/evidence/hardware-release-1.0.0-28.json)
+records Wi-Fi-only forwarding, restart/rejoin cycles, DNS, HTTPS, invalid TLS
+rejection, and concurrent integrity-checked transfers. Physical traffic tests
+were not repeated for revision 29. The published baseline retains its original
+package versions and hashes.
+
 Other drivers, multi-adapter routing, suspend/resume, long soaks, and RPM builds
 remain outside the validated release scope. NetworkManager remains experimental.

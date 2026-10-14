@@ -1,3 +1,14 @@
+gnome-wifi-hotspot (1.0.0-29) stonking; urgency=medium
+
+  * Use native GTK themes, fonts, accents, and window-manager decorations on
+    XFCE and KDE while retaining Libadwaita on GNOME.
+  * Fit settings to loaded content and preserve scrolling on small displays.
+  * Preserve native appearance in notifications, QR codes, and About dialogs.
+  * Follow desktop color changes and recover KDE portal preferences.
+  * Exercise real application widgets across seven desktop/layout scenarios.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Wed, 14 Oct 2026 19:57:01 -0000
+
 gnome-wifi-hotspot (1.0.0-28) stonking; urgency=medium
 
   * Wait for hostapd readiness and clean up the owned worker on failed startup.

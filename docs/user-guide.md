@@ -1,6 +1,6 @@
 # Wi-Fi Relay user guide
 
-This guide covers stable **Wi-Fi Relay 1.0.0**, package **1.0.0-28**, on Ubuntu
+This guide covers stable **Wi-Fi Relay 1.0.0**, package **1.0.0-29**, on Ubuntu
 26.10 (Stonking). Sharing upstream Wi-Fi through one adapter requires AP+STA
 support from its driver. The create_ap backend is the default; native
 NetworkManager AP+STA remains experimental.
@@ -8,26 +8,26 @@ NetworkManager AP+STA remains experimental.
 ## Install or upgrade
 
 Download the main package and `SHA256SUMS` from the
-[stable release](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-28).
+[stable release](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-29).
 Optionally download the matching GNOME or tray package.
 
 | Download | Contents |
 | :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot_1.0.0-28_all.deb) | Service and GTK settings; required |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-gnome_1.0.0-28_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-tray_1.0.0-28_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
-| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/SHA256SUMS) | Checksums for release downloads |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot_1.0.0-29_all.deb) | Service and GTK settings; required |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-gnome_1.0.0-29_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-tray_1.0.0-29_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
+| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/SHA256SUMS) | Checksums for release downloads |
 
 In the download folder, verify the packages and install the combination you want:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
 # Standalone app
-sudo apt install ./gnome-wifi-hotspot_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-29_all.deb
 # Optional GNOME controls
-sudo apt install ./gnome-wifi-hotspot-gnome_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot-gnome_1.0.0-29_all.deb
 # Or optional tray controls
-sudo apt install ./gnome-wifi-hotspot-tray_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot-tray_1.0.0-29_all.deb
 ```
 
 Each downloaded package must report `OK`. APT installs dependencies. When
@@ -187,6 +187,6 @@ Stop sharing before removal. Remove installed optional packages along with the
 main package using `sudo apt remove`; use `sudo apt purge` to remove their system
 configuration too. Per-user preferences remain. Removing just an integration
 leaves the standalone app, service, and credentials intact. For a downgrade,
-follow [release maintenance and rollback](releases/1.0.0-28.md), keeping all
+follow [release maintenance and rollback](releases/1.0.0-29.md), keeping all
 selected package versions matched. A patched distribution applet must be
 [restored separately](../integration/nm-applet/README.md#maintenance-and-rollback).
