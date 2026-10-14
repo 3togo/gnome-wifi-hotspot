@@ -8,6 +8,7 @@ viewing connected devices and generating QR connection codes.
 import sys
 import os
 import json
+import re
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -47,6 +48,81 @@ def get_default_ssid():
     except Exception:
         pass
     return "Hotspot"
+
+
+class DesktopAppearance:
+    """Use XFCE's GTK theme as a fallback to the native color-scheme preference."""
+    def __init__(self, manager):
+        self.manager = manager
+        self.proxy = None
+        self.handlers = []
+        self.cancellable = Gio.Cancellable()
+        self.revision = 0
+        if 'XFCE' in os.environ.get('XDG_CURRENT_DESKTOP', '').upper().split(':'):
+            Gio.DBusProxy.new_for_bus(
+                Gio.BusType.SESSION,
+                Gio.DBusProxyFlags.DO_NOT_AUTO_START | Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
+                None, 'org.xfce.Xfconf', '/org/xfce/Xfconf', 'org.xfce.Xfconf',
+                self.cancellable, self._connected)
+
+    def _connected(self, _source, result):
+        try:
+            proxy = Gio.DBusProxy.new_for_bus_finish(result)
+        except GLib.Error:
+            return
+        if self.cancellable.is_cancelled():
+            return
+        self.proxy = proxy
+        self.handlers = [proxy.connect('g-signal', self._changed),
+                         proxy.connect('notify::g-name-owner', lambda *_args: self._load())]
+        self._load()
+
+    def _changed(self, _proxy, _sender, signal, parameters):
+        values = parameters.unpack()
+        if (signal in {'PropertyChanged', 'PropertyRemoved'} and len(values) >= 2
+                and values[0] == 'xsettings'
+                and values[1] in {'/Net/ThemeName', '/Gtk/ApplicationPreferDarkTheme'}):
+            self._load()
+
+    def _load(self):
+        self.revision += 1
+        revision = self.revision
+        if not self.proxy.get_name_owner():
+            self.manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
+            return
+
+        def loaded(proxy, result):
+            try:
+                values = proxy.call_finish(result).unpack()[0]
+            except GLib.Error:
+                values = {}
+            if self.cancellable.is_cancelled() or revision != self.revision:
+                return
+            theme = values.get('/Net/ThemeName', '')
+            dark = (values.get('/Gtk/ApplicationPreferDarkTheme') is True
+                    or isinstance(theme, str) and bool(re.search(r'(^|[-_\s])dark($|[-_\s])', theme, re.I)))
+            # PREFER_DARK still honors an explicit system preference for light.
+            self.manager.set_color_scheme(Adw.ColorScheme.PREFER_DARK if dark else Adw.ColorScheme.DEFAULT)
+
+        self.proxy.call('GetAllProperties', GLib.Variant('(ss)', ('xsettings', '/')),
+                        Gio.DBusCallFlags.NO_AUTO_START, 1000, self.cancellable, loaded)
+
+    def close(self):
+        self.cancellable.cancel()
+        if self.proxy:
+            for handler in self.handlers:
+                self.proxy.disconnect(handler)
+        self.handlers = []
+
+
+class HotspotApplication(Adw.Application):
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        self.appearance = DesktopAppearance(self.get_style_manager())
+
+    def do_shutdown(self):
+        self.appearance.close()
+        Adw.Application.do_shutdown(self)
 
 
 class HotspotSettingsWindow(Adw.PreferencesWindow):
@@ -634,7 +710,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         return dialog
 
 
-class HotspotSettingsApp(Adw.Application):
+class HotspotSettingsApp(HotspotApplication):
     def __init__(self):
         super().__init__(
             application_id="io.github.erhanzeyrek.WifiHotspot",
@@ -648,7 +724,7 @@ class HotspotSettingsApp(Adw.Application):
         win.present()
 
 
-class HotspotAboutApp(Adw.Application):
+class HotspotAboutApp(HotspotApplication):
     """A separate window that needs neither configuration nor service access."""
     def __init__(self):
         super().__init__(application_id=BUS_NAME + ".About",
