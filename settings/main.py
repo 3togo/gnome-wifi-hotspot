@@ -125,10 +125,44 @@ class HotspotApplication(Adw.Application):
         Adw.Application.do_shutdown(self)
 
 
-class HotspotSettingsWindow(Adw.PreferencesWindow):
+class SettingsDropDown(Gtk.DropDown):
+    def set_subtitle(self, text):
+        self.set_tooltip_text(text)
+
+
+class SettingsDetail(Gtk.Box):
+    """Compact status text with optional controls, without a preferences card."""
+    def __init__(self, title, subtitle):
+        super().__init__(spacing=12)
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, hexpand=True,
+                         valign=Gtk.Align.CENTER)
+        self.title = Gtk.Label(label=title, xalign=0, wrap=True)
+        self.subtitle = Gtk.Label(label=subtitle, xalign=0, wrap=True, max_width_chars=60)
+        self.subtitle.add_css_class("dim-label")
+        labels.append(self.title)
+        labels.append(self.subtitle)
+        self.append(labels)
+
+    def set_title(self, title):
+        self.title.set_text(title)
+
+    def get_title(self):
+        return self.title.get_text()
+
+    def set_subtitle(self, subtitle):
+        self.subtitle.set_text(subtitle)
+
+    def get_subtitle(self):
+        return self.subtitle.get_text()
+
+    def add_suffix(self, widget):
+        self.append(widget)
+
+
+class HotspotSettingsWindow(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="Wi-Fi Relay Settings")
-        self.set_default_size(680, 580)
+        self.set_default_size(720, -1)
         self.app = app
         self.dbus_proxy = None
         self.config_data = {}
@@ -136,6 +170,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self.capabilities = {}
         self._hotspot_busy = False
         self._loading_fields = True
+        self._initial_size_fitted = False
 
         self._closed = False
         self._loaded = False
@@ -147,6 +182,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self._closing_after_save = False
         self._retry_action = None
         self._build_ui()
+        self._fit_default_size()
         self._set_form_sensitive(False)
         self.switch_hotspot.set_sensitive(False)
         self.client = ServiceClient(self._on_client_ready)
@@ -162,6 +198,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             self._load_fallback_config()
             self._loading_fields = False
             self._show_failure("Hotspot service unavailable", error, "load")
+            GLib.idle_add(self._fit_loaded_content)
             return
         if not self._loaded:
             self._load_data()
@@ -216,7 +253,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         if self._retry_action in actions:
             self._retry_action = None
             self.retry_button.set_visible(False)
-            self.row_status.set_title("Service Status")
+            self.row_status.set_title("Hotspot")
 
     def _retry_failed_action(self, *_args):
         if self._closed or self._hotspot_busy or self.writer.inflight or self._closing_after_save:
@@ -248,136 +285,186 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         if enabled and self.config_data.get('BACKEND') == 'networkmanager':
             self.combo_inet_iface.set_sensitive(False)
 
+    def _fit_loaded_content(self):
+        if not self._closed and not self._initial_size_fitted:
+            self._fit_default_size()
+            self._initial_size_fitted = True
+        return GLib.SOURCE_REMOVE
+
+    def _fit_default_size(self):
+        monitors = self.get_display().get_monitors()
+        monitor = monitors.get_item(0) if monitors.get_n_items() else None
+        if monitor is None:
+            return
+        geometry = monitor.get_geometry()
+        width = min(720, max(1, geometry.width - 32))
+        _minimum, natural, _minimum_baseline, _natural_baseline = self.measure(Gtk.Orientation.VERTICAL, width)
+        # Leave room for desktop panels and window-manager decorations.
+        self.set_default_size(width, min(natural, max(1, geometry.height - 96)))
+
+    def add_toast(self, toast):
+        self.toast_overlay.add_toast(toast)
+
     def _build_ui(self):
-        # Header bar controls
-        header = self.get_titlebar()
+        # Match the connection editor's notebook, 12px page margins and 6px rows.
+        self.gnome_layout = is_gnome()
+        self.toast_overlay = Adw.ToastOverlay()
+        self.set_content(self.toast_overlay)
+        toolbar = Adw.ToolbarView()
+        self.toast_overlay.set_child(toolbar)
+        header = Adw.HeaderBar() if self.gnome_layout else Gtk.HeaderBar()
+        toolbar.add_top_bar(header)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
+                          margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
+        toolbar.set_content(content)
 
-        # ---------------- Page 1: General & Network Settings ---------------- #
-        page_general = Adw.PreferencesPage(title="General", icon_name="network-wireless-hotspot-symbolic")
-        self.add(page_general)
-
-        grp_startup = Adw.PreferencesGroup(title="Startup")
-        page_general.add(grp_startup)
-        controls_available = desktop_integration_available()
-        self.switch_startup = Adw.SwitchRow(
-            title="Start desktop controls at login",
-            subtitle=("Show desktop controls when you log in. Disabling also hides them now."
-                      if controls_available else "Install the optional GNOME or tray integration for your desktop."),
-            active=get_auto_start() if controls_available else False,
-            sensitive=controls_available,
-        )
-        self.switch_startup.connect("notify::active", self._on_startup_changed)
-        grp_startup.add(self.switch_startup)
-
-        # Status Group
-        grp_status = Adw.PreferencesGroup(title="Hotspot Status")
-        page_general.add(grp_status)
-
-        self.row_status = Adw.ActionRow(title="Service Status", subtitle="Checking connection...")
+        self.row_status = SettingsDetail(title="Hotspot", subtitle="Checking connection…")
         self.switch_hotspot = Gtk.Switch(valign=Gtk.Align.CENTER)
+        self.switch_hotspot.update_property([Gtk.AccessibleProperty.LABEL], ["Hotspot"])
         self.switch_hotspot.connect("state-set", self._on_switch_toggled)
         self.row_status.add_suffix(self.switch_hotspot)
         self.retry_button = Gtk.Button(label="Retry", valign=Gtk.Align.CENTER, visible=False)
         self.retry_button.connect("clicked", self._retry_failed_action)
         self.row_status.add_suffix(self.retry_button)
-        grp_status.add(self.row_status)
+        content.append(self.row_status)
 
-        # Basic Settings Group
-        grp_basic = Adw.PreferencesGroup(title="Wireless Network Configuration", description="Hotspot broadcast name and security credentials")
-        page_general.add(grp_basic)
+        self.gnome_lists = {}
+        if self.gnome_layout:
+            self.view_stack = Adw.ViewStack(vexpand=True, vhomogeneous=True)
+            header.set_title_widget(Adw.ViewSwitcher(stack=self.view_stack))
+            content.append(self.view_stack)
+        else:
+            header.set_title_widget(Gtk.Label(label="Wi-Fi Relay Settings"))
+            self.notebook = Gtk.Notebook(scrollable=True, vexpand=True)
+            content.append(self.notebook)
+        self.page_scrolls = []
+        self.field_labels = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
 
-        self.entry_ssid = Adw.EntryRow(title="Hotspot Name (SSID)")
-        self.entry_ssid.connect("changed", self._on_field_changed)
-        grp_basic.add(self.entry_ssid)
+        def page(title):
+            grid = Gtk.Grid(row_spacing=6, column_spacing=12,
+                            margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
+            scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER,
+                                       vscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+                                       propagate_natural_height=True)
+            scroll.set_child(grid)
+            if self.gnome_layout:
+                rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, hexpand=True)
+                rows.add_css_class("boxed-list")
+                grid.attach(rows, 0, 0, 2, 1)
+                self.gnome_lists[grid] = rows
+                icons = {"Wi-Fi": "network-wireless-symbolic", "Sharing": "network-transmit-receive-symbolic",
+                         "Advanced": "emblem-system-symbolic", "Devices": "network-workgroup-symbolic"}
+                self.view_stack.add_titled_with_icon(scroll, title, title, icons[title])
+            else:
+                self.notebook.append_page(scroll, Gtk.Label(label=title))
+            self.page_scrolls.append(scroll)
+            return grid
 
-        self.entry_pass = Adw.PasswordEntryRow(title="Password (WPA2/WPA3)")
-        self.entry_pass.connect("changed", self._on_field_changed)
-        grp_basic.add(self.entry_pass)
+        def field(grid, row, title, widget, hint=None):
+            widget.update_property([Gtk.AccessibleProperty.LABEL], [title.replace("_", "")])
+            widget.set_hexpand(True)
+            if hint:
+                widget.set_tooltip_text(hint)
+            if self.gnome_layout:
+                widget.set_hexpand(False)
+                widget.set_valign(Gtk.Align.CENTER)
+                if isinstance(widget, (Gtk.Entry, Gtk.PasswordEntry)):
+                    widget.set_size_request(220, -1)
+                settings_row = Adw.ActionRow(title=title, use_underline=True)
+                settings_row.add_suffix(widget)
+                settings_row.set_activatable_widget(widget)
+                self.gnome_lists[grid].append(settings_row)
+            else:
+                label = Gtk.Label(label=title, use_underline=True, xalign=1, valign=Gtk.Align.CENTER)
+                label.set_mnemonic_widget(widget)
+                self.field_labels.add_widget(label)
+                grid.attach(label, 0, row, 1, 1)
+                grid.attach(widget, 1, row, 1, 1)
+            return widget
 
-        # Network Interfaces Group
-        grp_net = Adw.PreferencesGroup(title="Network Interfaces and Frequency Band")
-        page_general.add(grp_net)
+        def option(grid, row, title, hint=None):
+            if self.gnome_layout:
+                check = Adw.SwitchRow(title=title, use_underline=True)
+                self.gnome_lists[grid].append(check)
+            else:
+                check = Gtk.CheckButton(label=title, use_underline=True)
+                grid.attach(check, 1, row, 1, 1)
+            if hint:
+                check.set_tooltip_text(hint)
+            check.connect("notify::active", self._on_field_changed)
+            return check
 
-        self.combo_backend = Adw.ComboRow(title="Hotspot Backend",
-            subtitle="NetworkManager runs until switched off and follows host routing; experimental")
+        wifi = page("Wi-Fi")
+        self.entry_ssid = field(wifi, 0, "_SSID", Gtk.Entry())
+        self.entry_pass = field(wifi, 1, "_Password", Gtk.PasswordEntry(show_peek_icon=True))
+        self.combo_wifi_iface = field(wifi, 2, "_Device", SettingsDropDown(),
+                                     "Wi-Fi adapter used to broadcast the hotspot")
+        self.combo_band = field(wifi, 3, "_Band", SettingsDropDown())
+        self.combo_band.set_model(Gtk.StringList.new(["Automatic", "2.4 GHz", "5 GHz"]))
+        self.entry_channel = field(wifi, 4, "_Channel", Gtk.Entry(), "Use default to choose a channel automatically")
+        self.switch_hidden = option(wifi, 5, "_Hidden network", "Do not broadcast the network name")
+
+        sharing = page("Sharing")
+        self.combo_inet_iface = field(sharing, 0, "Share _from", SettingsDropDown(),
+                                      "Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
+        self.entry_gateway = field(sharing, 1, "_Gateway", Gtk.Entry())
+        self.switch_isolate = option(sharing, 2, "_Isolate connected devices",
+                                     "Prevent hotspot clients from communicating with each other")
+        hint = Gtk.Label(label="Connected devices share the selected internet connection.",
+                         xalign=0, wrap=True, margin_top=6)
+        hint.add_css_class("dim-label")
+        sharing.attach(hint, 0, 3, 2, 1)
+
+        advanced = page("Advanced")
+        self.combo_backend = field(advanced, 0, "Hotspot _backend", SettingsDropDown())
         self.combo_backend.set_model(Gtk.StringList.new(["create_ap", "NetworkManager (Experimental)"]))
-        self.combo_backend.connect("notify::selected", self._on_field_changed)
-        grp_net.add(self.combo_backend)
+        backend_hint = Gtk.Label(label="The experimental NetworkManager backend follows the host’s default route.",
+                                 xalign=0, wrap=True, margin_bottom=6, max_width_chars=55)
+        backend_hint.add_css_class("dim-label")
+        advanced.attach(backend_hint, 0, 1, 2, 1)
+        self.switch_80211n = option(advanced, 2, "Wi-Fi _4 (802.11n)")
+        self.switch_80211ac = option(advanced, 3, "Wi-Fi _5 (802.11ac)", "Requires a 5 GHz channel")
+        self.switch_80211ax = option(advanced, 4, "Wi-Fi _6 (802.11ax)")
+        self.row_caps = SettingsDetail(title="Hardware capabilities", subtitle="Detecting…")
+        self.row_caps.set_margin_top(6)
+        advanced.attach(self.row_caps, 0, 5, 2, 1)
 
-        self.combo_wifi_iface = Adw.ComboRow(title="Wi-Fi Adapter", subtitle="A virtual hotspot interface is created on this adapter")
-        self.combo_wifi_iface.connect("notify::selected", self._on_field_changed)
-        grp_net.add(self.combo_wifi_iface)
+        devices = page("Devices")
+        if self.gnome_layout:
+            devices.remove(self.gnome_lists[devices])
+        share = SettingsDetail(title="Connect a device", subtitle="Scan a QR code to join this hotspot")
+        qr = Gtk.Button(label="Show _QR Code", use_underline=True, valign=Gtk.Align.CENTER)
+        qr.connect("clicked", self._on_show_qr)
+        share.add_suffix(qr)
+        devices.attach(share, 0, 0, 2, 1)
+        self.row_no_clients = SettingsDetail(title="No devices connected",
+                                            subtitle="Connected devices will be listed here")
+        self.grp_clients_list = Gtk.Frame(label="Connected devices", child=self.row_no_clients,
+                                          margin_top=12)
+        for side in ("top", "bottom", "start", "end"):
+            getattr(self.row_no_clients, "set_margin_" + side)(12)
+        devices.attach(self.grp_clients_list, 0, 1, 2, 1)
 
-        self.combo_inet_iface = Adw.ComboRow(title="Internet Sharing Interface", subtitle="Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
-        self.combo_inet_iface.connect("notify::selected", self._on_field_changed)
-        grp_net.add(self.combo_inet_iface)
+        for entry in (self.entry_ssid, self.entry_pass, self.entry_gateway, self.entry_channel):
+            entry.connect("changed", self._on_field_changed)
+        for combo in (self.combo_backend, self.combo_wifi_iface, self.combo_inet_iface, self.combo_band):
+            combo.connect("notify::selected", self._on_field_changed)
 
-        self.combo_band = Adw.ComboRow(title="Frequency Band")
-        band_model = Gtk.StringList.new(["Automatic (Recommended)", "2.4 GHz", "5 GHz"])
-        self.combo_band.set_model(band_model)
-        self.combo_band.connect("notify::selected", self._on_field_changed)
-        grp_net.add(self.combo_band)
-
-        self.row_caps = Adw.ActionRow(title="Hardware Capabilities", subtitle="Detecting...")
-        grp_net.add(self.row_caps)
-
-        # ---------------- Page 2: Advanced Settings ---------------- #
-        page_adv = Adw.PreferencesPage(title="Advanced", icon_name="emblem-system-symbolic")
-        self.add(page_adv)
-
-        grp_adv_sec = Adw.PreferencesGroup(title="Broadcast and Security Options")
-        page_adv.add(grp_adv_sec)
-
-        self.switch_hidden = Adw.SwitchRow(title="Hidden SSID", subtitle="Hide network name from broadcast")
-        self.switch_hidden.connect("notify::active", self._on_field_changed)
-        grp_adv_sec.add(self.switch_hidden)
-
-        self.switch_isolate = Adw.SwitchRow(title="Client Isolation", subtitle="Prevent connected devices from communicating with each other")
-        self.switch_isolate.connect("notify::active", self._on_field_changed)
-        grp_adv_sec.add(self.switch_isolate)
-
-        self.switch_80211n = Adw.SwitchRow(title="IEEE 802.11n (Wi-Fi 4)", subtitle="High-throughput rate support")
-        self.switch_80211n.connect("notify::active", self._on_field_changed)
-        grp_adv_sec.add(self.switch_80211n)
-
-        self.switch_80211ac = Adw.SwitchRow(title="IEEE 802.11ac (Wi-Fi 5)", subtitle="5 GHz multi-stream support")
-        self.switch_80211ac.connect("notify::active", self._on_field_changed)
-        grp_adv_sec.add(self.switch_80211ac)
-
-        self.switch_80211ax = Adw.SwitchRow(title="IEEE 802.11ax (Wi-Fi 6)", subtitle="Wi-Fi 6 high-efficiency mode")
-        self.switch_80211ax.connect("notify::active", self._on_field_changed)
-        grp_adv_sec.add(self.switch_80211ax)
-
-        grp_ip = Adw.PreferencesGroup(title="Gateway and Channel")
-        page_adv.add(grp_ip)
-
-        self.entry_gateway = Adw.EntryRow(title="Gateway IP")
-        self.entry_gateway.connect("changed", self._on_field_changed)
-        grp_ip.add(self.entry_gateway)
-
-        self.entry_channel = Adw.EntryRow(title="Channel Number")
-        self.entry_channel.connect("changed", self._on_field_changed)
-        grp_ip.add(self.entry_channel)
-
-        # ---------------- Page 3: Connected Devices & Sharing ---------------- #
-        page_clients = Adw.PreferencesPage(title="Devices & Sharing", icon_name="network-workgroup-symbolic")
-        self.add(page_clients)
-
-        grp_share = Adw.PreferencesGroup(title="Quick Share")
-        page_clients.add(grp_share)
-
-        row_qr = Adw.ActionRow(title="Connect via QR Code", subtitle="Scan with phone or tablet camera to connect instantly")
-        btn_qr = Gtk.Button(label="Show QR", valign=Gtk.Align.CENTER)
-        btn_qr.add_css_class("suggested-action")
-        btn_qr.connect("clicked", self._on_show_qr)
-        row_qr.add_suffix(btn_qr)
-        grp_share.add(row_qr)
-
-        self.grp_clients_list = Adw.PreferencesGroup(title="Connected Devices", description="Devices currently connected to this hotspot")
-        page_clients.add(self.grp_clients_list)
-
-        self.row_no_clients = Adw.ActionRow(title="No devices connected", subtitle="Connected devices will be listed here")
-        self.grp_clients_list.add(self.row_no_clients)
+        controls_available = desktop_integration_available()
+        self.switch_startup = Gtk.CheckButton(label="Start desktop controls at _login", use_underline=True,
+            active=get_auto_start() if controls_available else False, sensitive=controls_available)
+        self.switch_startup.set_tooltip_text("Show desktop controls when you log in" if controls_available
+                                             else "Install the optional GNOME or tray integration for your desktop")
+        self.switch_startup.connect("notify::active", self._on_startup_changed)
+        content.append(self.switch_startup)
+        footer = Gtk.Box(spacing=12)
+        saved = Gtk.Label(label="Changes are saved automatically", xalign=0, hexpand=True)
+        saved.add_css_class("dim-label")
+        footer.append(saved)
+        close = Gtk.Button(label="_Close", use_underline=True)
+        close.connect("clicked", lambda *_args: self.close())
+        footer.append(close)
+        content.append(footer)
 
     # ---------------- D-Bus & Data Operations ---------------- #
 
@@ -428,6 +515,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             else:
                 self._clear_failure("load")
             self._refresh_status()
+            GLib.idle_add(self._fit_loaded_content)
 
         self.client.call("GetInterfaces", interfaces_loaded)
 
@@ -647,7 +735,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self.combo_inet_iface.set_subtitle("Uses the host default route, including Ethernet or VPN"
             if use_nm else "Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
         if self._retry_action is None:
-            self.row_status.set_title("Service Status")
+            self.row_status.set_title("Hotspot")
             self._refresh_status()
 
     def _collect_config(self):

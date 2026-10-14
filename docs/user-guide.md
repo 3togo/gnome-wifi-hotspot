@@ -49,19 +49,23 @@ beta installs require an explicit choice of an optional control package.
 ## Configure sharing
 
 Open **Wi-Fi Relay** from the application launcher, or run
-`wifi-hotspot-settings` as your normal user. In **General**:
+`wifi-hotspot-settings` as your normal user. The window automatically uses
+GNOME-style grouped rows on GNOME and compact connection-editor tabs on XFCE
+and KDE, following the desktop color preference. It fits its initial contents
+and keeps scrolling available on smaller displays and with enlarged text.
+
+Configure these fields:
 
 | Field | Choice |
 | :--- | :--- |
-| Hotspot Name (SSID) | A recognizable network name |
-| Password | A strong WPA2 passphrase of 8–63 printable ASCII characters |
-| Hotspot Backend | Start with create_ap |
-| Wi-Fi Adapter | Your actual adapter; `wlan0` is only a default |
-| Internet Sharing Interface | The same Wi-Fi adapter for a repeater, or the upstream Ethernet interface |
-| Frequency Band | Start with Automatic (Recommended) |
+| Wi-Fi → SSID | A recognizable network name |
+| Wi-Fi → Password | A strong WPA2 passphrase of 8–63 printable ASCII characters |
+| Advanced → Hotspot backend | Start with create_ap |
+| Wi-Fi → Device | Your actual adapter; `wlan0` is only a default |
+| Sharing → Share from | The same Wi-Fi adapter for a repeater, or the upstream Ethernet interface |
+| Wi-Fi → Band | Start with Automatic (Recommended) |
 
-The backend selector is under **Network Interfaces and Frequency Band**; scroll
-below the network name and password. Settings save automatically. Stop active
+The backend selector is on **Advanced**. Settings save automatically. Stop active
 or waiting sharing before editing settings. Leave Advanced options at their
 defaults initially. Fresh installations receive a random password; an upgrade
 preserves the previous password, so review it before broadcasting.
@@ -78,15 +82,14 @@ default route, including a preferred Ethernet or VPN route. The sharing-interfac
 selector is disabled. It does not switch the upstream band to make a channel
 usable. It supports WPA2, hidden SSID, client isolation, raw PSK, and a /24 gateway.
 IEEE generation overrides, MAC filtering, custom DNS/country, and non-NAT modes
-are unsupported and rejected. The shared password-field label does not imply
-WPA3 support in this backend.
+are unsupported and rejected. The password field does not imply WPA3 support in this backend.
 
 ## Start and stop
 
 1. Confirm the laptop has internet access. For NetworkManager, confirm the selected adapter is connected to upstream Wi-Fi.
-2. Enable **General → Hotspot Status → Service Status** and wait for active status.
-3. Connect a client with the configured name and password, or scan **Show QR**. QR generation stays on your computer.
-4. Check internet access on the client and inspect **Devices & Sharing → Connected Devices**.
+2. Enable the **Hotspot** switch above the pages and wait for active status.
+3. Connect a client with the configured name and password, or scan **Devices → Show QR Code**. QR generation stays on your computer.
+4. Check internet access on the client and inspect **Devices → Connected devices**.
 
 For a hidden SSID, add the network manually or use the QR code. Leave Hidden
 SSID off for initial troubleshooting. Closing Settings leaves sharing running.
@@ -98,7 +101,7 @@ All controls operate the same service and reflect changes made in other clients.
 
 | Control | Use |
 | :--- | :--- |
-| Standalone Settings | Service Status switch; available without optional packages |
+| Standalone Settings | Hotspot switch; available without optional packages |
 | GNOME package | Quick Settings → Wi-Fi Relay, with settings and client information |
 | Tray package | Relay icon → Enable hotspot or Hotspot Settings |
 

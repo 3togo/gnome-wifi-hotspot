@@ -2,13 +2,28 @@
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import threading
 import time
 
 if len(sys.argv) == 1:
-    for desktop in ('GNOME', 'KDE', 'XFCE'):
-        subprocess.run([sys.executable, __file__, desktop], check=True, timeout=20)
+    cases = [('GNOME', 'normal'), ('KDE', 'normal'), ('XFCE', 'normal')]
+    if not os.environ.get('WIFI_RELAY_TEST_LARGE_TEXT') and not os.environ.get('WIFI_RELAY_TEST_SMALL_SCREEN'):
+        cases += [('GNOME', 'large-text'), ('XFCE', 'large-text')]
+        if shutil.which('xvfb-run'):
+            cases += [('GNOME', 'small-screen'), ('XFCE', 'small-screen')]
+        else:
+            print('Small-screen checks skipped: xvfb-run is unavailable')
+    for desktop, scenario in cases:
+        environment = dict(os.environ, WIFI_RELAY_TEST_SCENARIO=scenario)
+        command = [sys.executable, __file__, desktop]
+        if scenario != 'normal':
+            environment['WIFI_RELAY_TEST_LARGE_TEXT'] = '1'
+        if scenario == 'small-screen':
+            environment['WIFI_RELAY_TEST_SMALL_SCREEN'] = '1'
+            command = ['xvfb-run', '-a', '-s', '-screen 0 800x600x24', *command]
+        subprocess.run(command, env=environment, check=True, timeout=20)
     raise SystemExit(0)
 
 os.environ['XDG_CURRENT_DESKTOP'] = sys.argv[1]
@@ -114,6 +129,13 @@ class NoNetworkClient:
         pass
 
 
+if os.environ.get('WIFI_RELAY_TEST_LARGE_TEXT') == '1':
+    main.Gtk.init()
+    provider = main.Gtk.CssProvider()
+    provider.load_from_string('* { font-size: 22px; }')
+    main.Gtk.StyleContext.add_provider_for_display(main.Gdk.Display.get_default(), provider,
+                                                  main.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
 main.ServiceClient = NoNetworkClient
 main.get_default_ssid = lambda: "Theme test"
 app = main.HotspotSettingsApp()
@@ -139,18 +161,49 @@ def wait_for_dark(dark):
 
 def screenshot(name):
     directory = os.environ.get('WIFI_RELAY_THEME_SCREENSHOTS')
-    if directory and sys.argv[1] == 'XFCE':
+    if directory:
         # ImageMagick is optional and only used for local visual verification.
         time.sleep(.3)
         for _ in range(100):
             if not GLib.MainContext.default().pending():
                 break
             GLib.MainContext.default().iteration(False)
-        subprocess.run(['import', '-window', 'root', str(Path(directory) / (name + '.png'))], check=True)
+        subprocess.run(['import', '-window', 'root', str(Path(directory) / (sys.argv[1].lower() + '-' + os.environ.get('WIFI_RELAY_TEST_SCENARIO', 'normal') + '-' + name + '.png'))], check=True)
+
+
+def check_layout():
+    assert window.gnome_layout == (sys.argv[1] == 'GNOME')
+    dimensions = []
+    for index, scroll in enumerate(window.page_scrolls):
+        if window.gnome_layout:
+            window.view_stack.set_visible_child(scroll)
+        else:
+            window.notebook.set_current_page(index)
+        deadline = time.monotonic() + .15
+        while time.monotonic() < deadline:
+            while GLib.MainContext.default().pending():
+                GLib.MainContext.default().iteration(False)
+            time.sleep(.005)
+        adjustment = scroll.get_vadjustment()
+        assert adjustment.get_page_size() > 0
+        if os.environ.get('WIFI_RELAY_TEST_SMALL_SCREEN') != '1':
+            assert adjustment.get_upper() <= adjustment.get_page_size() + 1, (
+                sys.argv[1], index, adjustment.get_upper(), adjustment.get_page_size())
+        minimum, _natural, _min_baseline, _natural_baseline = scroll.get_child().measure(main.Gtk.Orientation.HORIZONTAL, -1)
+        assert minimum <= scroll.get_width(), (sys.argv[1], index, 'horizontal clipping')
+        dimensions.append((round(adjustment.get_upper()), round(adjustment.get_page_size())))
+        screenshot('page-' + str(index))
+    if window.gnome_layout:
+        window.view_stack.set_visible_child(window.page_scrolls[0])
+    else:
+        window.notebook.set_current_page(0)
+    assert window.get_height() <= window.get_display().get_monitors().get_item(0).get_geometry().height
+    print(f'{sys.argv[1]}: page bounds at {window.get_width()}×{window.get_height()}; {dimensions}')
 
 
 try:
     wait_for_dark(True)
+    check_layout()
     screenshot('dark')
     if sys.argv[1] == 'XFCE':
         fixture.set_theme('Adwaita')
@@ -173,7 +226,27 @@ try:
         wait_for_dark(False)
         fixture.name('RequestName', GLib.Variant('(su)', (XFCONF, 0)))
         wait_for_dark(True)
-    print(f'{sys.argv[1]}: real GTK dark/light updates and explicit system preference precedence passed')
+    # A smaller window must retain reachable controls through page scrolling.
+    window.set_default_size(640, 360)
+    scrolled = False
+    for index, scroll in enumerate(window.page_scrolls):
+        if window.gnome_layout:
+            window.view_stack.set_visible_child(scroll)
+        else:
+            window.notebook.set_current_page(index)
+        deadline = time.monotonic() + .15
+        while time.monotonic() < deadline:
+            while GLib.MainContext.default().pending():
+                GLib.MainContext.default().iteration(False)
+            time.sleep(.005)
+        adjustment = scroll.get_vadjustment()
+        maximum = max(0, adjustment.get_upper() - adjustment.get_page_size())
+        adjustment.set_value(adjustment.get_upper())
+        assert abs(adjustment.get_value() - maximum) <= 1
+        scrolled = scrolled or maximum > 0
+    assert scrolled, 'Small-window case did not exercise scrolling'
+    fit = 'screen-constrained pages' if os.environ.get('WIFI_RELAY_TEST_SMALL_SCREEN') else 'default pages fit'
+    print(f'{sys.argv[1]}: {fit}; small-window scrolling, live themes and system preference precedence passed')
 finally:
     window._close_resources()
     window.destroy()
