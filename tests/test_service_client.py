@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import Mock
 from gi.repository import GLib
-from settings.service_client import ServiceClient, ConfigurationWriter, decode_reply
+from settings.service_client import ServiceClient, ConfigurationWriter, decode_reply, MAX_REPLY_BYTES
 
 
 class ProtocolTests(unittest.TestCase):
@@ -31,6 +31,24 @@ class ProtocolTests(unittest.TestCase):
     def test_boolean_methods_reject_string_replies(self):
         with self.assertRaises(ValueError):
             decode_reply('Stop', GLib.Variant('(s)', ('false',)))
+
+    def test_reply_size_limit_counts_utf8_bytes(self):
+        # A character count would admit a reply twice the permitted size.
+        reply = GLib.Variant('(s)', ('{"SSID":"' + 'é' * (MAX_REPLY_BYTES // 2) + '"}',))
+        with self.assertRaises(ValueError):
+            decode_reply('GetConfig', reply)
+
+    def test_malformed_json_and_excessive_nesting_are_rejected(self):
+        for payload in ['{', '[' * 2000 + '0' + ']' * 2000]:
+            with self.subTest(payload=payload[:20]), self.assertRaises(ValueError):
+                decode_reply('GetStatus', GLib.Variant('(s)', (payload,)))
+
+    def test_client_limit_and_boolean_client_count(self):
+        self.assertEqual(len(decode_reply('GetClients', self.reply([{}] * 1024))), 1024)
+        for method, value in [('GetClients', [{}] * 1025),
+                              ('GetStatus', {'active': True, 'client_count': True})]:
+            with self.subTest(method=method), self.assertRaises(ValueError):
+                decode_reply(method, self.reply(value))
 
 
 class ServiceClientTests(unittest.TestCase):
@@ -76,6 +94,35 @@ class ServiceClientTests(unittest.TestCase):
         self.client._on_signal(None, None, 'StatusChanged', GLib.Variant('(s)', ('[]',)))
         self.client._signal.assert_not_called()
 
+    def test_unavailable_service_reports_error_without_sending(self):
+        proxy = self.client.proxy
+        self.client.proxy = None
+        callback = Mock()
+        self.client.call('GetStatus', callback)
+        proxy.call.assert_not_called()
+        callback.assert_called_once()
+        self.assertIsNone(callback.call_args.args[0])
+        self.assertIsInstance(callback.call_args.args[1], RuntimeError)
+
+    def test_transport_and_decode_failures_reach_callback(self):
+        for failure in [GLib.Error('Service disconnected'), ValueError('Invalid reply')]:
+            with self.subTest(failure=failure):
+                callback = Mock()
+                self.client.call('GetStatus', callback)
+                self.client.proxy.call_finish.side_effect = failure
+                self.client.proxy.call.call_args.args[-1](self.client.proxy, None)
+                callback.assert_called_once_with(None, failure)
+
+    def test_valid_signals_are_forwarded_but_closed_and_unknown_signals_are_ignored(self):
+        reply = GLib.Variant('(s)', ('{"active":false}',))
+        self.client._on_signal(None, None, 'StatusChanged', reply)
+        self.client._signal.assert_called_once_with('StatusChanged', {'active': False})
+        signal = self.client._signal
+        self.client._on_signal(None, None, 'Unknown', reply)
+        self.client.close()
+        self.client._on_signal(None, None, 'StatusChanged', reply)
+        self.assertEqual(signal.call_count, 1)
+
 
 class ConfigurationWriterTests(unittest.TestCase):
     def setUp(self):
@@ -111,3 +158,37 @@ class ConfigurationWriterTests(unittest.TestCase):
         self.client.closed = True
         self.writer.submit({'SSID': 'Latest'}, Mock())
         self.client.call.assert_not_called()
+
+    def test_submitted_config_is_a_snapshot(self):
+        import json
+        config = {'SSID': 'Original'}
+        callback = Mock()
+        self.writer.submit(config, callback)
+        config['SSID'] = 'Changed'
+        parameters = self.client.call.call_args.args[2]
+        self.assertEqual(json.loads(parameters.unpack()[0]), {'SSID': 'Original'})
+        self.finish()
+        callback.assert_called_once_with({'SSID': 'Original'}, None)
+
+    def test_failed_inflight_write_does_not_discard_newer_edit(self):
+        first, latest = Mock(), Mock()
+        self.writer.submit({'SSID': 'Old'}, first)
+        self.writer.submit({'SSID': 'Latest'}, latest)
+        error = GLib.Error('Authorization denied')
+        self.finish(None, error)
+        first.assert_called_once_with({'SSID': 'Old'}, error)
+        latest.assert_not_called()
+        self.assertEqual(self.client.call.call_count, 2)
+        self.finish()
+        latest.assert_called_once_with({'SSID': 'Latest'}, None)
+        self.assertFalse(self.writer.inflight)
+
+    def test_close_during_write_suppresses_callbacks_and_pending_write(self):
+        first, latest = Mock(), Mock()
+        self.writer.submit({'SSID': 'Old'}, first)
+        self.writer.submit({'SSID': 'Latest'}, latest)
+        self.client.closed = True
+        self.finish()
+        first.assert_not_called()
+        latest.assert_not_called()
+        self.assertEqual(self.client.call.call_count, 1)

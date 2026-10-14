@@ -324,7 +324,7 @@ class WifiHotspotDaemon:
                 return status
         pid = self._owned_create_ap_pid()
         out = ""
-        if pid is not None:
+        if pid is not None and self._create_ap_is_ready(pid):
             code, out, _ = self._run_cmd([self.create_ap_bin, "--list-running"])
             if code:
                 out = ""
@@ -348,7 +348,7 @@ class WifiHotspotDaemon:
                     actual_band = self._frequency_band(float(match[1]))
 
             return {
-                "active": True,
+                "active": bool(actual_band),
                 "pid": pid,
                 "iface": virt_iface,
                 "phy_iface": phy_iface,
@@ -752,6 +752,13 @@ class WifiHotspotDaemon:
                 except Exception as e:
                     print(f"[!] Could not refresh hotspot status: {e}")
 
+    def _create_ap_is_ready(self, pid):
+        try:
+            with Path(str(CREATE_AP_PIDFILE) + ".ready").open("rb") as stream:
+                return stream.read(32).strip() == str(pid).encode("ascii")
+        except OSError:
+            return False
+
     def method_start(self):
         self.is_starting = True
         try:
@@ -814,8 +821,9 @@ class WifiHotspotDaemon:
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
             code, out, err = self._run_cmd(cmd)
 
-            # Wait up to 8 seconds for status to become active
-            for _ in range(16):
+            # The shell exists before DHCP and hostapd start. Wait for its
+            # readiness acknowledgement, rather than treating its PID as an AP.
+            for _ in range(40) if code == 0 else ():
                 GLib.usleep(500000) # 0.5s
                 status = self._get_status_dict()
                 if status["active"]:
@@ -844,6 +852,7 @@ class WifiHotspotDaemon:
                         pass
                 if not err_msg:
                     err_msg = err or out or "Failed to start AP"
+                self.method_stop()
                 print(f"[!] Hotspot start failed: {err_msg}")
                 return json.dumps({"success": False, "error": err_msg})
         finally:
@@ -858,11 +867,11 @@ class WifiHotspotDaemon:
             self._emit_signal("StatusChanged", json.dumps(nm.get_status()))
             self._emit_signal("ClientsChanged", json.dumps([]))
             return result
-        status = self._get_status_dict()
-        if not status["active"]:
+        pid = self._owned_create_ap_pid()
+        if pid is None:
             return True
 
-        iface_to_stop = str(status["pid"])
+        iface_to_stop = str(pid)
         print(f"[*] Stopping hotspot for: {iface_to_stop}")
         code, out, err = self._run_cmd([self.create_ap_bin, "--stop", iface_to_stop])
 
@@ -870,12 +879,12 @@ class WifiHotspotDaemon:
         for _ in range(8):
             GLib.usleep(500000)
             new_status = self._get_status_dict()
-            if not new_status["active"]:
+            if self._owned_create_ap_pid() is None:
                 break
         self.cached_clients = []
         self._emit_signal("StatusChanged", json.dumps(new_status))
         self._emit_signal("ClientsChanged", json.dumps([]))
-        return not new_status["active"]
+        return self._owned_create_ap_pid() is None
 
     def method_get_interfaces(self):
         wifi_ifaces = []

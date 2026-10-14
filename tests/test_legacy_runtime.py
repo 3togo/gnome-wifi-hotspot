@@ -63,6 +63,15 @@ class RuntimeTests(unittest.TestCase):
         body += '\nfd=$(get_avail_fd); test "$fd" -ge 3; test "$fd" -lt "$(ulimit -n)"'
         self.assertEqual(self.shell(body).returncode, 0)
 
+    def test_mac_allocator_skips_p2p_addresses_without_netdevs(self):
+        body = ('get_macaddr() { echo 02:00:00:00:00:10; }; '
+                'cat() { echo 02:00:00:00:00:10; }; '
+                'iw() { printf "Unnamed/non-netdev interface\\n\\taddr 02:00:00:00:00:11\\n"; }; '
+                'mutex_lock() { :; }; mutex_unlock() { :; };\n')
+        body += function('get_all_macaddrs') + '\n' + function('get_new_macaddr')
+        body += '\ntest "$(get_new_macaddr wlan0)" = 02:00:00:00:00:12'
+        self.assertEqual(self.shell(body).returncode, 0)
+
     def test_dhcp_dns_runtime_rules_are_scoped_and_confinement_stays_enforced(self):
         start = SCRIPT.index('# start dhcp + dns (optional)')
         end = SCRIPT.index('# start access point', start)
@@ -76,6 +85,48 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(len(rules), 5)
         self.assertTrue(all('-i ap0' in rule for rule in rules))
 
+    def test_ap_readiness_waits_for_enabled_control_state(self):
+        body = ('HOSTAPD_PID=123; CONFDIR=/private; WIFI_IFACE=ap0; '
+                'kill() { return 0; }; sleep() { :; }; '
+                'hostapd_cli() { echo state=ENABLED; };\n')
+        self.assertEqual(self.shell(body + function('wait_for_ap') + '\nwait_for_ap').returncode, 0)
+        body = body.replace('echo state=ENABLED', 'echo state=DISABLED')
+        self.assertNotEqual(self.shell(body + function('wait_for_ap') + '\nwait_for_ap').returncode, 0)
+
+    def test_ap_readiness_rejects_dead_hostapd_even_with_stale_control_reply(self):
+        body = ('HOSTAPD_PID=123; kill() { return 1; }; '
+                'hostapd_cli() { echo state=ENABLED; };\n')
+        self.assertNotEqual(self.shell(body + function('wait_for_ap') + '\nwait_for_ap').returncode, 0)
+
+    def test_hostapd_pid_is_actual_process_without_a_forking_output_wrapper(self):
+        self.runtime.mkdir(parents=True)
+        binary = self.runtime / 'hostapd'
+        binary.write_text('#!/bin/bash\necho $$ > "${1%/*}/actual_pid"\nexec sleep 10\n')
+        binary.chmod(0o700)
+        start = SCRIPT.index('# Start hostapd directly')
+        end = SCRIPT.index('\nwait_for_ap ||', start)
+        body = ('CONFDIR="$CREATE_AP_RUNTIME"; HOSTAPD="$CONFDIR/hostapd"; '
+                'HOSTAPD_DEBUG_ARGS=; stdbuf() { exit 99; };\n')
+        body += SCRIPT[start:end]
+        body += '''
+trap 'kill "$HOSTAPD_PID" 2>/dev/null || true; wait "$HOSTAPD_PID" 2>/dev/null || true' EXIT
+for n in {1..30}; do
+    [[ -f "$CONFDIR/actual_pid" ]] && break
+    sleep .01
+done
+test "$(cat "$CONFDIR/actual_pid")" = "$HOSTAPD_PID"
+'''
+        self.assertEqual(self.shell(body).returncode, 0)
+
+    def test_nm_release_timeout_is_failure(self):
+        body = ('networkmanager_is_running() { return 0; }; nmcli() { :; }; '
+                'networkmanager_iface_is_unmanaged() { return 1; }; sleep() { :; }; '
+                'die() { exit 98; };\n')
+        # The script itself does not run with errexit: a nonzero state is expected while polling.
+        result = self.shell('set +e; ' + body + function('networkmanager_wait_until_unmanaged')
+                            + '\nnetworkmanager_wait_until_unmanaged ap0')
+        self.assertEqual(result.returncode, 98)
+
 
 
 class OwnershipTests(unittest.TestCase):
@@ -87,6 +138,7 @@ class OwnershipTests(unittest.TestCase):
         self.process = self.root / 'proc' / '123'
         self.process.mkdir(parents=True)
         self.pidfile.write_text('123\n')
+        Path(str(self.pidfile) + '.ready').write_text('123\n')
         self.daemon = Daemon.__new__(Daemon)
         self.daemon.create_ap_bin = '/usr/libexec/wifi-hotspot-daemon/create_ap'
         self.daemon.cached_clients = []
@@ -119,6 +171,27 @@ class OwnershipTests(unittest.TestCase):
                 self.assertFalse(self.daemon._get_status_dict()['active'])
                 self.daemon._run_cmd.assert_not_called()
 
+    def test_unready_or_previous_process_acknowledgement_is_not_active(self):
+        ready = Path(str(self.pidfile) + '.ready')
+        for value in ('', '999\n'):
+            ready.write_text(value)
+            self.daemon._run_cmd = Mock()
+            self.assertFalse(self.daemon._get_status_dict()['active'])
+            self.daemon._run_cmd.assert_not_called()
+
+    def test_ready_marker_without_actual_channel_is_not_active(self):
+        self.daemon._run_cmd = Mock(side_effect=[(0, '123 wlo2 (ap0)', ''),
+                                                (0, 'type AP', '')])
+        self.assertFalse(self.daemon._get_status_dict()['active'])
+
+    def test_stop_cleans_owned_worker_before_readiness(self):
+        self.daemon._get_status_dict = Mock(return_value={'active': False})
+        self.daemon._run_cmd = Mock(return_value=(0, '', ''))
+        with patch.object(module.GLib, 'usleep'), \
+                patch.object(self.daemon, '_owned_create_ap_pid', side_effect=[123, None, None]):
+            self.assertTrue(self.daemon.method_stop())
+        self.daemon._run_cmd.assert_called_once_with([self.daemon.create_ap_bin, '--stop', '123'])
+
     def test_marker_cannot_adopt_a_process_from_another_user(self):
         with patch.object(module.os, 'geteuid', return_value=os.geteuid() + 1):
             self.assertIsNone(self.daemon._owned_create_ap_pid())
@@ -128,7 +201,8 @@ class OwnershipTests(unittest.TestCase):
                                                         'phy_iface': 'wlo2', 'iface': 'ap0'},
                                                        {'active': False}])
         self.daemon._run_cmd = Mock(return_value=(0, '', ''))
-        with patch.object(module.GLib, 'usleep'):
+        with patch.object(module.GLib, 'usleep'), \
+                patch.object(self.daemon, '_owned_create_ap_pid', side_effect=[123, None, None]):
             self.assertTrue(self.daemon.method_stop())
         self.daemon._run_cmd.assert_called_once_with([self.daemon.create_ap_bin, '--stop', '123'])
 

@@ -20,7 +20,9 @@ writes and coalesces queued edits. Settings waits for the visible configuration
 to be acknowledged before activation; close waits for outstanding edits and
 keeps the window open if saving fails. Status and client replies from an older
 operation cannot replace newer state. Controls are disabled during activation
-so edits are not silently dropped.
+so edits are not silently dropped. Failed loads, saves, status requests, and
+Start/Stop operations expose a persistent message and a Retry button. Retrying a
+save uses the current form and never starts sharing automatically.
 
 `settings/preferences.py` owns bounded JSON reads and private atomic writes.
 Startup and visibility wrappers retain their existing filenames and keys,
@@ -100,18 +102,47 @@ and purge inside its disposable Stonking environment.
 Local non-destructive checks:
 
 ```
-python3 -m unittest discover -s tests
-node tests/test_tray.mjs
-dbus-run-session -- python3 tests/check_settings_window.py
-dbus-run-session -- python3 tests/check_desktop_tray.py
-dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
-dbus-run-session -- env SANITIZE=1 integration/nm-applet/test.sh
+make test
+make test-integration
+make test-smoke
+make validate
+# Optional wider validation, including disposable-container package operations:
+make validate VALIDATE_ARGS="--full --with-lifecycle"
 ```
 
-Use xvfb-run in a headless environment. Desktop checks use fake transport and
+Use xvfb-run in a headless environment. Desktop checks use isolated transport and
 real widgets; they do not start a hotspot or rewrite host preferences.
 Never run check_package_lifecycle.sh on a workstation: it removes and purges
 the package and is deliberately restricted to the disposable CI environment.
+
+The integration suite uses the production ServiceClient and daemon dispatch,
+configuration validation/writes, and authorization flow on a private D-Bus bus.
+A local Polkit fixture returns authorization decisions; deterministic hardware
+boundaries replace Wi-Fi operations. Real GTK tests cover denied loads, saves,
+and Stop, rapid edits, stale clients, and status recovery. These tests exercise
+transport and UI behavior without certifying actual Polkit session policy or
+radio behavior.
+
+Validation reports under `dist/validation/` include UTC timing, the Git commit,
+worktree state, hashes and modes for source files, environment, commands, results,
+logs, and package hashes when built. A changed source tree fails the report;
+unperformed checks remain `not_run`. An overall pass describes only executed
+checks. The full run tests extracted package contents as well as source.
+`--with-lifecycle` builds and installs packages exclusively inside a disposable
+Ubuntu 26.10 Docker container; it needs Docker and network access.
+
+The October 14 correction passed 322 unit tests, private D-Bus and GTK checks,
+sanitized applet tests, isolated headless GNOME checks, package builds, and
+container install/upgrade/remove/purge checks. The
+[physical correction evidence](evidence/hardware-fixes-2026-10-14.json) records
+ten two-client DNS/HTTPS restart cycles per backend and 480 MiB of additional
+Wi-Fi-only transfers with no integrity errors. It retains the
+[initial failures](evidence/hardware-validation-2026-10-14.json) separately.
+The fixed legacy backend waits for hostapd readiness and tracks its actual PID.
+Android fixtures validate the current BSSID and refresh DHCP addresses; the
+headless GNOME check isolates its system bus so disabling the extension cannot
+stop a workstation hotspot. These results identify the worktree's daemon hashes,
+not the previously published package payloads.
 
 ## Supported scope and remaining validation
 

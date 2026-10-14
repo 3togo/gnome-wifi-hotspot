@@ -1,0 +1,2211 @@
+{
+  "schema_version": 1,
+  "status": "Completed with failures",
+  "started_at_utc": "2026-10-14T16:35:43Z",
+  "finished_at_utc": "2026-10-14T17:26:54.035529+00:00",
+  "candidate": {
+    "installed_version": "1.0.0-22",
+    "commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+    "runtime_payloads": [
+      {
+        "name": "wifi-hotspot-daemon.py",
+        "sha256": "a4171e0e0744892de3c3f0631497ae1b219993f97a40b74fc8a6ef495ee85a1b",
+        "matches_source": true
+      },
+      {
+        "name": "configuration.py",
+        "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+        "matches_source": true
+      },
+      {
+        "name": "nm_backend.py",
+        "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+        "matches_source": true
+      },
+      {
+        "name": "nm_client.py",
+        "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+        "matches_source": true
+      },
+      {
+        "name": "create_ap",
+        "sha256": "8d32bbee275e38e7686287efc49b03be0ae73eaeebec7d4ccedf2030269c58c5",
+        "matches_source": true
+      }
+    ],
+    "controller": "Real system D-Bus service, normal desktop user, actual Polkit authorization",
+    "new_settings_retry_ui_installed": false
+  },
+  "environment": {
+    "chipset": "Intel AX200 [8086:2723]",
+    "driver": "iwlwifi",
+    "kernel": "7.2.6-070206-generic",
+    "packages": [
+      "gnome-wifi-hotspot 1.0.0-22",
+      "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+      "wpasupplicant 2:2.11-2ubuntu2"
+    ],
+    "desktop": "XFCE/X11",
+    "clients": [
+      "Android 14 tablet over USB ADB",
+      "Android 14 phone over USB ADB"
+    ],
+    "physical_radios": 1,
+    "upstream": "2.4 GHz Wi-Fi; Ethernet temporarily disconnected for explicit Wi-Fi-only checks; restored afterward",
+    "driver_info": [
+      "driver: iwlwifi",
+      "version: 7.2.6-070206-generic",
+      "firmware-version: 77.f92b5fed.0 cc-a0-77.ucode",
+      "expansion-rom-version: ",
+      "bus-info: 0000:45:00.0",
+      "supports-statistics: yes",
+      "supports-test: no",
+      "supports-eeprom-access: no",
+      "supports-register-dump: no",
+      "supports-priv-flags: no"
+    ]
+  },
+  "traffic": {
+    "status": "Pass for integrity-checked local transfers",
+    "loads": [
+      {
+        "backend": "networkmanager",
+        "status": "Pass",
+        "duration_seconds": 187.01,
+        "rounds": 25,
+        "totals": {
+          "upload_bytes": 419430400,
+          "download_bytes": 419430400,
+          "completed": 50,
+          "errors": 0
+        },
+        "measurements": {
+          "tablet": {
+            "upload_mbps": {
+              "min": 32.108,
+              "mean": 41.318,
+              "max": 49.619
+            },
+            "download_mbps": {
+              "min": 27.653,
+              "mean": 48.212,
+              "max": 54.41
+            },
+            "rtt_ms_mean": {
+              "min": 45.053,
+              "mean": 49.957,
+              "max": 65.06
+            }
+          },
+          "phone": {
+            "upload_mbps": {
+              "min": 73.447,
+              "mean": 120.18,
+              "max": 156.986
+            },
+            "download_mbps": {
+              "min": 26.791,
+              "mean": 70.603,
+              "max": 163.779
+            },
+            "rtt_ms_mean": {
+              "min": 49.693,
+              "mean": 99.494,
+              "max": 131.543
+            }
+          }
+        }
+      },
+      {
+        "backend": "create_ap",
+        "status": "Pass",
+        "duration_seconds": 185.2,
+        "rounds": 10,
+        "totals": {
+          "upload_bytes": 167772160,
+          "download_bytes": 167772160,
+          "completed": 20,
+          "errors": 0
+        },
+        "measurements": {
+          "tablet": {
+            "upload_mbps": {
+              "min": 5.898,
+              "mean": 7.837,
+              "max": 8.676
+            },
+            "download_mbps": {
+              "min": 9.77,
+              "mean": 12.662,
+              "max": 16.391
+            },
+            "rtt_ms_mean": {
+              "min": 44.762,
+              "mean": 46.531,
+              "max": 48.04
+            }
+          },
+          "phone": {
+            "upload_mbps": {
+              "min": 10.675,
+              "mean": 15.31,
+              "max": 17.536
+            },
+            "download_mbps": {
+              "min": 7.937,
+              "mean": 9.418,
+              "max": 11.359
+            },
+            "rtt_ms_mean": {
+              "min": 47.853,
+              "mean": 75.078,
+              "max": 96.652
+            }
+          }
+        }
+      }
+    ],
+    "total_bytes": 1174405120,
+    "integrity_errors": 0,
+    "source_bound_clients": true,
+    "cellular_fallback_accepted": false,
+    "tls_certificate_or_hostname_checks_disabled": false
+  },
+  "confirmed_findings": [
+    {
+      "id": "F1",
+      "severity": "blocking",
+      "backend": "create_ap",
+      "observation": "Start returned success with active:true, but the next status was off. Three further starts also acknowledged success and were off after two seconds.",
+      "reproduction": [
+        {
+          "attempt": 1,
+          "start_acknowledged": true,
+          "active_after_two_seconds": false,
+          "reported_start_band": "",
+          "error": null
+        },
+        {
+          "attempt": 2,
+          "start_acknowledged": true,
+          "active_after_two_seconds": false,
+          "reported_start_band": "",
+          "error": null
+        },
+        {
+          "attempt": 3,
+          "start_acknowledged": true,
+          "active_after_two_seconds": false,
+          "reported_start_band": "",
+          "error": null
+        }
+      ],
+      "root_cause": "Not determined; startup acknowledgement is not evidence of a surviving hotspot."
+    },
+    {
+      "id": "F2",
+      "backend": "networkmanager",
+      "observation": "Initial Wi-Fi-only tablet HTTPS request to example.com timed out during HTTP. Initial restart/rejoin had a TCP connection failure and the next Start was rejected. In a separate isolated-SSID follow-up, 9 of 10 client HTTPS restart checks passed; cycle 5 had ConnectException with two clients associated.",
+      "root_cause": "Unresolved. No attribution to Relay, Android route settling, upstream transport, or endpoint is asserted."
+    },
+    {
+      "id": "F3",
+      "backend": "create_ap",
+      "observation": "Initial client rejoin did not obtain a hotspot IPv4 address within 60 seconds. A later isolated-SSID attempt did not remain active within the declared 90-second readiness deadline."
+    }
+  ],
+  "coverage": {
+    "dns": "Unique gateway DNS questions compared with direct upstream resolver replies. Matching NOERROR/NODATA is accepted; strict NXDOMAIN probe results are retained in cases.",
+    "https": "Both clients, both backends: example.com and www.kernel.org with Android platform trust and HTTPS hostname verification; individual failures retained.",
+    "negative_tls": "Both clients, both backends rejected wrong.host.badssl.com at TLS with SSLHandshakeException.",
+    "networkmanager_restart_cycles": "10 isolated-SSID restart/rejoin attempts; 9 HTTPS passes, 1 TCP-connect failure; all profile/interface cleanup checks passed.",
+    "networkmanager_upstream_recovery": "5/5 passed with client HTTPS after reconnection.",
+    "networkmanager_stop_cancellation": "5/5 passed: restoring upstream did not restart sharing.",
+    "create_ap_restart_cycles": "Not completed: client rejoin and startup/readiness failures recorded.",
+    "firewall_rule_inspection": {
+      "status": "Blocked",
+      "reason": "Renewed OS authentication required for final privileged firewall inspection. No firewall or AppArmor policy was disabled for testing."
+    },
+    "extended_soak": "Not run: load was approximately three minutes per backend, not eight hours.",
+    "cross_driver_cross_os_family": "Not run: one driver and two Android clients.",
+    "reboot_suspend_nm_restart_fault_injection": "Not run in this validation."
+  },
+  "runs": {
+    "networkmanager_initial": {
+      "started_at_utc": "2026-10-14T16:55:43.359988+00:00",
+      "scope": {
+        "driver": "iwlwifi",
+        "chipset": "Intel AX200 [8086:2723]",
+        "client_count": 2,
+        "clients": [
+          "Android 14 tablet",
+          "Android 14 phone"
+        ],
+        "desktop": "XFCE/X11",
+        "soak_seconds_per_backend": 180,
+        "cross_driver": false,
+        "cross_os_family": false
+      },
+      "cases": [
+        {
+          "name": "candidate runtime identity",
+          "status": "Pass",
+          "utc": "2026-10-14T16:55:45.784759+00:00",
+          "payloads_match_source": true,
+          "daemon_restarted_in_preparation": true
+        },
+        {
+          "name": "networkmanager AP+STA and two clients",
+          "status": "Pass",
+          "utc": "2026-10-14T16:55:57.342281+00:00",
+          "same_upstream_profile": true,
+          "client_count": 2,
+          "band": "2.4",
+          "station_associated": true
+        },
+        {
+          "name": "networkmanager tablet DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T16:55:57.511707+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "networkmanager tablet fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T16:55:58.175376+00:00",
+          "success": true,
+          "gateway_rcode": 0,
+          "upstream_rcode": 0,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": false
+        },
+        {
+          "name": "networkmanager tablet HTTPS example.com",
+          "status": "Fail",
+          "utc": "2026-10-14T16:56:09.493191+00:00",
+          "success": false,
+          "stage": "http",
+          "error_type": "SocketTimeoutException"
+        },
+        {
+          "name": "networkmanager tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:16.883696+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "networkmanager tablet invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:19.142815+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "networkmanager phone DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:19.158765+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "networkmanager phone fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:19.531670+00:00",
+          "success": true,
+          "gateway_rcode": 0,
+          "upstream_rcode": 0,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": false
+        },
+        {
+          "name": "networkmanager phone HTTPS example.com",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:21.879039+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 589
+        },
+        {
+          "name": "networkmanager phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:24.130714+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "networkmanager phone invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T16:56:25.167629+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "networkmanager concurrent bidirectional load",
+          "status": "Pass",
+          "utc": "2026-10-14T16:59:32.402640+00:00",
+          "duration_seconds": 187.01,
+          "completed_rounds": 25,
+          "totals": {
+            "upload_bytes": 419430400,
+            "download_bytes": 419430400,
+            "completed": 50,
+            "errors": 0
+          },
+          "rounds": [
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 34.04,
+                "download_mbps": 36.033,
+                "rtt_ms_mean": 45.284
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 73.625,
+                "download_mbps": 46.441,
+                "rtt_ms_mean": 97.294
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 37.957,
+                "download_mbps": 44.283,
+                "rtt_ms_mean": 46.976
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 78.665,
+                "download_mbps": 53.37,
+                "rtt_ms_mean": 90.549
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 36.051,
+                "download_mbps": 52.843,
+                "rtt_ms_mean": 51.715
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 84.756,
+                "download_mbps": 52.953,
+                "rtt_ms_mean": 97.159
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 36.591,
+                "download_mbps": 38.56,
+                "rtt_ms_mean": 45.053
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 79.544,
+                "download_mbps": 53.194,
+                "rtt_ms_mean": 93.809
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 34.66,
+                "download_mbps": 54.262,
+                "rtt_ms_mean": 54.74
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 73.447,
+                "download_mbps": 67.734,
+                "rtt_ms_mean": 107.221
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 44.672,
+                "download_mbps": 45.07,
+                "rtt_ms_mean": 53.821
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 92.31,
+                "download_mbps": 26.791,
+                "rtt_ms_mean": 49.693
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 32.108,
+                "download_mbps": 54.41,
+                "rtt_ms_mean": 49.053
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 120.778,
+                "download_mbps": 163.779,
+                "rtt_ms_mean": 88.09
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 41.127,
+                "download_mbps": 51.267,
+                "rtt_ms_mean": 54.56
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 125.893,
+                "download_mbps": 64.597,
+                "rtt_ms_mean": 103.784
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 43.889,
+                "download_mbps": 52.916,
+                "rtt_ms_mean": 47.52
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 144.61,
+                "download_mbps": 59.245,
+                "rtt_ms_mean": 95.311
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 42.837,
+                "download_mbps": 53.339,
+                "rtt_ms_mean": 47.925
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 144.625,
+                "download_mbps": 71.735,
+                "rtt_ms_mean": 107.629
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 44.799,
+                "download_mbps": 53.47,
+                "rtt_ms_mean": 47.361
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 147.885,
+                "download_mbps": 50.556,
+                "rtt_ms_mean": 100.051
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 42.401,
+                "download_mbps": 35.943,
+                "rtt_ms_mean": 65.06
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 109.895,
+                "download_mbps": 46.569,
+                "rtt_ms_mean": 87.746
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 43.427,
+                "download_mbps": 51.204,
+                "rtt_ms_mean": 51.808
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 110.268,
+                "download_mbps": 51.929,
+                "rtt_ms_mean": 98.395
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 39.955,
+                "download_mbps": 50.602,
+                "rtt_ms_mean": 47.061
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 114.319,
+                "download_mbps": 46.904,
+                "rtt_ms_mean": 96.835
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 45.429,
+                "download_mbps": 42.197,
+                "rtt_ms_mean": 51.896
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 123.624,
+                "download_mbps": 37.704,
+                "rtt_ms_mean": 82.683
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 49.619,
+                "download_mbps": 43.688,
+                "rtt_ms_mean": 47.74
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 101.485,
+                "download_mbps": 46.354,
+                "rtt_ms_mean": 93.786
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 43.927,
+                "download_mbps": 51.644,
+                "rtt_ms_mean": 48.188
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 144.239,
+                "download_mbps": 76.544,
+                "rtt_ms_mean": 115.322
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 46.128,
+                "download_mbps": 52.496,
+                "rtt_ms_mean": 53.844
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 150.21,
+                "download_mbps": 154.383,
+                "rtt_ms_mean": 120.691
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 41.986,
+                "download_mbps": 49.601,
+                "rtt_ms_mean": 47.909
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 124.557,
+                "download_mbps": 39.676,
+                "rtt_ms_mean": 83.054
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 43.722,
+                "download_mbps": 52.04,
+                "rtt_ms_mean": 47.141
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 147.097,
+                "download_mbps": 68.692,
+                "rtt_ms_mean": 110.791
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 41.484,
+                "download_mbps": 53.952,
+                "rtt_ms_mean": 48.251
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 121.018,
+                "download_mbps": 90.794,
+                "rtt_ms_mean": 118.359
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 42.674,
+                "download_mbps": 52.926,
+                "rtt_ms_mean": 47.411
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 138.563,
+                "download_mbps": 91.742,
+                "rtt_ms_mean": 113.705
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 34.605,
+                "download_mbps": 27.653,
+                "rtt_ms_mean": 51.686
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 145.458,
+                "download_mbps": 35.352,
+                "rtt_ms_mean": 84.984
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 44.508,
+                "download_mbps": 53.113,
+                "rtt_ms_mean": 49.348
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 150.649,
+                "download_mbps": 118.175,
+                "rtt_ms_mean": 131.543
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 44.36,
+                "download_mbps": 51.797,
+                "rtt_ms_mean": 47.584
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 156.986,
+                "download_mbps": 149.855,
+                "rtt_ms_mean": 118.856
+              }
+            }
+          ]
+        },
+        {
+          "name": "networkmanager cleanup cycle 1",
+          "status": "Pass",
+          "utc": "2026-10-14T16:59:32.985265+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "networkmanager restart/rejoin cycle 1",
+          "status": "Fail",
+          "utc": "2026-10-14T16:59:40.556629+00:00",
+          "client_count": 2,
+          "https": {
+            "success": false,
+            "stage": "connect",
+            "error_type": "ConnectException"
+          }
+        },
+        {
+          "name": "networkmanager cleanup cycle 2",
+          "status": "Pass",
+          "utc": "2026-10-14T16:59:41.239470+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "harness interruption/failure",
+          "status": "Fail",
+          "utc": "2026-10-14T16:59:42.385636+00:00",
+          "error_type": "RuntimeError",
+          "message_category": "Bench operation failed; raw device/network identifiers retained only in private fixtures"
+        }
+      ],
+      "restore": {
+        "sharing_stopped": true,
+        "original_config_values": true,
+        "station": true,
+        "ethernet": true,
+        "tablet_wifi": true,
+        "phone_wifi": true
+      },
+      "limitations": [
+        "One physical Wi-Fi driver only",
+        "Both clients are Android 14",
+        "NetworkManager is a downstream 1.58.1-1ubuntu3+relay1+dev3 build",
+        "Installed Settings UI predates the new Retry controls; daemon/backend payloads match source",
+        "Three-minute load per backend is not an eight-hour or 24-hour soak",
+        "No reboot, suspend, NetworkManager restart, arbitrary roaming, or worker-crash injection"
+      ],
+      "source_commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+      "runtime_payloads": [
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a4171e0e0744892de3c3f0631497ae1b219993f97a40b74fc8a6ef495ee85a1b",
+          "matches_source": true
+        },
+        {
+          "name": "configuration.py",
+          "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+          "matches_source": true
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+          "matches_source": true
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+          "matches_source": true
+        },
+        {
+          "name": "create_ap",
+          "sha256": "8d32bbee275e38e7686287efc49b03be0ae73eaeebec7d4ccedf2030269c58c5",
+          "matches_source": true
+        }
+      ],
+      "packages": [
+        "gnome-wifi-hotspot 1.0.0-22",
+        "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+        "wpasupplicant 2:2.11-2ubuntu2"
+      ],
+      "kernel": "7.2.6-070206-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 26.10\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.10\"\nVERSION=\"26.10 (Stonking Stingray)\"\nVERSION_CODENAME=stonking\nRELEASE_TYPE=stable\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nDOCUMENTATION_URL=\"https://docs.ubuntu.com\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nLOGO=ubuntu-logo\nVENDOR_NAME=\"Canonical\"\nVENDOR_URL=\"https://canonical.com/\"\nUBUNTU_CODENAME=stonking\n",
+      "security_before": {
+        "iptables_sha256": null,
+        "iptables_read_success": false,
+        "apparmor_enabled": true,
+        "runtime_files": null,
+        "relay_process_count": null
+      },
+      "finished_at_utc": "2026-10-14T16:59:47.816739+00:00",
+      "status": "Fail"
+    },
+    "create_ap_initial": {
+      "started_at_utc": "2026-10-14T17:02:36.492635+00:00",
+      "scope": {
+        "driver": "iwlwifi",
+        "chipset": "Intel AX200 [8086:2723]",
+        "client_count": 2,
+        "clients": [
+          "Android 14 tablet",
+          "Android 14 phone"
+        ],
+        "desktop": "XFCE/X11",
+        "soak_seconds_per_backend": 180,
+        "cross_driver": false,
+        "cross_os_family": false
+      },
+      "cases": [
+        {
+          "name": "candidate runtime identity",
+          "status": "Pass",
+          "utc": "2026-10-14T17:02:38.823728+00:00",
+          "payloads_match_source": true,
+          "daemon_restarted_in_preparation": true
+        },
+        {
+          "name": "create_ap AP+STA and two clients",
+          "status": "Pass",
+          "utc": "2026-10-14T17:02:59.483972+00:00",
+          "same_upstream_profile": true,
+          "client_count": 2,
+          "band": "2.4",
+          "station_associated": true
+        },
+        {
+          "name": "create_ap tablet DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T17:02:59.653705+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "create_ap tablet fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:00.083490+00:00",
+          "success": true,
+          "gateway_rcode": 0,
+          "upstream_rcode": 0,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": false
+        },
+        {
+          "name": "create_ap tablet HTTPS example.com",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:02.234609+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 589
+        },
+        {
+          "name": "create_ap tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:04.893231+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "create_ap tablet invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:06.499889+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "create_ap phone DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:06.516438+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "create_ap phone fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:07.808955+00:00",
+          "success": true,
+          "gateway_rcode": 3,
+          "upstream_rcode": 3,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": true
+        },
+        {
+          "name": "create_ap phone HTTPS example.com",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:09.877557+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 589
+        },
+        {
+          "name": "create_ap phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:12.488533+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "create_ap phone invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T17:03:13.441208+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "create_ap concurrent bidirectional load",
+          "status": "Pass",
+          "utc": "2026-10-14T17:06:18.835735+00:00",
+          "duration_seconds": 185.2,
+          "completed_rounds": 10,
+          "totals": {
+            "upload_bytes": 167772160,
+            "download_bytes": 167772160,
+            "completed": 20,
+            "errors": 0
+          },
+          "rounds": [
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 7.587,
+                "download_mbps": 11.458,
+                "rtt_ms_mean": 46.377
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 15.767,
+                "download_mbps": 8.37,
+                "rtt_ms_mean": 89.925
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 7.82,
+                "download_mbps": 12.592,
+                "rtt_ms_mean": 44.762
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 16.792,
+                "download_mbps": 9.885,
+                "rtt_ms_mean": 96.652
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 8.485,
+                "download_mbps": 9.77,
+                "rtt_ms_mean": 46.004
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 15.694,
+                "download_mbps": 11.359,
+                "rtt_ms_mean": 47.853
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 8.612,
+                "download_mbps": 10.975,
+                "rtt_ms_mean": 45.13
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 17.536,
+                "download_mbps": 8.522,
+                "rtt_ms_mean": 58.102
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 7.162,
+                "download_mbps": 15.401,
+                "rtt_ms_mean": 46.979
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 14.936,
+                "download_mbps": 9.347,
+                "rtt_ms_mean": 68.106
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 5.898,
+                "download_mbps": 12.683,
+                "rtt_ms_mean": 48.04
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 10.675,
+                "download_mbps": 7.937,
+                "rtt_ms_mean": 82.685
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 6.968,
+                "download_mbps": 16.391,
+                "rtt_ms_mean": 47.211
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 17.149,
+                "download_mbps": 9.421,
+                "rtt_ms_mean": 83.139
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 8.654,
+                "download_mbps": 12.717,
+                "rtt_ms_mean": 46.553
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 14.485,
+                "download_mbps": 9.302,
+                "rtt_ms_mean": 68.501
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 8.676,
+                "download_mbps": 11.741,
+                "rtt_ms_mean": 47.279
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 14.145,
+                "download_mbps": 10.696,
+                "rtt_ms_mean": 79.746
+              }
+            },
+            {
+              "tablet": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 8.511,
+                "download_mbps": 12.896,
+                "rtt_ms_mean": 46.979
+              },
+              "phone": {
+                "success": true,
+                "source_bound": true,
+                "upload_bytes": 8388608,
+                "download_bytes": 8388608,
+                "upload_integrity": true,
+                "download_integrity": true,
+                "upload_mbps": 15.921,
+                "download_mbps": 9.342,
+                "rtt_ms_mean": 76.071
+              }
+            }
+          ]
+        },
+        {
+          "name": "create_ap cleanup cycle 1",
+          "status": "Pass",
+          "utc": "2026-10-14T17:06:19.689466+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "harness interruption/failure",
+          "status": "Fail",
+          "utc": "2026-10-14T17:07:37.278746+00:00",
+          "error_type": "TimeoutError",
+          "message_category": "Bench operation failed; raw device/network identifiers retained only in private fixtures"
+        }
+      ],
+      "restore": {
+        "sharing_stopped": true,
+        "original_config_values": true,
+        "station": true,
+        "ethernet": true,
+        "tablet_wifi": true,
+        "phone_wifi": true
+      },
+      "limitations": [
+        "One physical Wi-Fi driver only",
+        "Both clients are Android 14",
+        "NetworkManager is a downstream 1.58.1-1ubuntu3+relay1+dev3 build",
+        "Installed Settings UI predates the new Retry controls; daemon/backend payloads match source",
+        "Three-minute load per backend is not an eight-hour or 24-hour soak",
+        "No reboot, suspend, NetworkManager restart, arbitrary roaming, or worker-crash injection"
+      ],
+      "source_commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+      "runtime_payloads": [
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a4171e0e0744892de3c3f0631497ae1b219993f97a40b74fc8a6ef495ee85a1b",
+          "matches_source": true
+        },
+        {
+          "name": "configuration.py",
+          "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+          "matches_source": true
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+          "matches_source": true
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+          "matches_source": true
+        },
+        {
+          "name": "create_ap",
+          "sha256": "8d32bbee275e38e7686287efc49b03be0ae73eaeebec7d4ccedf2030269c58c5",
+          "matches_source": true
+        }
+      ],
+      "packages": [
+        "gnome-wifi-hotspot 1.0.0-22",
+        "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+        "wpasupplicant 2:2.11-2ubuntu2"
+      ],
+      "kernel": "7.2.6-070206-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 26.10\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.10\"\nVERSION=\"26.10 (Stonking Stingray)\"\nVERSION_CODENAME=stonking\nRELEASE_TYPE=stable\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nDOCUMENTATION_URL=\"https://docs.ubuntu.com\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nLOGO=ubuntu-logo\nVENDOR_NAME=\"Canonical\"\nVENDOR_URL=\"https://canonical.com/\"\nUBUNTU_CODENAME=stonking\n",
+      "security_before": {
+        "iptables_sha256": null,
+        "iptables_read_success": false,
+        "apparmor_enabled": true,
+        "runtime_files": null,
+        "relay_process_count": null
+      },
+      "finished_at_utc": "2026-10-14T17:07:40.625407+00:00",
+      "status": "Fail"
+    },
+    "networkmanager_followup": {
+      "started_at_utc": "2026-10-14T17:09:16.969753+00:00",
+      "scope": {
+        "driver": "iwlwifi",
+        "chipset": "Intel AX200 [8086:2723]",
+        "client_count": 2,
+        "clients": [
+          "Android 14 tablet",
+          "Android 14 phone"
+        ],
+        "desktop": "XFCE/X11",
+        "soak_seconds_per_backend": 0,
+        "cross_driver": false,
+        "cross_os_family": false
+      },
+      "cases": [
+        {
+          "name": "NM follow-up clients rejoined",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:48.121717+00:00",
+          "isolated_test_ssid": true,
+          "client_count": 2,
+          "settling_seconds": 3
+        },
+        {
+          "name": "networkmanager tablet DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:48.282608+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "networkmanager tablet fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:49.762054+00:00",
+          "success": true,
+          "gateway_rcode": 3,
+          "upstream_rcode": 3,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": true
+        },
+        {
+          "name": "networkmanager tablet HTTPS example.com",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:51.764010+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 589
+        },
+        {
+          "name": "networkmanager tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:54.259828+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "networkmanager tablet invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:55.406458+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "networkmanager phone DHCP/egress",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:55.422370+00:00",
+          "hotspot_address": true,
+          "client_wifi_route": true,
+          "host_wifi_only": true
+        },
+        {
+          "name": "networkmanager phone fresh DNS",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:55.993917+00:00",
+          "success": true,
+          "gateway_rcode": 0,
+          "upstream_rcode": 0,
+          "gateway_answer_count": 0,
+          "upstream_answer_count": 0,
+          "fresh_query": true,
+          "source_bound": true,
+          "strict_nxdomain_probe_success": false
+        },
+        {
+          "name": "networkmanager phone HTTPS example.com",
+          "status": "Pass",
+          "utc": "2026-10-14T17:09:58.131626+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 589
+        },
+        {
+          "name": "networkmanager phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:00.383760+00:00",
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 19148
+        },
+        {
+          "name": "networkmanager phone invalid TLS rejection",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:01.315154+00:00",
+          "probe_result": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException"
+          }
+        },
+        {
+          "name": "networkmanager cleanup cycle 1",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:02.490970+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 1",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:13.829401+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 2",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:14.410279+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 2",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:32.814662+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 3",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:33.745794+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 3",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:50.994810+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 4",
+          "status": "Pass",
+          "utc": "2026-10-14T17:10:51.976674+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 4",
+          "status": "Pass",
+          "utc": "2026-10-14T17:11:10.561526+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 5",
+          "status": "Pass",
+          "utc": "2026-10-14T17:11:11.294030+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 5",
+          "status": "Fail",
+          "utc": "2026-10-14T17:11:20.717117+00:00",
+          "client_count": 2,
+          "https": {
+            "success": false,
+            "stage": "connect",
+            "error_type": "ConnectException"
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 6",
+          "status": "Pass",
+          "utc": "2026-10-14T17:11:21.248603+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 6",
+          "status": "Pass",
+          "utc": "2026-10-14T17:11:44.571626+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 7",
+          "status": "Pass",
+          "utc": "2026-10-14T17:11:45.252152+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 7",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:02.073914+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 8",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:02.903896+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 8",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:21.106634+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 9",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:21.739201+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 9",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:43.027548+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "networkmanager cleanup cycle 10",
+          "status": "Pass",
+          "utc": "2026-10-14T17:12:43.757532+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        },
+        {
+          "name": "NM settled restart/rejoin cycle 10",
+          "status": "Pass",
+          "utc": "2026-10-14T17:13:02.184733+00:00",
+          "client_count": 2,
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "pre_start_delay_seconds": 2,
+          "post_join_delay_seconds": 3
+        },
+        {
+          "name": "NM upstream recovery 1",
+          "status": "Pass",
+          "utc": "2026-10-14T17:13:37.911020+00:00",
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "original_profile_restored": true
+        },
+        {
+          "name": "NM Stop cancels recovery 1",
+          "status": "Pass",
+          "utc": "2026-10-14T17:13:49.443306+00:00",
+          "no_automatic_restart": true
+        },
+        {
+          "name": "NM upstream recovery 2",
+          "status": "Pass",
+          "utc": "2026-10-14T17:14:45.215437+00:00",
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "original_profile_restored": true
+        },
+        {
+          "name": "NM Stop cancels recovery 2",
+          "status": "Pass",
+          "utc": "2026-10-14T17:14:57.387275+00:00",
+          "no_automatic_restart": true
+        },
+        {
+          "name": "NM upstream recovery 3",
+          "status": "Pass",
+          "utc": "2026-10-14T17:15:53.588569+00:00",
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "original_profile_restored": true
+        },
+        {
+          "name": "NM Stop cancels recovery 3",
+          "status": "Pass",
+          "utc": "2026-10-14T17:16:05.481231+00:00",
+          "no_automatic_restart": true
+        },
+        {
+          "name": "NM upstream recovery 4",
+          "status": "Pass",
+          "utc": "2026-10-14T17:16:56.879791+00:00",
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "original_profile_restored": true
+        },
+        {
+          "name": "NM Stop cancels recovery 4",
+          "status": "Pass",
+          "utc": "2026-10-14T17:17:12.967710+00:00",
+          "no_automatic_restart": true
+        },
+        {
+          "name": "NM upstream recovery 5",
+          "status": "Pass",
+          "utc": "2026-10-14T17:18:01.086890+00:00",
+          "https": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 589
+          },
+          "original_profile_restored": true
+        },
+        {
+          "name": "NM Stop cancels recovery 5",
+          "status": "Pass",
+          "utc": "2026-10-14T17:18:14.524517+00:00",
+          "no_automatic_restart": true
+        },
+        {
+          "name": "networkmanager cleanup cycle follow-up final",
+          "status": "Pass",
+          "utc": "2026-10-14T17:18:33.879901+00:00",
+          "profiles_restored": true,
+          "interfaces_restored": true,
+          "no_pending_request": true
+        }
+      ],
+      "restore": {
+        "sharing_stopped": true,
+        "original_config_values": true,
+        "station": true,
+        "ethernet": true,
+        "tablet_wifi": true,
+        "phone_wifi": true
+      },
+      "limitations": [
+        "One physical Wi-Fi driver only",
+        "Both clients are Android 14",
+        "NetworkManager is a downstream 1.58.1-1ubuntu3+relay1+dev3 build",
+        "Installed Settings UI predates the new Retry controls; daemon/backend payloads match source",
+        "Three-minute load per backend is not an eight-hour or 24-hour soak",
+        "No reboot, suspend, NetworkManager restart, arbitrary roaming, or worker-crash injection"
+      ],
+      "source_commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+      "runtime_payloads": [
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a4171e0e0744892de3c3f0631497ae1b219993f97a40b74fc8a6ef495ee85a1b",
+          "matches_source": true
+        },
+        {
+          "name": "configuration.py",
+          "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+          "matches_source": true
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+          "matches_source": true
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+          "matches_source": true
+        },
+        {
+          "name": "create_ap",
+          "sha256": "8d32bbee275e38e7686287efc49b03be0ae73eaeebec7d4ccedf2030269c58c5",
+          "matches_source": true
+        }
+      ],
+      "packages": [
+        "gnome-wifi-hotspot 1.0.0-22",
+        "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+        "wpasupplicant 2:2.11-2ubuntu2"
+      ],
+      "kernel": "7.2.6-070206-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 26.10\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.10\"\nVERSION=\"26.10 (Stonking Stingray)\"\nVERSION_CODENAME=stonking\nRELEASE_TYPE=stable\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nDOCUMENTATION_URL=\"https://docs.ubuntu.com\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nLOGO=ubuntu-logo\nVENDOR_NAME=\"Canonical\"\nVENDOR_URL=\"https://canonical.com/\"\nUBUNTU_CODENAME=stonking\n",
+      "finished_at_utc": "2026-10-14T17:18:49.577375+00:00",
+      "status": "Fail"
+    },
+    "create_ap_followup": {
+      "started_at_utc": "2026-10-14T17:19:03.445976+00:00",
+      "scope": {
+        "driver": "iwlwifi",
+        "chipset": "Intel AX200 [8086:2723]",
+        "client_count": 2,
+        "clients": [
+          "Android 14 tablet",
+          "Android 14 phone"
+        ],
+        "desktop": "XFCE/X11",
+        "soak_seconds_per_backend": 0,
+        "cross_driver": false,
+        "cross_os_family": false
+      },
+      "cases": [
+        {
+          "name": "harness interruption/failure",
+          "status": "Fail",
+          "utc": "2026-10-14T17:20:38.985167+00:00",
+          "error_type": "TimeoutError",
+          "message_category": "Bench operation failed; raw device/network identifiers retained only in private fixtures"
+        }
+      ],
+      "restore": {
+        "sharing_stopped": true,
+        "original_config_values": true,
+        "station": true,
+        "ethernet": true,
+        "tablet_wifi": true,
+        "phone_wifi": true
+      },
+      "limitations": [
+        "One physical Wi-Fi driver only",
+        "Both clients are Android 14",
+        "NetworkManager is a downstream 1.58.1-1ubuntu3+relay1+dev3 build",
+        "Installed Settings UI predates the new Retry controls; daemon/backend payloads match source",
+        "Three-minute load per backend is not an eight-hour or 24-hour soak",
+        "No reboot, suspend, NetworkManager restart, arbitrary roaming, or worker-crash injection"
+      ],
+      "source_commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+      "runtime_payloads": [
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a4171e0e0744892de3c3f0631497ae1b219993f97a40b74fc8a6ef495ee85a1b",
+          "matches_source": true
+        },
+        {
+          "name": "configuration.py",
+          "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+          "matches_source": true
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+          "matches_source": true
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+          "matches_source": true
+        },
+        {
+          "name": "create_ap",
+          "sha256": "8d32bbee275e38e7686287efc49b03be0ae73eaeebec7d4ccedf2030269c58c5",
+          "matches_source": true
+        }
+      ],
+      "packages": [
+        "gnome-wifi-hotspot 1.0.0-22",
+        "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+        "wpasupplicant 2:2.11-2ubuntu2"
+      ],
+      "kernel": "7.2.6-070206-generic",
+      "os_release": "PRETTY_NAME=\"Ubuntu 26.10\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.10\"\nVERSION=\"26.10 (Stonking Stingray)\"\nVERSION_CODENAME=stonking\nRELEASE_TYPE=stable\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nDOCUMENTATION_URL=\"https://docs.ubuntu.com\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nLOGO=ubuntu-logo\nVENDOR_NAME=\"Canonical\"\nVENDOR_URL=\"https://canonical.com/\"\nUBUNTU_CODENAME=stonking\n",
+      "finished_at_utc": "2026-10-14T17:20:42.025044+00:00",
+      "status": "Fail"
+    }
+  },
+  "rapid_nm_restart_without_clients": [
+    {
+      "attempt": 1,
+      "stop_ack": true,
+      "start_success": true,
+      "error": null
+    },
+    {
+      "attempt": 2,
+      "stop_ack": true,
+      "start_success": true,
+      "error": null
+    },
+    {
+      "attempt": 3,
+      "stop_ack": true,
+      "start_success": true,
+      "error": null
+    }
+  ],
+  "kernel_audit_observation": {
+    "dnsmasq_apparmor_denials": 0,
+    "related_to_relay_runtime": 0,
+    "operations": []
+  },
+  "restoration": {
+    "sharing_inactive": true,
+    "no_pending_request": true,
+    "configuration_values_restored": true,
+    "tablet_original_wifi": true,
+    "tablet_test_profiles_removed": 0,
+    "tablet_temporary_jars_removed": true,
+    "phone_original_wifi": true,
+    "phone_test_profiles_removed": 2,
+    "phone_temporary_jars_removed": true,
+    "default_routes_restored": true,
+    "no_relay_interfaces": true,
+    "final_verification": {
+      "inactive": true,
+      "no_pending_request": true,
+      "config_restored": true,
+      "no_relay_interfaces": true,
+      "tablet_restored": true,
+      "phone_restored": true
+    }
+  },
+  "probe_sha256": {
+    "tools/android/RelayHttpsProbe.java": "1076608fbc80b8d75d41b61d0d078da2163bb9f8f32b58beb8b5c9ae4ad57120",
+    "tools/android/RelayDnsProbe.java": "06d09c23285d915be437974c17078282b14285c002b205a17b58e6cb13d6850c",
+    "private_transfer_probe": "c93847c672d3fc748abc7d9be3002ac198c5e7df5674eed969d814fbd02fbf86",
+    "compiled_probe_jar": "bb5273006256d88cb1ba382a758cbe2743e2eb2c0cd96be225f0dc092078a34f"
+  }
+}

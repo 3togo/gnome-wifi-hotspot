@@ -128,8 +128,25 @@ python3 packaging/build-source.py --binary
 The source builder runs unit and real-widget tests and writes unsigned Debian
 source/binary artifacts into `dist/`. See [build requirements and checks](docs/production-readiness.md).
 Use `/usr/bin/python3` on Ubuntu when a separate Python environment lacks GI.
-Headless widget tests require Xvfb. Package lifecycle tests belong in disposable
-CI environments because they remove and purge packages.
+Run `make test` for Python unit tests and JavaScript tray checks,
+`make test-integration` for private-bus client/daemon checks, and
+`make test-smoke` for real GTK settings, service recovery, tray behavior, and tray replacement.
+Smoke checks use private D-Bus sessions and temporary user preferences; they do
+not start a hotspot. Each check has a 60-second timeout. They use Xvfb when
+available, otherwise the current graphical display. Headless widget tests require
+Xvfb. Package lifecycle tests belong in disposable CI environments because they
+remove and purge packages. `make test-package-lifecycle` runs those checks in a
+fresh Ubuntu 26.10 Docker container with a read-only source mount.
+
+Run `make validate` to save a JSON report and logs under `dist/validation/`.
+Use `make validate VALIDATE_ARGS="--full --with-lifecycle"` to include sanitized
+applet checks, GNOME Shell, package builds, extracted-package tests, and the
+container lifecycle checks. Reports record the commit, source file hashes,
+environment, package hashes, failures, and checks not run. Live radio and traffic
+validation remains a separate physical test-bench procedure. The
+[October 14 correction evidence](docs/evidence/hardware-fixes-2026-10-14.json)
+records the fixed candidate's two-client Wi-Fi-only checks and links the original
+failure report.
 
 Desktop integration entry points use the shared Relay service. Optional
 [network applet](integration/nm-applet/README.md) and

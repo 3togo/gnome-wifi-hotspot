@@ -1,4 +1,3 @@
-import java.io.ByteArrayOutputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -10,6 +9,14 @@ import javax.net.ssl.SSLSocketFactory;
 
 /** ADB client probe: platform trust, HTTPS hostname validation, explicit source IP. */
 public final class RelayHttpsProbe {
+    private static String socketError(Exception exception) {
+        String message = String.valueOf(exception.getMessage());
+        for (String code : new String[] {"ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ETIMEDOUT", "EADDRNOTAVAIL"}) {
+            if (message.contains(code)) { return code; }
+        }
+        return "unspecified";
+    }
+
     public static void main(String[] args) {
         String stage = "arguments";
         try {
@@ -21,9 +28,11 @@ public final class RelayHttpsProbe {
             if (!(source instanceof Inet4Address) || !host.matches("[A-Za-z0-9.-]+")) {
                 throw new IllegalArgumentException("Invalid source IPv4 address or hostname");
             }
+            stage = "wifi_network";
+            RelayWifiNetwork network = RelayWifiNetwork.forSource(source);
             stage = "dns";
             InetAddress target = null;
-            for (InetAddress address : InetAddress.getAllByName(host)) {
+            for (InetAddress address : network.resolve(host)) {
                 if (address instanceof Inet4Address) {
                     target = address;
                     break;
@@ -34,6 +43,7 @@ public final class RelayHttpsProbe {
             }
             stage = "connect";
             try (Socket raw = new Socket()) {
+                network.bind(raw);
                 raw.bind(new InetSocketAddress(source, 0));
                 raw.connect(new InetSocketAddress(target, 443), 10000);
                 raw.setSoTimeout(10000);
@@ -50,36 +60,27 @@ public final class RelayHttpsProbe {
                         + "\r\nConnection: close\r\n\r\n";
                     tls.getOutputStream().write(request.getBytes(StandardCharsets.US_ASCII));
                     tls.getOutputStream().flush();
-                    ByteArrayOutputStream response = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[4096];
-                    int count;
-                    while (response.size() < 65536 && (count = tls.getInputStream().read(buffer)) != -1) {
-                        response.write(buffer, 0, count);
-                    }
-                    String message = new String(response.toByteArray(), StandardCharsets.ISO_8859_1);
-                    String firstLine = message.split("\r\n", 2)[0];
-                    if (!firstLine.matches("HTTP/1\\.[01] [0-9]{3}.*")) {
-                        throw new IllegalStateException("Invalid HTTP response");
-                    }
-                    int status = Integer.parseInt(firstLine.substring(9, 12));
-                    int headersEnd = message.indexOf("\r\n\r\n");
-                    if (headersEnd < 0) {
-                        throw new IllegalStateException("Incomplete HTTP headers");
-                    }
+                    RelayHttpResponse response = RelayHttpResponse.read(tls.getInputStream());
+                    int status = response.status;
                     System.out.println("{\"success\":" + (status >= 200 && status < 300)
                         + ",\"https_status\":" + status
                         + ",\"certificate_and_hostname_verified\":true,\"source_bound\":true"
-                        + ",\"tls_protocol\":\"" + tls.getSession().getProtocol()
-                        + "\",\"body_bytes_received\":" + (response.size() - headersEnd - 4) + "}");
+                        + ",\"wifi_network_bound\":true,\"tls_protocol\":\"" + tls.getSession().getProtocol()
+                        + "\",\"body_bytes_received\":" + response.bodyBytes + ",\"response_complete\":" + response.complete + "}");
                     if (status < 200 || status >= 300) {
                         System.exit(1);
                     }
                 }
             }
         } catch (Exception exception) {
+            if (exception instanceof java.lang.reflect.InvocationTargetException
+                    && exception.getCause() instanceof Exception) {
+                exception = (Exception) exception.getCause();
+            }
             // Report the failure category without addresses or client identities.
             System.out.println("{\"success\":false,\"stage\":\"" + stage
-                + "\",\"error_type\":\"" + exception.getClass().getSimpleName() + "\"}");
+                + "\",\"error_type\":\"" + exception.getClass().getSimpleName() + "\""
+                + ",\"socket_error\":\"" + socketError(exception) + "\"}");
             System.exit(1);
         }
     }

@@ -432,6 +432,11 @@ dealloc_iface() {
 
 get_all_macaddrs() {
     cat /sys/class/net/*/address
+    # P2P devices have no netdev/sysfs address, but still reserve their MAC.
+    # Reusing one makes nl80211 reject hostapd's AP initialization.
+    if command -v iw > /dev/null 2>&1; then
+        iw dev | awk '$1 == "addr" { print $2 }'
+    fi
 }
 
 get_new_macaddr() {
@@ -543,13 +548,25 @@ networkmanager_wait_until_unmanaged() {
     while [[ $n -lt 30 ]]; do
         networkmanager_iface_is_unmanaged "$1"
         RES=$?
-        [[ $RES -eq 0 ]] && break
+        [[ $RES -eq 0 ]] && return 0
         [[ $RES -eq 2 ]] && die "Interface '${1}' does not exist.
        It's probably renamed by a udev rule."
         ((n++))
         sleep 0.1
     done
-    return 0
+    die "NetworkManager did not release interface '${1}'."
+}
+
+wait_for_ap() {
+    local n
+    for ((n = 0; n < 80; n++)); do
+        kill -0 "$HOSTAPD_PID" 2>/dev/null || return 1
+        if hostapd_cli -p "$CONFDIR/hostapd_ctrl" -i "$WIFI_IFACE" status 2>/dev/null | grep -qx 'state=ENABLED'; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
 }
 
 
@@ -746,7 +763,7 @@ _cleanup() {
     cleanup_lock
 
     if [[ $RUNNING_AS_DAEMON -eq 1 && -n "$DAEMON_PIDFILE" && -f "$DAEMON_PIDFILE" ]]; then
-        rm $DAEMON_PIDFILE
+        rm -f "$DAEMON_PIDFILE.ready" "$DAEMON_PIDFILE"
     fi
 }
 
@@ -1311,6 +1328,7 @@ if [[ $DAEMONIZE -eq 1 && $RUNNING_AS_DAEMON -eq 0 ]]; then
     RUNNING_AS_DAEMON=1 setsid "$0" "${ARGS[@]}" >>"$DAEMON_LOGFILE" 2>&1 &
     exit 0
 elif [[ $RUNNING_AS_DAEMON -eq 1 && -n "$DAEMON_PIDFILE" ]]; then
+    rm -f "$DAEMON_PIDFILE.ready"
     echo $$ >"$DAEMON_PIDFILE"
 fi
 
@@ -1777,6 +1795,9 @@ if [[ $NO_VIRT -eq 0 ]]; then
     # Virtual interface initialization (do not fail if kernel reports EBUSY on intermediate states)
     [[ -n "$NEW_MACADDR" ]] && ip link set dev ${WIFI_IFACE} address ${NEW_MACADDR} 2>/dev/null || true
     ip link set down dev ${WIFI_IFACE} 2>/dev/null || true
+    # NM may have changed the new AP to managed mode before releasing it.
+    # Restore the type only after NM confirms it no longer owns this device.
+    iw dev "${WIFI_IFACE}" set type __ap || die "$VIRTDIEMSG"
     ip addr flush ${WIFI_IFACE} 2>/dev/null || true
     if [[ "$SHARE_METHOD" != "bridge" ]]; then
         ip addr add ${GATEWAY}/24 broadcast ${GATEWAY%.*}.255 dev ${WIFI_IFACE} 2>/dev/null || true
@@ -1918,14 +1939,17 @@ if [[ $NO_HAVEGED -eq 0 ]]; then
     HAVEGED_WATCHDOG_PID=$!
 fi
 
-# start hostapd (use stdbuf when available for no delayed output in programs that redirect stdout)
-STDBUF_PATH=$(command -v stdbuf)
-if [ $? -eq 0 ]; then
-    STDBUF_PATH=$STDBUF_PATH" -oL"
-fi
-$STDBUF_PATH $HOSTAPD $HOSTAPD_DEBUG_ARGS $CONFDIR/hostapd.conf &
+# Start hostapd directly so $! identifies the AP process. Some stdbuf
+# implementations fork; killing that wrapper leaves hostapd holding nl80211
+# registrations and prevents the next AP from starting.
+$HOSTAPD $HOSTAPD_DEBUG_ARGS "$CONFDIR/hostapd.conf" &
 HOSTAPD_PID=$!
 echo $HOSTAPD_PID > $CONFDIR/hostapd.pid
+
+wait_for_ap || die "hostapd did not enable the access point."
+if [[ $RUNNING_AS_DAEMON -eq 1 && -n "$DAEMON_PIDFILE" ]]; then
+    printf '%s\n' "$$" > "$DAEMON_PIDFILE.ready"
+fi
 
 if ! wait $HOSTAPD_PID; then
     echo -e "\nError: Failed to run hostapd, maybe a program is interfering." >&2

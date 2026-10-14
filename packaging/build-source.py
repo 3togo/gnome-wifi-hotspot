@@ -81,7 +81,7 @@ def main():
         control = '\n\n'.join(controls) + '\n'
         header = ('Source: gnome-wifi-hotspot\nSection: net\nPriority: optional\n'
                   'Maintainer: Erhan Zeyrek <erhanzeyrek@users.noreply.github.com>\n'
-                  'Build-Depends: debhelper-compat (= 13), dh-python, python3, python3-gi, '
+                  'Build-Depends: debhelper-compat (= 13), dh-python, git, python3, python3-gi, '
                   'gir1.2-gtk-4.0, gir1.2-adw-1, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1, '
                   'nodejs, dbus, xvfb, xauth, pkgconf, libgtk-3-dev, libjansson-dev\n'
                   'Standards-Version: 4.7.2\nRules-Requires-Root: no\n'

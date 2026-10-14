@@ -48,6 +48,8 @@ from startup import desktop_integration_available
 assert desktop_integration_available(gnome=False)
 assert desktop_integration_available(gnome=True)
 PY
+WIFI_RELAY_TEST_SETTINGS_DIR=/usr/share/wifi-hotspot/settings \
+    WIFI_RELAY_TEST_DAEMON_DIR=/usr/libexec/wifi-hotspot-daemon make test-integration test-smoke
 DEBIAN_FRONTEND=noninteractive apt-get purge -y gnome-wifi-hotspot-gnome \
     > /tmp/wifi-relay-gnome-remove.log 2>&1
 test ! -e /usr/share/gnome-shell/extensions/wifi-relay@3togo.github.io/metadata.json

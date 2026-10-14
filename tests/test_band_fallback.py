@@ -131,6 +131,7 @@ class BandFallbackTests(unittest.TestCase):
     def test_status_reports_runtime_band_after_fallback(self):
         self.daemon.cached_clients = []
         self.daemon._owned_create_ap_pid = Mock(return_value=123)
+        self.daemon._create_ap_is_ready = Mock(return_value=True)
         self.daemon._read_config_dict.return_value['FREQ_BAND'] = '5'
         self.daemon._run_cmd.side_effect = [
             (0, '123 wlo2 (ap0)', ''), (0, 'channel 6 (2437 MHz), width: 20 MHz', '')
@@ -165,6 +166,36 @@ class BandFallbackTests(unittest.TestCase):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
         self.daemon.switch_band_and_reconnect.assert_not_called()
         self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
+
+    def test_start_waits_through_unready_worker(self):
+        self.start_setup(capabilities(5745))
+        self.daemon._get_status_dict.side_effect = [
+            {'active': False}, {'active': False}, {'active': False},
+            {'active': True, 'iface': 'ap0'}]
+        with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
+            self.assertTrue(json.loads(self.daemon.method_start())['success'])
+        self.assertEqual(self.daemon._get_status_dict.call_count, 4)
+
+    def test_start_failure_cleans_worker_and_reports_error(self):
+        self.start_setup(capabilities(5745))
+        self.daemon._get_status_dict.side_effect = None
+        self.daemon._get_status_dict.return_value = {'active': False}
+        self.daemon.method_stop = Mock()
+        with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
+            result = json.loads(self.daemon.method_start())
+        self.assertFalse(result['success'])
+        self.daemon.method_stop.assert_called_once()
+        self.assertFalse(self.daemon.is_starting)
+
+    def test_nonzero_launcher_exit_cannot_be_acknowledged_as_success(self):
+        self.start_setup(capabilities(5745))
+        self.daemon._run_cmd.return_value = (1, '', 'launch failed')
+        self.daemon.method_stop = Mock()
+        with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
+            result = json.loads(self.daemon.method_start())
+        self.assertFalse(result['success'])
+        self.assertEqual(result['error'], 'launch failed')
+        self.daemon._get_status_dict.assert_called_once()
 
     def test_unsupported_concurrency_stops_before_switch(self):
         caps = capabilities()

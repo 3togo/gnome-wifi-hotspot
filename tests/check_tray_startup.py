@@ -18,9 +18,22 @@ if os.geteuid() == 0:
         stage = Path(directory)
         shutil.copytree(SOURCE, stage / 'settings', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copy2(__file__, stage / 'check.py')
+        # Local checkouts can contain mode-0600 files. Only the disposable
+        # fixture must be readable by the unprivileged desktop process.
+        for path in stage.rglob('*'):
+            path.chmod(0o755 if path.is_dir() else 0o644)
         os.chown(stage, account.pw_uid, account.pw_gid)
+        isolated = {}
+        for variable, name in [('HOME', 'home'), ('XDG_CONFIG_HOME', 'config'),
+                               ('XDG_CACHE_HOME', 'cache'), ('XDG_DATA_HOME', 'data'),
+                               ('XDG_RUNTIME_DIR', 'runtime')]:
+            path = stage / name
+            path.mkdir(mode=0o700)
+            os.chown(path, account.pw_uid, account.pw_gid)
+            isolated[variable] = str(path)
         result = subprocess.run(['/usr/sbin/runuser', '-u', account.pw_name, '--', '/usr/bin/env',
             'WIFI_RELAY_TEST_SETTINGS_DIR=' + str(stage / 'settings'),
+            *[name + '=' + value for name, value in isolated.items()],
             '/usr/bin/dbus-run-session', '--', 'xvfb-run', '-a', '/usr/bin/python3', str(stage / 'check.py')])
         sys.exit(result.returncode)
 

@@ -12,6 +12,7 @@ chmod 700 "$XDG_RUNTIME_DIR"
 cp -R "$repo_dir/extension/." "$XDG_DATA_HOME/gnome-shell/extensions/wifi-relay@3togo.github.io/"
 export RELAY_TEST_ROOT="$relay_test_root"
 env -u LD_PRELOAD dbus-run-session -- bash -eu -c '
+    export DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
     export LIBGL_ALWAYS_SOFTWARE=1
     gsettings set org.gnome.shell enabled-extensions "[\"wifi-relay@3togo.github.io\"]"
     gsettings set org.gnome.shell welcome-dialog-last-shown-version "51"

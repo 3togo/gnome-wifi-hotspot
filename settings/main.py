@@ -69,6 +69,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self._save_timer = 0
         self._pending_config = None
         self._closing_after_save = False
+        self._retry_action = None
         self._build_ui()
         self._set_form_sensitive(False)
         self.switch_hotspot.set_sensitive(False)
@@ -84,6 +85,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         if error:
             self._load_fallback_config()
             self._loading_fields = False
+            self._show_failure("Hotspot service unavailable", error, "load")
             return
         if not self._loaded:
             self._load_data()
@@ -109,6 +111,7 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
                     if error:
                         self._pending_config = dict(config)
                         self._set_form_sensitive(True)
+                        self._show_failure("Settings were not saved", error, "save")
                         self.add_toast(Adw.Toast.new(str(error)))
                         return
                     self._close_resources()
@@ -125,6 +128,41 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
                 GLib.source_remove(source)
         self._status_timer = self._save_timer = 0
         self.client.close()
+
+    def _show_failure(self, title, error, action):
+        self._retry_action = action
+        self.row_status.set_title(title)
+        self.row_status.set_subtitle(str(error))
+        self.retry_button.set_visible(True)
+        self.retry_button.set_sensitive(True)
+
+    def _clear_failure(self, *actions):
+        if self._retry_action in actions:
+            self._retry_action = None
+            self.retry_button.set_visible(False)
+            self.row_status.set_title("Service Status")
+
+    def _retry_failed_action(self, *_args):
+        if self._closed or self._hotspot_busy or self.writer.inflight or self._closing_after_save:
+            return
+        action = self._retry_action
+        self.retry_button.set_sensitive(False)
+        if action == "save":
+            config = self._collect_config()
+            if config is None:
+                self.retry_button.set_sensitive(True)
+                return
+            if self._save_timer:
+                GLib.source_remove(self._save_timer)
+                self._save_timer = 0
+            self._pending_config = None
+            self.writer.submit(config, self._on_config_saved)
+        elif action == "load":
+            self._load_data()
+        elif action in {"start", "stop"}:
+            self._on_switch_toggled(self.switch_hotspot, action == "start")
+        elif action == "status":
+            self._refresh_status()
 
     def _set_form_sensitive(self, enabled):
         for name in ('combo_backend', 'combo_wifi_iface', 'combo_inet_iface', 'combo_band',
@@ -163,6 +201,9 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self.switch_hotspot = Gtk.Switch(valign=Gtk.Align.CENTER)
         self.switch_hotspot.connect("state-set", self._on_switch_toggled)
         self.row_status.add_suffix(self.switch_hotspot)
+        self.retry_button = Gtk.Button(label="Retry", valign=Gtk.Align.CENTER, visible=False)
+        self.retry_button.connect("clicked", self._retry_failed_action)
+        self.row_status.add_suffix(self.retry_button)
         grp_status.add(self.row_status)
 
         # Basic Settings Group
@@ -306,6 +347,10 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             self._loading_fields = False
             self._loaded = error is None
             self._set_form_sensitive(error is None)
+            if error:
+                self._show_failure("Settings could not be loaded", error, "load")
+            else:
+                self._clear_failure("load")
             self._refresh_status()
 
         self.client.call("GetInterfaces", interfaces_loaded)
@@ -396,8 +441,10 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
                 return
             if error:
                 self.switch_hotspot.set_sensitive(False)
-                self.row_status.set_subtitle("Hotspot service unavailable")
+                action = self._retry_action or ("status" if self._loaded else "load")
+                self._show_failure("Hotspot service unavailable", error, action)
                 return
+            self._clear_failure("status")
             self._status_revision += 1
             active = status["active"]
             requested = active or status.get("desired_active", False)
@@ -406,10 +453,11 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             self.switch_hotspot.handler_block_by_func(self._on_switch_toggled)
             self.switch_hotspot.set_active(requested)
             self.switch_hotspot.handler_unblock_by_func(self._on_switch_toggled)
-            if active:
+            if active and self._retry_action is None:
                 self.row_status.set_subtitle(f"On — SSID: {status.get('ssid')} ({status.get('iface')})")
-            else:
-                self.row_status.set_subtitle(status.get("error") or ("Waiting for Wi-Fi" if requested else "Off"))
+            elif not active:
+                if self._retry_action is None:
+                    self.row_status.set_subtitle(status.get("error") or ("Waiting for Wi-Fi" if requested else "Off"))
                 self._update_clients_list([])
             if active and not self._clients_pending:
                 self._clients_pending = True
@@ -479,7 +527,11 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
             error = RuntimeError(data.get("error") or "Failed to start hotspot" if starting
                                  else "Failed to stop hotspot")
         if error:
+            self._show_failure("Hotspot could not start" if starting else "Hotspot could not stop",
+                               error, "save" if starting and self._pending_config is not None else ("start" if starting else "stop"))
             self.add_toast(Adw.Toast.new(str(error)))
+        else:
+            self._clear_failure("start", "stop")
         self._hotspot_busy = False
         self._set_form_sensitive(self._loaded)
         self.switch_hotspot.set_sensitive(self._loaded)
@@ -508,9 +560,9 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         if error:
             if self._pending_config is None:
                 self._pending_config = dict(config)
-            self.row_status.set_title("Settings were not saved")
-            self.row_status.set_subtitle(str(error))
+            self._show_failure("Settings were not saved", error, "save")
             return
+        self._clear_failure("save")
         self.config_data = config
         if self._hotspot_busy:
             return
@@ -518,7 +570,9 @@ class HotspotSettingsWindow(Adw.PreferencesWindow):
         self.combo_inet_iface.set_sensitive(not use_nm)
         self.combo_inet_iface.set_subtitle("Uses the host default route, including Ethernet or VPN"
             if use_nm else "Choose the same Wi-Fi adapter for simultaneous Wi-Fi + hotspot")
-        self.row_status.set_title("Service Status")
+        if self._retry_action is None:
+            self.row_status.set_title("Service Status")
+            self._refresh_status()
 
     def _collect_config(self):
         wifi_item = self.combo_wifi_iface.get_selected_item()

@@ -64,9 +64,8 @@ jobs:
           bash -n daemon/create_ap packaging/build-deb.sh
           sh -n packaging/debian/preinst packaging/debian/postinst packaging/debian/prerm \
             packaging/debian/postrm tests/check_package_lifecycle.sh
-          dbus-run-session -- xvfb-run -a python3 tests/check_settings_window.py
-          dbus-run-session -- xvfb-run -a python3 tests/check_desktop_tray.py
-          dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
+          make test-integration
+          make test-smoke
           dbus-run-session -- xvfb-run -a env SANITIZE=1 integration/nm-applet/test.sh
           appstreamcli validate --no-net data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml
 

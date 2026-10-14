@@ -1,0 +1,1795 @@
+{
+  "schema_version": 1,
+  "status": "Pass for the tested fixed candidate",
+  "finished_at_utc": "2026-10-14T18:20:51.607994+00:00",
+  "original_failure_evidence": "hardware-validation-2026-10-14.json",
+  "original_evidence_retained_unchanged": true,
+  "candidate": {
+    "commit": "23a0a9246031cfa9d1dc1c2bacb416f3ad9bf824",
+    "uncommitted_worktree": true,
+    "installed_package_version": "1.0.0-22",
+    "deployment": "Two updated daemon payloads installed for the physical run; exact identities below. GUI recovery changes tested from source and extracted packages.",
+    "runtime_payloads": [
+      {
+        "name": "wifi-hotspot-daemon.py",
+        "sha256": "9f63adbe87749385b925322b74c8bd80342dd1b0836bae48189382c5eb7d632a",
+        "matches_source": true
+      },
+      {
+        "name": "configuration.py",
+        "sha256": "ceebde527b624a0350d6952750962c2fade1242d8e7dab02051ae1d488a86a2e",
+        "matches_source": true
+      },
+      {
+        "name": "nm_backend.py",
+        "sha256": "9e06037234267529d298ba399231af4b7eeb16447f1534ae8feb57b6a6c18f1b",
+        "matches_source": true
+      },
+      {
+        "name": "nm_client.py",
+        "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6",
+        "matches_source": true
+      },
+      {
+        "name": "create_ap",
+        "sha256": "84c816cc4e4febda0de623f1ad6cc82652f3afe14b12ba5a8abba9a21b348143",
+        "matches_source": true
+      }
+    ],
+    "hardware_controller": "Real system D-Bus service, normal desktop user, actual Polkit"
+  },
+  "fixes": [
+    {
+      "finding": "F1 and F3",
+      "issue": "Legacy startup acknowledged a shell before an operational AP; later starts failed.",
+      "diagnosis": "A forking stdbuf wrapper left hostapd alive after cleanup. Its nl80211 registrations caused Register spurious class3 failed: EBUSY on subsequent starts.",
+      "changes": [
+        "Launch hostapd directly and track its actual PID.",
+        "Acknowledge readiness only after hostapd reports ENABLED; require the matching PID acknowledgement and a runtime channel in daemon status.",
+        "Clean up owned workers after failed startup even when not active; wait for their exit on Stop.",
+        "Reject a NetworkManager release timeout, restore virtual AP mode after release, and avoid P2P MAC addresses without netdevs."
+      ],
+      "verification": {
+        "startup_stop_cycles": [
+          {
+            "success": true,
+            "active_after_two_seconds": true,
+            "band": "2.4",
+            "stop_succeeded": true
+          },
+          {
+            "success": true,
+            "active_after_two_seconds": true,
+            "band": "2.4",
+            "stop_succeeded": true
+          },
+          {
+            "success": true,
+            "active_after_two_seconds": true,
+            "band": "2.4",
+            "stop_succeeded": true
+          }
+        ],
+        "two_client_rejoin_cycles_passed": 10
+      }
+    },
+    {
+      "finding": "F2",
+      "issue": "HTTP timeout and intermittent restart/rejoin traffic failures in the old validation.",
+      "changes": [
+        "Read HTTP Content-Length and chunked framing instead of waiting for socket EOF; fail truncated responses.",
+        "Bind DNS and TCP probes to the connected Android Wi-Fi Network.",
+        "Require the current AP BSSID, refetch DHCP addresses after association, and wait for Android network registration before traffic assertions.",
+        "Verify only owned interfaces and profiles during cleanup; unrelated Docker interface changes are not Relay leaks."
+      ],
+      "attribution_limit": "Old transient TCP failures lacked enough evidence for an individual root cause. No NetworkManager routing fix is claimed. The corrected fixture passed all ten repeated two-client DNS/HTTPS rejoin checks.",
+      "verification": {
+        "networkmanager_two_client_rejoin_cycles_passed": 10,
+        "positive_https_and_invalid_certificate_checks": "Pass on both clients and both backends"
+      }
+    },
+    {
+      "finding": "Additional smoke-test failure",
+      "issue": "Headless GNOME extension disable reached the real system bus and stopped the live hotspot during a concurrent transfer.",
+      "changes": [
+        "Map the headless Shell system bus to its private session bus.",
+        "Add a wrapper regression verifying both Shell and its probe receive that private bus."
+      ],
+      "verification": "Real GNOME load/disable/enable passed concurrently with two-client NetworkManager transfers; the same AP remained active."
+    }
+  ],
+  "automatic_validation": {
+    "report": "dist/validation/20261014T180953.524476Z/report.json",
+    "status": "pass",
+    "source_unchanged_during_run": true,
+    "delivered_code_matches_report": true,
+    "checks": [
+      {
+        "name": "unit",
+        "command": [
+          "make",
+          "test"
+        ],
+        "log": "unit.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 7.078,
+        "test_count": 322
+      },
+      {
+        "name": "service-integration",
+        "command": [
+          "make",
+          "test-integration"
+        ],
+        "log": "service-integration.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.716,
+        "test_count": 10
+      },
+      {
+        "name": "gtk-smoke",
+        "command": [
+          "make",
+          "test-smoke"
+        ],
+        "log": "gtk-smoke.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 20.552,
+        "test_count": 8
+      },
+      {
+        "name": "syntax",
+        "command": [
+          "bash",
+          "-eu",
+          "-c",
+          "\nfor script in extension/*.js; do node --input-type=module --check < \"$script\"; done\nbash -n daemon/create_ap packaging/build-deb.sh\nsh -n tests/run_smoke.sh tests/run_package_lifecycle.sh tests/check_package_lifecycle.sh     packaging/debian/preinst packaging/debian/postinst packaging/debian/prerm packaging/debian/postrm\n"
+        ],
+        "log": "syntax.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.315
+      },
+      {
+        "name": "appstream",
+        "command": [
+          "appstreamcli",
+          "validate",
+          "--no-net",
+          "data/io.github.erhanzeyrek.WifiHotspot.metainfo.xml"
+        ],
+        "log": "appstream.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.032
+      },
+      {
+        "name": "sanitized-applet",
+        "command": [
+          "dbus-run-session",
+          "--",
+          "make",
+          "test-nm-menu"
+        ],
+        "log": "sanitized-applet.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 1.918
+      },
+      {
+        "name": "gnome-shell",
+        "command": [
+          "tools/check_gnome_shell.sh"
+        ],
+        "log": "gnome-shell.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 4.123
+      },
+      {
+        "name": "packages-build",
+        "command": [
+          "packaging/build-deb.sh"
+        ],
+        "log": "packages-build.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 1.567
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-gnome_1.0.0-22_all.deb",
+        "command": [
+          "dpkg-deb",
+          "--extract",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/packages/gnome-wifi-hotspot-gnome_1.0.0-22_all.deb",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/package-root"
+        ],
+        "log": "extract-gnome-wifi-hotspot-gnome_1.0.0-22_all.deb.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.016
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-tray_1.0.0-22_all.deb",
+        "command": [
+          "dpkg-deb",
+          "--extract",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/packages/gnome-wifi-hotspot-tray_1.0.0-22_all.deb",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/package-root"
+        ],
+        "log": "extract-gnome-wifi-hotspot-tray_1.0.0-22_all.deb.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.016
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot_1.0.0-22_all.deb",
+        "command": [
+          "dpkg-deb",
+          "--extract",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/packages/gnome-wifi-hotspot_1.0.0-22_all.deb",
+          "/home/eli/git/gnome-wifi-hotspot/dist/validation/20261014T180953.524476Z/package-root"
+        ],
+        "log": "extract-gnome-wifi-hotspot_1.0.0-22_all.deb.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.016
+      },
+      {
+        "name": "packaged-service-integration",
+        "command": [
+          "make",
+          "test-integration"
+        ],
+        "log": "packaged-service-integration.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 0.715,
+        "test_count": 10
+      },
+      {
+        "name": "packaged-gtk-smoke",
+        "command": [
+          "make",
+          "test-smoke"
+        ],
+        "log": "packaged-gtk-smoke.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 20.354,
+        "test_count": 8
+      },
+      {
+        "name": "package-lifecycle",
+        "command": [
+          "make",
+          "test-package-lifecycle"
+        ],
+        "log": "package-lifecycle.log",
+        "exit_code": 0,
+        "status": "pass",
+        "duration_seconds": 328.381,
+        "test_count": 10
+      },
+      {
+        "name": "hardware-traffic",
+        "status": "not_run",
+        "reason": "Requires a physical multi-adapter test bench; see docs/release-hardware-validation.md"
+      }
+    ],
+    "packages": [
+      {
+        "name": "gnome-wifi-hotspot-gnome_1.0.0-22_all.deb",
+        "sha256": "d5be081177e1c5abacff9775be3f3794e278e302eacd82bdbd58008dc3fb7c66"
+      },
+      {
+        "name": "gnome-wifi-hotspot-tray_1.0.0-22_all.deb",
+        "sha256": "a02a7312f348341dd5a69d07495a824280d1168cd338c34439ace4ec6db587be"
+      },
+      {
+        "name": "gnome-wifi-hotspot_1.0.0-22_all.deb",
+        "sha256": "b9258f1b10441273ba24adb8b32f39b063d141a65f2f1ff10bbfd875dabfa212"
+      }
+    ],
+    "note": "The automatic runner does not itself run physical traffic. This document records the separate authorized physical run."
+  },
+  "hardware": {
+    "chipset": "Intel AX200 [8086:2723]",
+    "driver": "iwlwifi",
+    "clients": [
+      "Android 14 tablet",
+      "Android 14 phone"
+    ],
+    "networkmanager": "1.58.1-1ubuntu3+relay1+dev3 (downstream build)",
+    "wifi_only_egress": true,
+    "backends": [
+      "networkmanager",
+      "create_ap"
+    ],
+    "positive_https_hosts": [
+      "example.com",
+      "www.kernel.org"
+    ],
+    "negative_tls_host": "wrong.host.badssl.com",
+    "dns": "Unique gateway queries compared with the same question sent directly through the Wi-Fi upstream resolver; NXDOMAIN and matching upstream NOERROR are distinguished.",
+    "rejoin_success_counts": {
+      "networkmanager": 10,
+      "create_ap": 10
+    },
+    "upstream_recovery_passed": 5,
+    "recovery_cancellation_passed": 5,
+    "traffic": {
+      "upload_bytes": 251658240,
+      "download_bytes": 251658240,
+      "total_mib": 480,
+      "integrity_errors": 0,
+      "protocol": "8 MiB upload and 8 MiB download per client session, authenticated local endpoint, SHA-256 in both directions, concurrent clients",
+      "regression_seconds_per_backend": 60,
+      "cases": [
+        {
+          "name": "create_ap Wi-Fi-only concurrent transfer",
+          "status": "Pass",
+          "utc": "2026-10-14T18:12:01.703079+00:00",
+          "rounds": 4,
+          "duration_seconds": 67.61,
+          "upload_bytes": 67108864,
+          "download_bytes": 67108864,
+          "errors": 0,
+          "client_failures": []
+        },
+        {
+          "name": "NM Wi-Fi-only concurrent transfer after smoke isolation fix",
+          "status": "Pass",
+          "utc": "2026-10-14T18:15:17.773374+00:00",
+          "rounds": 11,
+          "duration_seconds": 63.9,
+          "upload_bytes": 184549376,
+          "download_bytes": 184549376,
+          "errors": 0,
+          "client_failures": []
+        }
+      ]
+    },
+    "rejoin_cases": [
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 1",
+        "status": "Pass",
+        "utc": "2026-10-14T18:06:48.086362+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 2",
+        "status": "Pass",
+        "utc": "2026-10-14T18:07:16.879526+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 3",
+        "status": "Pass",
+        "utc": "2026-10-14T18:07:43.285819+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 4",
+        "status": "Pass",
+        "utc": "2026-10-14T18:08:00.159541+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 5",
+        "status": "Pass",
+        "utc": "2026-10-14T18:08:24.158359+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 6",
+        "status": "Pass",
+        "utc": "2026-10-14T18:08:47.412846+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 7",
+        "status": "Pass",
+        "utc": "2026-10-14T18:09:11.869564+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 8",
+        "status": "Pass",
+        "utc": "2026-10-14T18:09:35.018771+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 9",
+        "status": "Pass",
+        "utc": "2026-10-14T18:09:57.862576+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "networkmanager Wi-Fi-only restart/rejoin 10",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:19.665029+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap Wi-Fi-only restart/rejoin 1",
+        "status": "Pass",
+        "utc": "2026-10-14T18:12:25.964460+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap Wi-Fi-only restart/rejoin 2",
+        "status": "Pass",
+        "utc": "2026-10-14T18:12:50.692685+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap Wi-Fi-only restart/rejoin 3",
+        "status": "Pass",
+        "utc": "2026-10-14T18:13:17.778040+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 1",
+        "status": "Pass",
+        "utc": "2026-10-14T18:16:06.108793+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 2",
+        "status": "Pass",
+        "utc": "2026-10-14T18:16:32.462723+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 3",
+        "status": "Pass",
+        "utc": "2026-10-14T18:17:00.461073+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 4",
+        "status": "Pass",
+        "utc": "2026-10-14T18:17:27.985107+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 5",
+        "status": "Pass",
+        "utc": "2026-10-14T18:17:56.462591+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 6",
+        "status": "Pass",
+        "utc": "2026-10-14T18:18:24.604524+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      },
+      {
+        "name": "create_ap additional Wi-Fi-only restart/rejoin 7",
+        "status": "Pass",
+        "utc": "2026-10-14T18:18:53.121454+00:00",
+        "client_count": 2,
+        "https": {
+          "tablet": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          },
+          "phone": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        "dns": {
+          "tablet": {
+            "success": true,
+            "gateway_rcode": 3,
+            "upstream_rcode": 3,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": true
+          },
+          "phone": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "gateway_answer_count": 0,
+            "upstream_answer_count": 0,
+            "fresh_query": true,
+            "source_bound": true,
+            "strict_nxdomain_probe_success": false
+          }
+        },
+        "host_wifi_only": true,
+        "refreshed_leases_after_current_bssid": true,
+        "android_network_connected": true
+      }
+    ],
+    "dns_https_tls_cases": [
+      {
+        "name": "networkmanager tablet fresh DNS",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:13.218402+00:00",
+        "success": true,
+        "gateway_rcode": 3,
+        "upstream_rcode": 3,
+        "gateway_answer_count": 0,
+        "upstream_answer_count": 0,
+        "fresh_query": true,
+        "source_bound": true,
+        "strict_nxdomain_probe_success": true
+      },
+      {
+        "name": "networkmanager tablet HTTPS example.com",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:15.394501+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      {
+        "name": "networkmanager tablet HTTPS www.kernel.org",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:17.762106+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      {
+        "name": "networkmanager tablet invalid TLS rejection",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:19.323556+00:00",
+        "probe_result": {
+          "success": false,
+          "stage": "tls",
+          "error_type": "SSLHandshakeException",
+          "socket_error": "unspecified"
+        }
+      },
+      {
+        "name": "networkmanager phone fresh DNS",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:20.794572+00:00",
+        "success": true,
+        "gateway_rcode": 3,
+        "upstream_rcode": 3,
+        "gateway_answer_count": 0,
+        "upstream_answer_count": 0,
+        "fresh_query": true,
+        "source_bound": true,
+        "strict_nxdomain_probe_success": true
+      },
+      {
+        "name": "networkmanager phone HTTPS example.com",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:22.928169+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      {
+        "name": "networkmanager phone HTTPS www.kernel.org",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:25.287809+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      {
+        "name": "networkmanager phone invalid TLS rejection",
+        "status": "Pass",
+        "utc": "2026-10-14T18:05:26.212052+00:00",
+        "probe_result": {
+          "success": false,
+          "stage": "tls",
+          "error_type": "SSLHandshakeException",
+          "socket_error": "unspecified"
+        }
+      },
+      {
+        "name": "create_ap tablet fresh DNS",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:39.481636+00:00",
+        "success": true,
+        "gateway_rcode": 3,
+        "upstream_rcode": 3,
+        "gateway_answer_count": 0,
+        "upstream_answer_count": 0,
+        "fresh_query": true,
+        "source_bound": true,
+        "strict_nxdomain_probe_success": true
+      },
+      {
+        "name": "create_ap tablet HTTPS example.com",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:42.184936+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      {
+        "name": "create_ap tablet HTTPS www.kernel.org",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:46.318124+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      {
+        "name": "create_ap tablet invalid TLS rejection",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:47.680914+00:00",
+        "probe_result": {
+          "success": false,
+          "stage": "tls",
+          "error_type": "SSLHandshakeException",
+          "socket_error": "unspecified"
+        }
+      },
+      {
+        "name": "create_ap phone fresh DNS",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:49.066546+00:00",
+        "success": true,
+        "gateway_rcode": 3,
+        "upstream_rcode": 3,
+        "gateway_answer_count": 0,
+        "upstream_answer_count": 0,
+        "fresh_query": true,
+        "source_bound": true,
+        "strict_nxdomain_probe_success": true
+      },
+      {
+        "name": "create_ap phone HTTPS example.com",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:51.116962+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      {
+        "name": "create_ap phone HTTPS www.kernel.org",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:53.198539+00:00",
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      {
+        "name": "create_ap phone invalid TLS rejection",
+        "status": "Pass",
+        "utc": "2026-10-14T18:10:54.088729+00:00",
+        "probe_result": {
+          "success": false,
+          "stage": "tls",
+          "error_type": "SSLHandshakeException",
+          "socket_error": "unspecified"
+        }
+      }
+    ],
+    "smoke_concurrency": [
+      {
+        "name": "GNOME smoke does not stop the live hotspot",
+        "status": "Pass",
+        "utc": "2026-10-14T18:15:17.772792+00:00",
+        "smoke_exit_code": 0,
+        "same_ap_remained_active": true
+      }
+    ],
+    "recovery_cases": [
+      {
+        "name": "NM recovery 1",
+        "status": "Pass",
+        "utc": "2026-10-14T17:50:15.251006+00:00",
+        "https": {
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "wifi_network_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 577,
+          "response_complete": true
+        }
+      },
+      {
+        "name": "NM recovery 2",
+        "status": "Pass",
+        "utc": "2026-10-14T17:51:10.048475+00:00",
+        "https": {
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "wifi_network_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 577,
+          "response_complete": true
+        }
+      },
+      {
+        "name": "NM recovery 3",
+        "status": "Pass",
+        "utc": "2026-10-14T17:52:10.384773+00:00",
+        "https": {
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "wifi_network_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 577,
+          "response_complete": true
+        }
+      },
+      {
+        "name": "NM recovery 4",
+        "status": "Pass",
+        "utc": "2026-10-14T17:53:09.570285+00:00",
+        "https": {
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "wifi_network_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 577,
+          "response_complete": true
+        }
+      },
+      {
+        "name": "NM recovery 5",
+        "status": "Pass",
+        "utc": "2026-10-14T17:54:18.781496+00:00",
+        "https": {
+          "success": true,
+          "https_status": 200,
+          "certificate_and_hostname_verified": true,
+          "source_bound": true,
+          "wifi_network_bound": true,
+          "tls_protocol": "TLSv1.3",
+          "body_bytes_received": 577,
+          "response_complete": true
+        }
+      },
+      {
+        "name": "NM recovery cancellation 1",
+        "status": "Pass",
+        "utc": "2026-10-14T17:50:24.198406+00:00"
+      },
+      {
+        "name": "NM recovery cancellation 2",
+        "status": "Pass",
+        "utc": "2026-10-14T17:51:26.441572+00:00"
+      },
+      {
+        "name": "NM recovery cancellation 3",
+        "status": "Pass",
+        "utc": "2026-10-14T17:52:22.020677+00:00"
+      },
+      {
+        "name": "NM recovery cancellation 4",
+        "status": "Pass",
+        "utc": "2026-10-14T17:53:28.454230+00:00"
+      },
+      {
+        "name": "NM recovery cancellation 5",
+        "status": "Pass",
+        "utc": "2026-10-14T17:54:31.039664+00:00"
+      }
+    ]
+  },
+  "adjudicated_interference": {
+    "retained_static_run_status": "Fail",
+    "failed_case": "networkmanager Wi-Fi-only concurrent transfer",
+    "cause": "The pre-fix headless GNOME smoke test sent Stop on the real system bus during this transfer. The service journal records cancellation at 18:05:37 UTC.",
+    "replacement_case": "NM Wi-Fi-only concurrent transfer after smoke isolation fix",
+    "replacement_passed": true,
+    "other_historical_fixture_failures": "Old-lease/association assumptions, a disabled client Wi-Fi prerequisite, and comparing unrelated Docker interfaces are retained in private diagnostic reports; they were not silently converted into passes."
+  },
+  "restoration": {
+    "config_original": true,
+    "sharing_off": true,
+    "no_pending_request": true,
+    "no_owned_interfaces": true,
+    "clients": {
+      "tablet": {
+        "original_wifi": true,
+        "stay_awake_restored": true,
+        "test_profiles_removed": 0,
+        "probe_jar_removed": true
+      },
+      "phone": {
+        "original_wifi": true,
+        "stay_awake_restored": true,
+        "test_profiles_removed": 2,
+        "probe_jar_removed": true,
+        "screen_timeout_restored": true
+      }
+    },
+    "ethernet_default_restored": true,
+    "wifi_upstream_connected": true,
+    "captures_stopped": true,
+    "raw_capture_removed": true,
+    "no_owned_ap_helpers": true
+  },
+  "privileged_cleanup": {
+    "iptables_read_success": true,
+    "iptables_owned_interface_mentions": 0,
+    "legacy_hotspot_subnet_rule_count": 0,
+    "nft_read_success": true,
+    "nft_owned_interface_mentions": 0,
+    "apparmor_enabled": true,
+    "legacy_pidfile_removed": true,
+    "legacy_readyfile_removed": true,
+    "nm_ownership_file_removed": true,
+    "legacy_instance_directories_remaining": 0,
+    "ufw_active": false
+  },
+  "capture_cleanup": {
+    "owned_tcpdump_processes_remaining": 0,
+    "raw_capture_removed": true,
+    "stopped_by_user_after_apparmor_signal_denial": true,
+    "packet_summary_excluded_from_acceptance": "Overlapping diagnostic captures; not used as traffic acceptance evidence"
+  },
+  "probe_jars": {
+    "static-probes.jar": "3f1cccbe9b513076f1d47dd13ba87d74212c99753982092982168cda532a7deb",
+    "post-probes.jar": "c8e02b4fa364ff1249ad6668afb19fd9417600080aac30c0c84bca4d956ee4ac"
+  },
+  "limits": [
+    "One physical Wi-Fi driver and one client OS family.",
+    "One-minute corrective load checks are not an eight-hour soak.",
+    "No reboot, suspend, full NetworkManager service restart, arbitrary roaming or cross-driver matrix.",
+    "Results identify the exact fixed daemon payloads, not the previously published package contents."
+  ]
+}

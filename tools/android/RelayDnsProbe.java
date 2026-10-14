@@ -15,6 +15,8 @@ public final class RelayDnsProbe {
             if (args.length != 2) {
                 throw new IllegalArgumentException("Expected client IPv4 and DNS gateway");
             }
+            InetAddress source = InetAddress.getByName(args[0]);
+            RelayWifiNetwork network = RelayWifiNetwork.forSource(source);
             String name = "relay-" + UUID.randomUUID().toString().replace("-", "") + ".example.com";
             int id = (int) (System.nanoTime() & 65535);
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -35,7 +37,8 @@ public final class RelayDnsProbe {
             query.writeShort(1); // IN.
             byte[] request = bytes.toByteArray();
             try (DatagramSocket socket = new DatagramSocket(null)) {
-                socket.bind(new InetSocketAddress(InetAddress.getByName(args[0]), 0));
+                socket.bind(new InetSocketAddress(source, 0));
+                network.bind(socket);
                 socket.connect(InetAddress.getByName(args[1]), 53);
                 socket.setSoTimeout(10000);
                 socket.send(new DatagramPacket(request, request.length));
@@ -58,12 +61,16 @@ public final class RelayDnsProbe {
                     + ",\"authority_count\":" + authorities + ",\"additional_count\":" + additional
                     + ",\"response_bytes\":" + response.getLength()
                     + ",\"unique_query\":\"" + name
-                    + "\",\"gateway_queried\":true,\"source_bound\":true}");
+                    + "\",\"gateway_queried\":true,\"source_bound\":true,\"wifi_network_bound\":true}");
                 if (rcode != 3) {
                     System.exit(1);
                 }
             }
         } catch (Exception exception) {
+            if (exception instanceof java.lang.reflect.InvocationTargetException
+                    && exception.getCause() instanceof Exception) {
+                exception = (Exception) exception.getCause();
+            }
             System.out.println("{\"success\":false,\"error_type\":\""
                 + exception.getClass().getSimpleName() + "\"}");
             System.exit(1);

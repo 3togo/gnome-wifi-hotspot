@@ -7,11 +7,23 @@ POLKIT_RULES := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.rules
 POLKIT_POLICY := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.policy
 SYSTEM_CONFIG := $(PWD)/data/wifi-hotspot.conf
 
-.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-nm-menu
+.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-smoke test-integration test-package-lifecycle validate test-nm-menu
 
 test:
 	python3 -m unittest discover -s tests
 	node tests/test_tray.mjs
+
+test-smoke:
+	PYTHON="$(if $(PYTHON),$(PYTHON),python3)" tests/run_smoke.sh
+
+test-integration:
+	timeout --kill-after=5s 60s dbus-run-session -- sh -c 'export DBUS_SYSTEM_BUS_ADDRESS="$$DBUS_SESSION_BUS_ADDRESS"; exec python3 tests/check_service_integration.py'
+
+test-package-lifecycle:
+	tests/run_package_lifecycle.sh
+
+validate:
+	python3 tools/validate.py $(VALIDATE_ARGS)
 
 test-nm-menu:
 	integration/nm-applet/test.sh

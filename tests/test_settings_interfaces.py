@@ -17,14 +17,14 @@ class InterfaceSettingsTests(unittest.TestCase):
         self.window = SimpleNamespace(
             _loading_fields=False, _hotspot_busy=False, _closed=False, _loaded=True,
             _save_timer=0, _pending_config=None, _status_revision=0, _closing_after_save=False,
-            _status_timer=0, destroy=Mock(), _set_form_sensitive=Mock(),
+            _status_timer=0, _retry_action=None, retry_button=Mock(), destroy=Mock(), _set_form_sensitive=Mock(),
             config_data={'NO_VIRT': '0', 'SHARE_METHOD': 'nat', 'WIFI_IFACE': 'wlo2', 'INTERNET_IFACE': 'wlo2'},
             row_status=Mock(), dbus_proxy=Mock(), combo_wifi_iface=Mock(), combo_inet_iface=Mock(), combo_band=Mock(),
             combo_backend=Mock(), switch_hotspot=Mock(), client=Mock(closed=False), add_toast=Mock(),
             _refresh_status=Mock(),
         )
         self.window.writer = module.ConfigurationWriter(self.window.client)
-        for name in ('_collect_config', '_on_field_changed', '_flush_config', '_on_config_saved', '_on_hotspot_finished', '_close_resources'):
+        for name in ('_collect_config', '_on_field_changed', '_flush_config', '_on_config_saved', '_on_hotspot_finished', '_close_resources', '_show_failure', '_clear_failure', '_retry_failed_action'):
             setattr(self.window, name, lambda *args, name=name: getattr(Window, name)(self.window, *args))
         self.window.combo_wifi_iface.get_selected_item.return_value.get_string.return_value = 'wlo2'
         self.window.combo_inet_iface.get_selected_item.return_value.get_string.return_value = 'wlo2'
@@ -136,3 +136,35 @@ class InterfaceSettingsTests(unittest.TestCase):
         self.window.destroy.assert_not_called()
         self.assertFalse(self.window._closed)
         self.assertFalse(self.window._closing_after_save)
+
+    def test_save_retry_uses_latest_fields_and_never_starts_hotspot(self):
+        self.window._show_failure('Settings were not saved', RuntimeError('Disk full'), 'save')
+        self.window._pending_config = {'SSID': 'Earlier edit'}
+        self.window.entry_ssid.get_text.return_value = 'Latest edit'
+        self.window._retry_failed_action()
+        self.assertEqual(self.saved_config()['SSID'], 'Latest edit')
+        self.assertIsNone(self.window._pending_config)
+        self.window.client.call.call_args.args[1](True, None)
+        self.assertIsNone(self.window._retry_action)
+        self.window.retry_button.set_visible.assert_called_with(False)
+        self.assertEqual(self.window.client.call.call_count, 1)
+
+    def test_retry_is_blocked_while_saving_closing_or_operating(self):
+        self.window._retry_action = 'save'
+        for name in ['_closed', '_closing_after_save', '_hotspot_busy']:
+            with self.subTest(name=name):
+                setattr(self.window, name, True)
+                self.window._retry_failed_action()
+                self.window.client.call.assert_not_called()
+                setattr(self.window, name, False)
+        self.window.writer.inflight = True
+        self.window._retry_failed_action()
+        self.window.client.call.assert_not_called()
+
+    def test_failed_stop_with_pending_edits_retries_stop_first(self):
+        self.window._pending_config = {'SSID': 'Unsaved edit'}
+        self.window._hotspot_busy = True
+        self.window._on_hotspot_finished(False, None, False)
+        self.assertEqual(self.window._retry_action, 'stop')
+        self.assertFalse(self.window._hotspot_busy)
+        self.assertEqual(self.window._pending_config, {'SSID': 'Unsaved edit'})
