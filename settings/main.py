@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Wi-Fi Relay Settings App (Libadwaita / GTK4)
-Native GNOME interface for configuring Wi-Fi Hotspot, managing AP settings,
+Wi-Fi Relay Settings App (desktop GTK / GNOME Libadwaita)
+Desktop settings for configuring Wi-Fi Hotspot, managing AP settings,
 viewing connected devices and generating QR connection codes.
 """
 
@@ -50,20 +50,31 @@ def get_default_ssid():
     return "Hotspot"
 
 
-class DesktopAppearance:
-    """Use XFCE's GTK theme as a fallback to the native color-scheme preference."""
-    def __init__(self, manager):
-        self.manager = manager
+GNOME_DESKTOP = is_gnome()
+if not GNOME_DESKTOP:
+    os.environ.setdefault('GTK_CSD', '0')
+ApplicationBase = Adw.Application if GNOME_DESKTOP else Gtk.Application
+WindowBase = Adw.ApplicationWindow if GNOME_DESKTOP else Gtk.ApplicationWindow
+
+
+class NativeAppearance:
+    """Bridge KDE's portal preference while retaining the native GTK theme/fonts."""
+    def __init__(self):
+        self.cancellable = Gio.Cancellable()
         self.proxy = None
         self.handlers = []
-        self.cancellable = Gio.Cancellable()
-        self.revision = 0
-        if 'XFCE' in os.environ.get('XDG_CURRENT_DESKTOP', '').upper().split(':'):
-            Gio.DBusProxy.new_for_bus(
-                Gio.BusType.SESSION,
+        self.settings_handlers = []
+        self.preference = 0
+        if not GNOME_DESKTOP and hasattr(Gtk, 'InterfaceColorScheme'):
+            self.settings = Gtk.Settings.get_default()
+            self.settings_handlers = [self.settings.connect('notify::gtk-theme-name', self._theme_changed),
+                self.settings.connect('notify::gtk-application-prefer-dark-theme', self._theme_changed)]
+            self._theme_changed()
+        if not GNOME_DESKTOP and 'KDE' in os.environ.get('XDG_CURRENT_DESKTOP', '').upper().split(':'):
+            Gio.DBusProxy.new_for_bus(Gio.BusType.SESSION,
                 Gio.DBusProxyFlags.DO_NOT_AUTO_START | Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
-                None, 'org.xfce.Xfconf', '/org/xfce/Xfconf', 'org.xfce.Xfconf',
-                self.cancellable, self._connected)
+                None, 'org.freedesktop.portal.Desktop', '/org/freedesktop/portal/desktop',
+                'org.freedesktop.portal.Settings', self.cancellable, self._connected)
 
     def _connected(self, _source, result):
         try:
@@ -73,39 +84,59 @@ class DesktopAppearance:
         if self.cancellable.is_cancelled():
             return
         self.proxy = proxy
+        self.revision = 0
         self.handlers = [proxy.connect('g-signal', self._changed),
-                         proxy.connect('notify::g-name-owner', lambda *_args: self._load())]
-        self._load()
+                         proxy.connect('notify::g-name-owner', self._owner_changed)]
+        self._owner_changed()
+
+    def _owner_changed(self, *_args):
+        self.revision += 1
+        if self.proxy.get_name_owner():
+            self._read('ReadOne')
+        else:
+            self._apply(0)
+
+    def _read(self, method):
+        revision = self.revision
+        def loaded(proxy, result):
+            try:
+                value = proxy.call_finish(result).unpack()[0]
+                while isinstance(value, GLib.Variant):
+                    value = value.unpack()
+            except GLib.Error:
+                if method == 'ReadOne' and not self.cancellable.is_cancelled():
+                    self._read('Read')
+                return
+            if not self.cancellable.is_cancelled() and self.revision == revision:
+                self._apply(value)
+        self.proxy.call(method, GLib.Variant('(ss)', ('org.freedesktop.appearance', 'color-scheme')),
+                        Gio.DBusCallFlags.NO_AUTO_START, 1000, self.cancellable, loaded)
 
     def _changed(self, _proxy, _sender, signal, parameters):
         values = parameters.unpack()
-        if (signal in {'PropertyChanged', 'PropertyRemoved'} and len(values) >= 2
-                and values[0] == 'xsettings'
-                and values[1] in {'/Net/ThemeName', '/Gtk/ApplicationPreferDarkTheme'}):
-            self._load()
+        if (signal == 'SettingChanged' and len(values) == 3
+                and values[:2] == ('org.freedesktop.appearance', 'color-scheme')):
+            self.revision += 1
+            self._apply(values[2])
 
-    def _load(self):
-        self.revision += 1
-        revision = self.revision
-        if not self.proxy.get_name_owner():
-            self.manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
-            return
+    def _theme_changed(self, *_args):
+        settings = Gtk.Settings.get_default()
+        theme_dark = bool(re.search(r'(^|[-_\s])dark($|[-_\s])', settings.props.gtk_theme_name, re.I))
+        dark = self.preference == 1 or (self.preference != 2 and
+               (theme_dark or settings.props.gtk_application_prefer_dark_theme))
+        scheme = Gtk.InterfaceColorScheme.DARK if dark else Gtk.InterfaceColorScheme.LIGHT
+        if settings.props.gtk_interface_color_scheme != scheme:
+            settings.props.gtk_interface_color_scheme = scheme
 
-        def loaded(proxy, result):
-            try:
-                values = proxy.call_finish(result).unpack()[0]
-            except GLib.Error:
-                values = {}
-            if self.cancellable.is_cancelled() or revision != self.revision:
-                return
-            theme = values.get('/Net/ThemeName', '')
-            dark = (values.get('/Gtk/ApplicationPreferDarkTheme') is True
-                    or isinstance(theme, str) and bool(re.search(r'(^|[-_\s])dark($|[-_\s])', theme, re.I)))
-            # PREFER_DARK still honors an explicit system preference for light.
-            self.manager.set_color_scheme(Adw.ColorScheme.PREFER_DARK if dark else Adw.ColorScheme.DEFAULT)
-
-        self.proxy.call('GetAllProperties', GLib.Variant('(ss)', ('xsettings', '/')),
-                        Gio.DBusCallFlags.NO_AUTO_START, 1000, self.cancellable, loaded)
+    def _apply(self, preference):
+        self.preference = preference
+        settings = Gtk.Settings.get_default()
+        if hasattr(Gtk, 'InterfaceColorScheme'):
+            self._theme_changed()
+        elif preference in (1, 2):
+            settings.set_property('gtk-application-prefer-dark-theme', preference == 1)
+        else:
+            settings.reset_property('gtk-application-prefer-dark-theme')
 
     def close(self):
         self.cancellable.cancel()
@@ -113,16 +144,52 @@ class DesktopAppearance:
             for handler in self.handlers:
                 self.proxy.disconnect(handler)
         self.handlers = []
+        for handler in self.settings_handlers:
+            self.settings.disconnect(handler)
+        self.settings_handlers = []
 
 
-class HotspotApplication(Adw.Application):
+class HotspotApplication(ApplicationBase):
     def do_startup(self):
-        Adw.Application.do_startup(self)
-        self.appearance = DesktopAppearance(self.get_style_manager())
+        ApplicationBase.do_startup(self)
+        self.appearance = NativeAppearance()
 
     def do_shutdown(self):
         self.appearance.close()
-        Adw.Application.do_shutdown(self)
+        ApplicationBase.do_shutdown(self)
+
+
+class NativeMessageDialog(Gtk.Window):
+    def __init__(self, transient_for, heading, body):
+        super().__init__(transient_for=transient_for, modal=True, title=heading)
+        self.set_default_size(380, -1)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
+                          margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
+        self.set_child(content)
+        content.append(Gtk.Label(label=body, wrap=True, max_width_chars=55, selectable=True))
+        self.extra = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content.append(self.extra)
+        self.buttons = Gtk.Box(spacing=6, halign=Gtk.Align.END)
+        content.append(self.buttons)
+        self.extra_child = None
+
+    def set_extra_child(self, child):
+        if self.extra_child:
+            self.extra.remove(self.extra_child)
+        self.extra_child = child
+        if child:
+            self.extra.append(child)
+
+    def get_extra_child(self):
+        return self.extra_child
+
+    def add_response(self, _response, label):
+        button = Gtk.Button(label=label)
+        button.connect('clicked', lambda *_args: self.close())
+        self.buttons.append(button)
+
+
+MessageDialog = Adw.MessageDialog if GNOME_DESKTOP else NativeMessageDialog
 
 
 class SettingsDropDown(Gtk.DropDown):
@@ -159,7 +226,7 @@ class SettingsDetail(Gtk.Box):
         self.append(widget)
 
 
-class HotspotSettingsWindow(Adw.ApplicationWindow):
+class HotspotSettingsWindow(WindowBase):
     def __init__(self, app):
         super().__init__(application=app, title="Wi-Fi Relay Settings")
         self.set_default_size(720, -1)
@@ -225,7 +292,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
                         self._pending_config = dict(config)
                         self._set_form_sensitive(True)
                         self._show_failure("Settings were not saved", error, "save")
-                        self.add_toast(Adw.Toast.new(str(error)))
+                        self.add_toast(str(error))
                         return
                     self._close_resources()
                     self.destroy()
@@ -302,21 +369,37 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
         # Leave room for desktop panels and window-manager decorations.
         self.set_default_size(width, min(natural, max(1, geometry.height - 96)))
 
-    def add_toast(self, toast):
-        self.toast_overlay.add_toast(toast)
+    def add_toast(self, message):
+        if self.gnome_layout:
+            self.toast_overlay.add_toast(Adw.Toast.new(message))
+        else:
+            self.notice_label.set_text(message)
+            self.notice_bar.set_revealed(True)
 
     def _build_ui(self):
         # Match the connection editor's notebook, 12px page margins and 6px rows.
         self.gnome_layout = is_gnome()
-        self.toast_overlay = Adw.ToastOverlay()
-        self.set_content(self.toast_overlay)
-        toolbar = Adw.ToolbarView()
-        self.toast_overlay.set_child(toolbar)
-        header = Adw.HeaderBar() if self.gnome_layout else Gtk.HeaderBar()
-        toolbar.add_top_bar(header)
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
                           margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)
-        toolbar.set_content(content)
+        if self.gnome_layout:
+            self.toast_overlay = Adw.ToastOverlay()
+            self.set_content(self.toast_overlay)
+            toolbar = Adw.ToolbarView()
+            self.toast_overlay.set_child(toolbar)
+            header = Adw.HeaderBar()
+            toolbar.add_top_bar(header)
+            toolbar.set_content(content)
+        else:
+            # No Adwaita widgets or client-side header bar: GTK and the window
+            # manager retain the desktop theme, fonts, accent and decorations.
+            self.set_child(content)
+            self.set_icon_name(BUS_NAME)
+            self.notice_bar = Gtk.InfoBar(show_close_button=True, revealed=False,
+                                           message_type=Gtk.MessageType.WARNING)
+            self.notice_label = Gtk.Label(wrap=True, xalign=0)
+            self.notice_bar.add_child(self.notice_label)
+            self.notice_bar.connect('response', lambda *_args: self.notice_bar.set_revealed(False))
+            content.append(self.notice_bar)
 
         self.row_status = SettingsDetail(title="Hotspot", subtitle="Checking connection…")
         self.switch_hotspot = Gtk.Switch(valign=Gtk.Align.CENTER)
@@ -334,7 +417,6 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
             header.set_title_widget(Adw.ViewSwitcher(stack=self.view_stack))
             content.append(self.view_stack)
         else:
-            header.set_title_widget(Gtk.Label(label="Wi-Fi Relay Settings"))
             self.notebook = Gtk.Notebook(scrollable=True, vexpand=True)
             content.append(self.notebook)
         self.page_scrolls = []
@@ -480,7 +562,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
             row.handler_block_by_func(self._on_startup_changed)
             row.set_active(get_auto_start())
             row.handler_unblock_by_func(self._on_startup_changed)
-            dialog = Adw.MessageDialog(transient_for=self, heading="Could not save startup setting", body=str(error))
+            dialog = MessageDialog(transient_for=self, heading="Could not save startup setting", body=str(error))
             dialog.add_response("ok", "Close")
             dialog.present()
 
@@ -693,7 +775,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
         if error:
             self._show_failure("Hotspot could not start" if starting else "Hotspot could not stop",
                                error, "save" if starting and self._pending_config is not None else ("start" if starting else "stop"))
-            self.add_toast(Adw.Toast.new(str(error)))
+            self.add_toast(str(error))
         else:
             self._clear_failure("start", "stop")
         self._hotspot_busy = False
@@ -770,7 +852,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
 
     def _on_show_qr(self, button):
         if not self._loaded:
-            self.add_toast(Adw.Toast.new("Wait for the hotspot settings to load before sharing."))
+            self.add_toast("Wait for the hotspot settings to load before sharing.")
             return
         ssid = self.entry_ssid.get_text()
         pwd = self.entry_pass.get_text()
@@ -778,7 +860,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
             payload = wifi_payload(ssid, pwd, self.switch_hidden.get_active())
             width, pixels = qr_rgb(payload)
         except ValueError as error:
-            self.add_toast(Adw.Toast.new(str(error)))
+            self.add_toast(str(error))
             return
         texture = Gdk.MemoryTexture.new(width, width, Gdk.MemoryFormat.R8G8B8,
                                         GLib.Bytes.new(pixels), width * 3)
@@ -787,7 +869,7 @@ class HotspotSettingsWindow(Adw.ApplicationWindow):
         picture.set_can_shrink(True)
         picture.set_size_request(width, width)
         picture.set_halign(Gtk.Align.CENTER)
-        dialog = Adw.MessageDialog(
+        dialog = MessageDialog(
             transient_for=self,
             heading="Wi-Fi Connection Code",
             body=f"Network Name: {ssid}\nPassword: {pwd}\n\nScan the QR code with your phone’s camera to connect.",
@@ -821,6 +903,17 @@ class HotspotAboutApp(HotspotApplication):
     def do_activate(self):
         win = self.props.active_window
         if not win:
+            if not GNOME_DESKTOP:
+                win = Gtk.AboutDialog(application=self, program_name="Wi-Fi Relay", version="1.0.0",
+                    logo_icon_name=BUS_NAME, authors=["Erhan Zeyrek", "Wi-Fi Relay contributors"],
+                    copyright="© 2026 Wi-Fi Relay contributors", license_type=Gtk.License.MIT_X11,
+                    website="https://github.com/3togo/gnome-wifi-hotspot",
+                    comments="Share your internet connection with optional desktop controls.")
+                win.add_credit_section("Third-party components", [
+                    "create_ap — oblique and lakinduaksh (BSD-2-Clause)",
+                    "QR Code generator — Project Nayuki (MIT)"])
+                win.present()
+                return
             win = Adw.AboutWindow(
                 application=self,
                 application_name="Wi-Fi Relay",

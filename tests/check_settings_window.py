@@ -45,8 +45,10 @@ class FakeClient:
     def close(self):
         self.closed = True
 main.ServiceClient = FakeClient
-application = Adw.Application(application_id='io.github.wifirelay.SettingsSmokeTest')
+application = main.HotspotApplication(application_id='io.github.wifirelay.SettingsSmokeTest')
 application.register(None)
+native_appearance = (main.Gtk.Settings.get_default().props.gtk_theme_name,
+                     main.Gtk.Settings.get_default().props.gtk_font_name)
 window = HotspotSettingsWindow(application)
 drain_events()
 assert window.get_title() == 'Wi-Fi Relay Settings'
@@ -129,12 +131,18 @@ with patch.object(main, 'ServiceClient', side_effect=AssertionError('About conta
     about_app.activate()
     drain_events()
     about = about_app.get_windows()[0]
-    assert about.get_application_name() == 'Wi-Fi Relay'
+    assert (about.get_application_name() if main.GNOME_DESKTOP else about.get_program_name()) == 'Wi-Fi Relay'
     assert about.get_version() == '1.0.0'
     assert about.get_license_type() == main.Gtk.License.MIT_X11
     assert about.get_website() == 'https://github.com/3togo/gnome-wifi-hotspot'
-    assert about.get_issue_url().endswith('/issues')
+    if main.GNOME_DESKTOP:
+        assert about.get_issue_url().endswith('/issues')
     about_app.activate()
     assert about_app.get_windows() == [about]
     about.close()
 print('About metadata, window reuse, and service independence checks passed.')
+
+if not main.GNOME_DESKTOP:
+    assert (main.Gtk.Settings.get_default().props.gtk_theme_name,
+            main.Gtk.Settings.get_default().props.gtk_font_name) == native_appearance
+    print('Native theme and font preserved through settings, QR, and About dialogs.')

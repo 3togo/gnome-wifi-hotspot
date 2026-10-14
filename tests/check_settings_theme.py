@@ -58,6 +58,7 @@ class DesktopFixture:
         self.theme = 'Adwaita-dark'
         self.prefer_dark = False
         self.reads = 0
+        self.read_one_available = True
         self.ready = threading.Event()
         self.thread = threading.Thread(target=self.serve, daemon=True)
         self.thread.start()
@@ -85,6 +86,9 @@ class DesktopFixture:
 
     def call(self, _connection, _sender, _path, interface, method, parameters, invocation):
         appearance = {'color-scheme': GLib.Variant('u', self.color), 'contrast': GLib.Variant('u', 0)}
+        if method == 'ReadOne' and not self.read_one_available:
+            invocation.return_dbus_error('org.freedesktop.DBus.Error.UnknownMethod', 'Legacy portal fixture')
+            return
         if interface == XFCONF:
             self.reads += 1
             invocation.return_value(GLib.Variant('(a{sv})', ({'/Net/ThemeName': GLib.Variant('s', self.theme),
@@ -109,6 +113,11 @@ class DesktopFixture:
 
     def set_theme(self, theme, prefer_dark=False):
         self.theme, self.prefer_dark = theme, prefer_dark
+        if sys.argv[1] == 'XFCE':
+            # Simulate the XSettings delivery performed by xfsettingsd. Native
+            # GTK must retain these settings, rather than impose Adwaita CSS.
+            settings = main.Gtk.Settings.get_default()
+            settings.props.gtk_theme_name = theme
         for key, value in [('/Net/ThemeName', GLib.Variant('s', theme)),
                            ('/Gtk/ApplicationPreferDarkTheme', GLib.Variant('b', prefer_dark))]:
             self.connection.emit_signal(None, XFCONF_PATH, XFCONF, 'PropertyChanged',
@@ -136,13 +145,24 @@ if os.environ.get('WIFI_RELAY_TEST_LARGE_TEXT') == '1':
     main.Gtk.StyleContext.add_provider_for_display(main.Gdk.Display.get_default(), provider,
                                                   main.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+if not main.GNOME_DESKTOP:
+    main.Gtk.init()
+    native_settings = main.Gtk.Settings.get_default()
+    native_settings.props.gtk_theme_name = 'Adwaita-dark' if sys.argv[1] == 'XFCE' else 'Adwaita'
+    native_settings.props.gtk_font_name = 'Serif 11'
+
 main.ServiceClient = NoNetworkClient
 main.get_default_ssid = lambda: "Theme test"
 app = main.HotspotSettingsApp()
 app.register(None)
 app.activate()
 window = app.get_active_window()
-manager = app.get_style_manager()
+def is_dark():
+    if main.GNOME_DESKTOP:
+        return app.get_style_manager().get_dark()
+    found, color = window.get_style_context().lookup_color('theme_bg_color')
+    assert found, 'Native GTK theme background is missing'
+    return (color.red + color.green + color.blue) / 3 < .5
 
 
 def wait_for_dark(dark):
@@ -153,7 +173,7 @@ def wait_for_dark(dark):
             if not context.pending():
                 break
             context.iteration(False)
-        if manager.get_dark() == dark and window.get_mapped():
+        if is_dark() == dark and window.get_mapped():
             return
         time.sleep(.005)
     raise AssertionError(f'{sys.argv[1]} did not switch to dark={dark}')
@@ -209,23 +229,39 @@ try:
         fixture.set_theme('Adwaita')
         wait_for_dark(False)
         screenshot('light')
-        fixture.set_theme('Adwaita', True)
+        fixture.set_theme('Adwaita-dark')
         wait_for_dark(True)
-        fixture.set_theme('Arc-Darker')
+    if sys.argv[1] != 'XFCE':
+        fixture.set_color(2)
         wait_for_dark(False)
-        fixture.set_theme('Greybird-dark')
+        fixture.set_color(1)
         wait_for_dark(True)
-    fixture.set_color(2)
-    wait_for_dark(False)
-    fixture.set_color(1)
-    wait_for_dark(True)
-    fixture.set_color(0)
-    wait_for_dark(sys.argv[1] == 'XFCE')
-    if sys.argv[1] == 'XFCE':
+        fixture.set_color(0)
+        wait_for_dark(False)
+        if sys.argv[1] == 'KDE':
+            fixture.name('ReleaseName', GLib.Variant('(s)', (PORTAL,)))
+            wait_for_dark(False)
+            fixture.color = 1
+            fixture.read_one_available = False
+            fixture.name('RequestName', GLib.Variant('(su)', (PORTAL, 0)))
+            wait_for_dark(True)
+    else:
         fixture.name('ReleaseName', GLib.Variant('(s)', (XFCONF,)))
-        wait_for_dark(False)
+        wait_for_dark(True)
         fixture.name('RequestName', GLib.Variant('(su)', (XFCONF, 0)))
         wait_for_dark(True)
+    if not main.GNOME_DESKTOP:
+        expected_theme = fixture.theme if sys.argv[1] == 'XFCE' else 'Adwaita'
+        assert main.Gtk.Settings.get_default().props.gtk_theme_name == expected_theme
+        assert main.Gtk.Settings.get_default().props.gtk_font_name == 'Serif 11'
+        assert window.get_titlebar() is None, 'Native desktop must supply window decorations'
+        window.add_toast('Native GTK notification')
+        dialog = main.MessageDialog(window, 'Appearance check', 'Native dialog')
+        dialog.add_response('close', 'Close')
+        dialog.present()
+        dialog.destroy()
+        assert main.Gtk.Settings.get_default().props.gtk_font_name == 'Serif 11'
+        assert main.Gtk.Settings.get_default().props.gtk_theme_name != 'Adwaita-empty'
     # A smaller window must retain reachable controls through page scrolling.
     window.set_default_size(640, 360)
     scrolled = False

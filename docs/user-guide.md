@@ -51,7 +51,9 @@ beta installs require an explicit choice of an optional control package.
 Open **Wi-Fi Relay** from the application launcher, or run
 `wifi-hotspot-settings` as your normal user. The window automatically uses
 GNOME-style grouped rows on GNOME and compact connection-editor tabs on XFCE
-and KDE, following the desktop color preference. It fits its initial contents
+and KDE. GNOME uses Libadwaita; XFCE and KDE use the desktop's GTK theme,
+fonts, controls, and window-manager decorations, including QR and About dialogs.
+It fits its initial contents
 and keeps scrolling available on smaller displays and with enlarged text.
 
 Configure these fields:
