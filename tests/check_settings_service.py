@@ -10,7 +10,7 @@ import main
 class SettingsServiceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = main.Adw.Application(application_id='io.github.wifirelay.ServiceSmoke',
+        cls.app = main.HotspotApplication(application_id='io.github.wifirelay.ServiceSmoke',
                                        flags=main.Gio.ApplicationFlags.NON_UNIQUE)
         cls.app.register(None)
 

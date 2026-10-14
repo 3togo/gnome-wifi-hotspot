@@ -29,7 +29,7 @@ export XDG_RUNTIME_DIR="$fixture/runtime"
 mkdir -m 700 "$XDG_RUNTIME_DIR"
 export GTK_A11Y=none PYTHONOPTIMIZE=0 GIO_USE_VFS=local
 mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
-for script in check_settings_window.py check_settings_service.py check_desktop_tray.py check_tray_startup.py; do
+for script in check_settings_window.py check_settings_service.py check_desktop_tray.py check_tray_startup.py check_settings_theme.py; do
     echo "Running $script ($display_mode display)"
     # Mapping the system bus to the private session bus prevents host activation.
     if [ "$display_mode" = xvfb ]; then

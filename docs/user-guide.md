@@ -1,6 +1,6 @@
 # Wi-Fi Relay user guide
 
-This guide covers stable **Wi-Fi Relay 1.0.0**, package **1.0.0-28**, on Ubuntu
+This guide covers stable **Wi-Fi Relay 1.0.0**, package **1.0.0-29**, on Ubuntu
 26.10 (Stonking). Sharing upstream Wi-Fi through one adapter requires AP+STA
 support from its driver. The create_ap backend is the default; native
 NetworkManager AP+STA remains experimental.
@@ -8,26 +8,26 @@ NetworkManager AP+STA remains experimental.
 ## Install or upgrade
 
 Download the main package and `SHA256SUMS` from the
-[stable release](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-28).
+[stable release](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-29).
 Optionally download the matching GNOME or tray package.
 
 | Download | Contents |
 | :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot_1.0.0-28_all.deb) | Service and GTK settings; required |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-gnome_1.0.0-28_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-tray_1.0.0-28_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
-| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/SHA256SUMS) | Checksums for release downloads |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot_1.0.0-29_all.deb) | Service and GTK settings; required |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-gnome_1.0.0-29_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-tray_1.0.0-29_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
+| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/SHA256SUMS) | Checksums for release downloads |
 
 In the download folder, verify the packages and install the combination you want:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
 # Standalone app
-sudo apt install ./gnome-wifi-hotspot_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-29_all.deb
 # Optional GNOME controls
-sudo apt install ./gnome-wifi-hotspot-gnome_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot-gnome_1.0.0-29_all.deb
 # Or optional tray controls
-sudo apt install ./gnome-wifi-hotspot-tray_1.0.0-28_all.deb
+sudo apt install ./gnome-wifi-hotspot-tray_1.0.0-29_all.deb
 ```
 
 Each downloaded package must report `OK`. APT installs dependencies. When
@@ -49,19 +49,25 @@ beta installs require an explicit choice of an optional control package.
 ## Configure sharing
 
 Open **Wi-Fi Relay** from the application launcher, or run
-`wifi-hotspot-settings` as your normal user. In **General**:
+`wifi-hotspot-settings` as your normal user. The window automatically uses
+GNOME-style grouped rows on GNOME and compact connection-editor tabs on XFCE
+and KDE. GNOME uses Libadwaita; XFCE and KDE use the desktop's GTK theme,
+fonts, controls, and window-manager decorations, including QR and About dialogs.
+It fits its initial contents
+and keeps scrolling available on smaller displays and with enlarged text.
+
+Configure these fields:
 
 | Field | Choice |
 | :--- | :--- |
-| Hotspot Name (SSID) | A recognizable network name |
-| Password | A strong WPA2 passphrase of 8–63 printable ASCII characters |
-| Hotspot Backend | Start with create_ap |
-| Wi-Fi Adapter | Your actual adapter; `wlan0` is only a default |
-| Internet Sharing Interface | The same Wi-Fi adapter for a repeater, or the upstream Ethernet interface |
-| Frequency Band | Start with Automatic (Recommended) |
+| Wi-Fi → SSID | A recognizable network name |
+| Wi-Fi → Password | A strong WPA2 passphrase of 8–63 printable ASCII characters |
+| Advanced → Hotspot backend | Start with create_ap |
+| Wi-Fi → Device | Your actual adapter; `wlan0` is only a default |
+| Sharing → Share from | The same Wi-Fi adapter for a repeater, or the upstream Ethernet interface |
+| Wi-Fi → Band | Start with Automatic (Recommended) |
 
-The backend selector is under **Network Interfaces and Frequency Band**; scroll
-below the network name and password. Settings save automatically. Stop active
+The backend selector is on **Advanced**. Settings save automatically. Stop active
 or waiting sharing before editing settings. Leave Advanced options at their
 defaults initially. Fresh installations receive a random password; an upgrade
 preserves the previous password, so review it before broadcasting.
@@ -78,15 +84,14 @@ default route, including a preferred Ethernet or VPN route. The sharing-interfac
 selector is disabled. It does not switch the upstream band to make a channel
 usable. It supports WPA2, hidden SSID, client isolation, raw PSK, and a /24 gateway.
 IEEE generation overrides, MAC filtering, custom DNS/country, and non-NAT modes
-are unsupported and rejected. The shared password-field label does not imply
-WPA3 support in this backend.
+are unsupported and rejected. The password field does not imply WPA3 support in this backend.
 
 ## Start and stop
 
 1. Confirm the laptop has internet access. For NetworkManager, confirm the selected adapter is connected to upstream Wi-Fi.
-2. Enable **General → Hotspot Status → Service Status** and wait for active status.
-3. Connect a client with the configured name and password, or scan **Show QR**. QR generation stays on your computer.
-4. Check internet access on the client and inspect **Devices & Sharing → Connected Devices**.
+2. Enable the **Hotspot** switch above the pages and wait for active status.
+3. Connect a client with the configured name and password, or scan **Devices → Show QR Code**. QR generation stays on your computer.
+4. Check internet access on the client and inspect **Devices → Connected devices**.
 
 For a hidden SSID, add the network manually or use the QR code. Leave Hidden
 SSID off for initial troubleshooting. Closing Settings leaves sharing running.
@@ -98,7 +103,7 @@ All controls operate the same service and reflect changes made in other clients.
 
 | Control | Use |
 | :--- | :--- |
-| Standalone Settings | Service Status switch; available without optional packages |
+| Standalone Settings | Hotspot switch; available without optional packages |
 | GNOME package | Quick Settings → Wi-Fi Relay, with settings and client information |
 | Tray package | Relay icon → Enable hotspot or Hotspot Settings |
 
@@ -182,6 +187,6 @@ Stop sharing before removal. Remove installed optional packages along with the
 main package using `sudo apt remove`; use `sudo apt purge` to remove their system
 configuration too. Per-user preferences remain. Removing just an integration
 leaves the standalone app, service, and credentials intact. For a downgrade,
-follow [release maintenance and rollback](releases/1.0.0-28.md), keeping all
+follow [release maintenance and rollback](releases/1.0.0-29.md), keeping all
 selected package versions matched. A patched distribution applet must be
 [restored separately](../integration/nm-applet/README.md#maintenance-and-rollback).
