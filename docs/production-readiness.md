@@ -106,7 +106,16 @@ dbus-run-session -- python3 tests/check_settings_window.py
 dbus-run-session -- python3 tests/check_desktop_tray.py
 dbus-run-session -- xvfb-run -a python3 tests/check_tray_startup.py
 dbus-run-session -- env SANITIZE=1 integration/nm-applet/test.sh
+python3 tests/smoke_installed.py
 ```
+
+Building first makes `tests/test_package_contents.py` verify the payload of
+every package in `dist/`; point `WIFI_RELAY_DEB_DIR` at another directory to
+check packages built elsewhere. The installed-system smoke test only reads
+state and calls the read-only `GetStatus` method. It never starts, stops, or
+reconfigures a hotspot, asserts that every network device is unchanged when it
+finishes, and skips checks the environment cannot answer, such as a host
+without systemd or an unactivatable daemon.
 
 Use xvfb-run in a headless environment. Desktop checks use fake transport and
 real widgets; they do not start a hotspot or rewrite host preferences.
