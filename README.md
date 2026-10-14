@@ -15,38 +15,38 @@ compatibility, and how upstream changes are reviewed.
 
 ## Download and install
 
-**[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-22)**
+**[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-28)**
 is the stable release for **Ubuntu 26.10 (Stonking)**, Debian package version
-**1.0.0-22**. The packages contain architecture-independent application code;
+**1.0.0-28**. The packages contain architecture-independent application code;
 APT supplies platform-specific dependencies. Other distribution releases have
 not been validated. Older beta binary downloads have been retired.
 
 | Download | Contents |
 | :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot_1.0.0-22_all.deb) | Service and GTK settings; required |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot-gnome_1.0.0-22_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/gnome-wifi-hotspot-tray_1.0.0-22_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
-| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-22/SHA256SUMS) | Checksums for release downloads |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot_1.0.0-28_all.deb) | Service and GTK settings; required |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-gnome_1.0.0-28_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/gnome-wifi-hotspot-tray_1.0.0-28_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
+| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-28/SHA256SUMS) | Checksums for release downloads |
 
 Download the standalone app and `SHA256SUMS` into one folder. Add the optional
 control package for your desktop, using the same version for all packages.
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
-sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-28_all.deb
 ```
 
 The checksum check must report `OK` for each downloaded package. To install
 GNOME controls, use:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-22_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-28_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-28_all.deb
 ```
 
 For XFCE or another desktop with a compatible tray, use:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-22_all.deb ./gnome-wifi-hotspot-tray_1.0.0-22_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-28_all.deb ./gnome-wifi-hotspot-tray_1.0.0-28_all.deb
 ```
 
 Log out and back in after installing GNOME controls. Starting with package
@@ -103,7 +103,7 @@ processes, bounds worker output and shutdown, and authorizes privileged changes
 through Polkit. Firewall rules are scoped to the hotspot interface; Relay leaves
 permanent firewalld configuration and AppArmor enforcement intact.
 
-Native Ubuntu 26.10 validation includes 283 unit tests with no skips, real GTK
+Native Ubuntu 26.10 validation includes 336 unit tests with no skips, real GTK
 settings/tray checks, 17 sanitized applet cases, GNOME Shell 51 extension loading,
 private-bus service authorization checks, and Debian source/binary builds.
 GitHub CI additionally checks isolated install, upgrade, removal, and purge.
@@ -165,7 +165,7 @@ failure report.
 Desktop integration entry points use the shared Relay service. Optional
 [network applet](integration/nm-applet/README.md) and
 [GNOME Settings](integration/gnome-settings/README.md) downstream patches are
-maintainer experiments, separate from the stable 1.0.0-22 downloads. The Ubuntu
+maintainer experiments, separate from the stable 1.0.0-28 downloads. The Ubuntu
 26.10 CI artifact now includes the patched applet debs, so the XFCE menu is
 installed through APT rather than by patching files on the target machine. They are
 version-specific and are not upstream GNOME or NetworkManager features.
@@ -174,7 +174,7 @@ version-specific and are not upstream GNOME or NetworkManager features.
 
 - [User guide](docs/user-guide.md): setup, controls, recovery, and troubleshooting.
 - [Release notes](RELEASE_NOTES.md): changes, scope, and downloads.
-- [Release maintenance and rollback](docs/releases/1.0.0-22.md).
+- [Release maintenance and rollback](docs/releases/1.0.0-28.md).
 - [Architecture and production checks](docs/production-readiness.md).
 - [Fork maintenance and upstream contributions](docs/fork-maintenance.md).
 - [Hardware validation checklist](docs/release-hardware-validation.md): candidate

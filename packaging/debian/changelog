@@ -1,3 +1,15 @@
+gnome-wifi-hotspot (1.0.0-28) stonking; urgency=medium
+
+  * Wait for hostapd readiness and clean up the owned worker on failed startup.
+  * Launch hostapd directly and include P2P interfaces when allocating AP MACs.
+  * Isolate desktop smoke checks from live services and user preferences.
+  * Add settings recovery controls and expand authorization, startup, Android
+    probe, package lifecycle, and real-widget validation coverage.
+  * Include adapter detection, upstream band retry, and orphan cleanup fixes
+    from revisions 23 through 27.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Wed, 14 Oct 2026 18:48:23 -0000
+
 gnome-wifi-hotspot (1.0.0-27) stonking; urgency=medium
 
   * Clear orphaned Relay hostapd processes whose private create_ap runtime has
