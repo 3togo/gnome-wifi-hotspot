@@ -3,7 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from daemon.configuration import initialize_factory_password
+from daemon.configuration import (detect_wifi_interface, initialize_factory_password,
+                                  repair_legacy_wifi_interface)
 
 
 class FactoryPasswordTests(unittest.TestCase):
@@ -28,6 +29,23 @@ class FactoryPasswordTests(unittest.TestCase):
         initialize_factory_password(self.path, self.factory, 'Workstation-Hotspot')
         self.assertTrue(self.path.read_text().startswith('SSID=Workstation-Hotspot\n'))
 
+    def test_fresh_install_uses_the_only_wifi_interface(self):
+        self.original = 'WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n' + self.original
+        self.factory.write_text(self.original)
+        self.path.write_text(self.original)
+        initialize_factory_password(self.path, self.factory, wifi_interface='wlp4s0')
+        saved = self.path.read_text()
+        self.assertIn('WIFI_IFACE=wlp4s0\n', saved)
+        self.assertIn('INTERNET_IFACE=wlp4s0\n', saved)
+
+    def test_detection_requires_exactly_one_wifi_interface(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.assertEqual(detect_wifi_interface(net), 'wlp4s0')
+        (net / 'wlp5s0' / 'phy80211').mkdir(parents=True)
+        self.assertIsNone(detect_wifi_interface(net))
+
     def test_customized_configuration_and_symlink_are_preserved(self):
         self.path.write_text('SSID=Mine\nPASSPHRASE=custom-secret\n')
         self.assertFalse(initialize_factory_password(self.path, self.factory))
@@ -42,3 +60,26 @@ class FactoryPasswordTests(unittest.TestCase):
                 initialize_factory_password(self.path, self.factory)
         self.assertEqual(self.path.read_text(), self.original)
         self.assertEqual(set(Path(self.directory.name).iterdir()), {self.path, self.factory})
+
+    def test_upgrade_repairs_only_absent_legacy_wifi_defaults(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.path.write_text('WIFI_IFACE=INTERNET_IFACE=wlan0\nINTERNET_IFACE=wlan0\n'
+                             'SSID=Mine\nPASSPHRASE=private-password\n')
+        self.assertTrue(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.assertEqual(self.path.read_text(), 'WIFI_IFACE=wlp4s0\nINTERNET_IFACE=wlp4s0\n'
+                         'SSID=Mine\nPASSPHRASE=private-password\n')
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+
+    def test_upgrade_preserves_explicit_interfaces_and_ambiguous_hardware(self):
+        net = Path(self.directory.name) / 'net'
+        net.mkdir()
+        (net / 'wlp4s0' / 'wireless').mkdir(parents=True)
+        self.path.write_text('WIFI_IFACE=wlp4s0\nINTERNET_IFACE=eth0\n')
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.path.write_text('WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n')
+        (net / 'wlp5s0' / 'wireless').mkdir(parents=True)
+        self.assertFalse(repair_legacy_wifi_interface(self.path, sys_class_net=net))
+        self.assertEqual(self.path.read_text(), 'WIFI_IFACE=wlan0\nINTERNET_IFACE=wlan0\n')

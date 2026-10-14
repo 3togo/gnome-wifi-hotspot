@@ -76,8 +76,19 @@ def validate_config(conf, partial=False):
 
 
 
-def initialize_factory_password(path, factory_path, ssid=None):
-    """Replace the shared factory secret once; preserve every customized config."""
+def detect_wifi_interface(sys_class_net="/sys/class/net"):
+    """Choose an adapter only when a fresh install has one unambiguous Wi-Fi device."""
+    from pathlib import Path
+    try:
+        interfaces = [entry.name for entry in Path(sys_class_net).iterdir()
+                      if (entry / "wireless").exists() or (entry / "phy80211").exists()]
+    except OSError:
+        return None
+    return interfaces[0] if len(interfaces) == 1 else None
+
+
+def initialize_factory_password(path, factory_path, ssid=None, wifi_interface=None):
+    """Initialize a factory config once; preserve every customized config."""
     import os
     from pathlib import Path
     import secrets
@@ -96,11 +107,62 @@ def initialize_factory_password(path, factory_path, ssid=None):
         ssid = ssid.encode('utf-8')[:32].decode('utf-8', errors='ignore')
         validate_config({'SSID': ssid})
         updated = updated.replace(b'SSID=Hotspot\n', b'SSID=' + ssid.encode('utf-8') + b'\n', 1)
+    interface = wifi_interface if wifi_interface is not None else detect_wifi_interface()
+    if interface is not None:
+        validate_config({'WIFI_IFACE': interface, 'INTERNET_IFACE': interface})
+        for key in (b'WIFI_IFACE', b'INTERNET_IFACE'):
+            updated = updated.replace(key + b'=wlan0\n', key + b'=' + interface.encode('ascii') + b'\n', 1)
     temporary = None
     try:
         with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.wifi-hotspot-', delete=False) as stream:
             temporary = stream.name
             os.fchmod(stream.fileno(), 0o600)
+            stream.write(updated)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+    return True
+
+
+def repair_legacy_wifi_interface(path, wifi_interface=None, sys_class_net="/sys/class/net"):
+    """Replace an absent legacy wlan0 default when exactly one Wi-Fi device exists."""
+    import os
+    from pathlib import Path
+    import tempfile
+    path = Path(path)
+    if path.is_symlink() or not path.is_file():
+        return False
+    network = Path(sys_class_net)
+    if (network / 'wlan0').exists():
+        return False
+    interface = wifi_interface if wifi_interface is not None else detect_wifi_interface(network)
+    if interface is None:
+        return False
+    validate_config({'WIFI_IFACE': interface, 'INTERNET_IFACE': interface})
+    original = path.read_bytes()
+    updated = original
+    replacement = interface.encode('ascii')
+    # An older installer could leave the first assignment as a literal value.
+    updated = re.sub(rb'(?m)^WIFI_IFACE=INTERNET_IFACE=wlan0$',
+                     b'WIFI_IFACE=' + replacement, updated, count=1)
+    for key in (b'WIFI_IFACE', b'INTERNET_IFACE'):
+        updated = re.sub(rb'(?m)^' + key + rb'=wlan0$', key + b'=' + replacement,
+                         updated, count=1)
+    if updated == original:
+        return False
+    metadata = path.stat()
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix='.wifi-hotspot-', delete=False) as stream:
+            temporary = stream.name
+            os.fchmod(stream.fileno(), 0o600)
+            os.fchown(stream.fileno(), metadata.st_uid, metadata.st_gid)
             stream.write(updated)
             stream.flush()
             os.fsync(stream.fileno())
@@ -120,5 +182,10 @@ if __name__ == '__main__':
     parser.add_argument('config')
     parser.add_argument('factory')
     parser.add_argument('--ssid', help='Use this SSID only when initializing a factory config')
+    parser.add_argument('--repair-interface', action='store_true',
+                        help='Repair an absent legacy wlan0 default during package upgrade')
     args = parser.parse_args()
-    initialize_factory_password(args.config, args.factory, args.ssid)
+    if args.repair_interface:
+        repair_legacy_wifi_interface(args.config)
+    else:
+        initialize_factory_password(args.config, args.factory, args.ssid)

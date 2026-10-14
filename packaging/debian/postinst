@@ -1,6 +1,38 @@
 #!/bin/sh
 set -e
 dpkg-maintscript-helper rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot -- "$@"
+
+# Sessions that are already logged in when the tray controls are installed or
+# upgraded never run the autostart entry, so show the icon there as well. Every
+# step is best effort: an unusable display, missing tool, or refused launch must
+# never fail package configuration. Single-instance Gtk keeps repeat launches
+# harmless, and a user who disabled the controls is respected.
+show_tray_in_running_sessions() {
+    dpkg-query -W -f='${Status}' gnome-wifi-hotspot-tray 2>/dev/null \
+        | grep -qx 'install ok installed' || return 0
+    command -v runuser >/dev/null 2>&1 || return 0
+    for runtime_dir in /run/user/[0-9]*; do
+        [ -d "$runtime_dir" ] || continue
+        [ -S "$runtime_dir/bus" ] || continue
+        uid=${runtime_dir##*/}
+        owner=$(getent passwd "$uid" 2>/dev/null | cut -d: -f1)
+        [ -n "$owner" ] || continue
+        for pid in $(pgrep -u "$owner" -f 'xfce4-session|gnome-session|plasmashell|mate-session|cinnamon-session|lxsession' 2>/dev/null); do
+            session=$(tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null \
+                | grep -E '^(DISPLAY|XAUTHORITY)=' | sort -u | tr '\n' ' ')
+            case $session in
+                DISPLAY=*) ;;
+                *) continue ;;
+            esac
+            runuser -u "$owner" -- env \
+                XDG_RUNTIME_DIR="$runtime_dir" \
+                DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime_dir/bus" \
+                $session \
+                setsid /usr/bin/wifi-hotspot-enable-extension >/dev/null 2>&1 &
+        done
+    done
+}
+
 if [ "$1" = configure ]; then
     if [ -f /etc/wifi-hotspot.conf ] && [ ! -L /etc/wifi-hotspot.conf ]; then
         chmod 0600 /etc/wifi-hotspot.conf
@@ -8,6 +40,9 @@ if [ "$1" = configure ]; then
     if [ -z "${2:-}" ]; then
         python3 /usr/libexec/wifi-hotspot-daemon/configuration.py \
             /etc/wifi-hotspot.conf /usr/share/wifi-hotspot/default.conf
+    else
+        python3 /usr/libexec/wifi-hotspot-daemon/configuration.py \
+            /etc/wifi-hotspot.conf /usr/share/wifi-hotspot/default.conf --repair-interface
     fi
     deb-systemd-helper unmask wifi-hotspot-daemon.service >/dev/null || true
     deb-systemd-helper enable wifi-hotspot-daemon.service >/dev/null || true
@@ -17,4 +52,5 @@ if [ "$1" = configure ]; then
         # Reload service policy without restarting the system bus.
         systemctl --system reload dbus.service >/dev/null 2>&1 || true
     fi
+    show_tray_in_running_sessions || true
 fi

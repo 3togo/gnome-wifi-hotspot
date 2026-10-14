@@ -14,6 +14,7 @@ import re
 import tempfile
 import importlib.util
 import signal
+import select
 import stat
 from pathlib import Path
 import gi
@@ -42,6 +43,37 @@ RUNTIME_DIRECTORY = Path("/run/wifi-relay")
 MAX_STARTUP_LOG_BYTES = 16384
 CREATE_AP_PIDFILE = RUNTIME_DIRECTORY / "create-ap.pid"
 PROC_DIRECTORY = Path("/proc")
+
+
+def stale_relay_hostapd_pids(proc_root=PROC_DIRECTORY, runtime=RUNTIME_DIRECTORY):
+    """Find Relay hostapd processes whose create_ap instance already cleaned up."""
+    found = []
+    try:
+        processes = list(proc_root.iterdir())
+    except OSError:
+        return found
+    for process in processes:
+        if not process.name.isdecimal():
+            continue
+        try:
+            if process.stat().st_uid != os.geteuid():
+                continue
+            if os.readlink(process / "exe") != "/usr/sbin/hostapd":
+                continue
+            args = (process / "cmdline").read_bytes()[:8192].rstrip(b"\0").split(b"\0")
+            if not args or args[0] != b"/usr/sbin/hostapd":
+                continue
+            config = Path(os.fsdecode(args[-1]))
+            if (config.name != "hostapd.conf"
+                    or config.parent.parent != runtime / "create-ap"
+                    or not re.fullmatch(r"create_ap\.[A-Za-z0-9_.:-]{1,15}\.conf\.[A-Za-z0-9]{8}",
+                                        config.parent.name)
+                    or config.parent.exists()):
+                continue
+            found.append(int(process.name))
+        except (OSError, ValueError):
+            continue
+    return found
 
 
 def prepare_startup_log():
@@ -315,6 +347,27 @@ class WifiHotspotDaemon:
             return pid
         except (OSError, ValueError, IndexError, UnicodeError):
             return None
+
+    def _reap_stale_hostapd(self):
+        """Release only orphaned hostapd processes from Relay's private runtime."""
+        for pid in stale_relay_hostapd_pids():
+            try:
+                descriptor = os.pidfd_open(pid)
+            except ProcessLookupError:
+                continue
+            try:
+                if pid not in stale_relay_hostapd_pids():
+                    continue
+                try:
+                    signal.pidfd_send_signal(descriptor, signal.SIGTERM)
+                except ProcessLookupError:
+                    continue
+                watcher = select.poll()
+                watcher.register(descriptor, select.POLLIN)
+                if not watcher.poll(3000):
+                    raise RuntimeError("A stale Relay hostapd process did not exit; hotspot startup was cancelled.")
+            finally:
+                os.close(descriptor)
 
     def _get_status_dict(self):
         nm = getattr(self, "nm_backend", None)
@@ -635,6 +688,47 @@ class WifiHotspotDaemon:
         if (code or updated["current_sta_band"] != target_band
                 or updated["current_sta_ssid"] != ssid
                 or not updated["current_sta_ap_allowed"]):
+            # Some NetworkManager/driver combinations accept `ap BSSID` but
+            # immediately select a stronger AP on the old band. Constrain the
+            # saved profile for one activation, then restore its saved setting.
+            band_setting = "bg" if target_band == "2.4" else "a"
+            read_code, original_band, _ = self._run_cmd([
+                "nmcli", "-g", "802-11-wireless.band", "connection", "show", "uuid", profile
+            ])
+            if read_code == 0:
+                original_band = original_band.strip()
+                changed_band = False
+                restore_failure = None
+                try:
+                    if original_band != band_setting:
+                        change_code, _, change_error = self._run_cmd([
+                            "nmcli", "connection", "modify", "uuid", profile,
+                            "802-11-wireless.band", band_setting
+                        ])
+                        changed_band = change_code == 0
+                        if change_code:
+                            err = change_error or "Could not restrict the upstream Wi-Fi band."
+                    else:
+                        changed_band = True
+                    if changed_band:
+                        code, _, err = self._run_cmd([
+                            "nmcli", "--wait", "8", "connection", "up", "uuid", profile,
+                            "ifname", iface, "ap", target_bssid
+                        ], timeout=10)
+                        updated = self.get_capabilities()
+                finally:
+                    if original_band != band_setting and changed_band:
+                        restore_code, _, restore_error = self._run_cmd([
+                            "nmcli", "connection", "modify", "uuid", profile,
+                            "802-11-wireless.band", original_band
+                        ])
+                        if restore_code:
+                            restore_failure = restore_error or "Could not restore the upstream Wi-Fi profile band."
+                if restore_failure:
+                    return json.dumps({"success": False, "error": restore_failure})
+        if (code or updated["current_sta_band"] != target_band
+                or updated["current_sta_ssid"] != ssid
+                or not updated["current_sta_ap_allowed"]):
             # Best effort restore of the original AP after a failed band switch.
             restore = ["nmcli", "--wait", "8", "connection", "up", "uuid", profile, "ifname", iface]
             if caps["current_sta_bssid"]:
@@ -775,6 +869,12 @@ class WifiHotspotDaemon:
                     return json.dumps({"success": True, "status": status})
                 except Exception as exc:
                     return json.dumps({"success": False, "error": str(exc)})
+            try:
+                self._reap_stale_hostapd()
+            except OSError as exc:
+                return json.dumps({"success": False, "error": f"Could not clear stale Relay AP: {exc}"})
+            except RuntimeError as exc:
+                return json.dumps({"success": False, "error": str(exc)})
             caps = self.get_capabilities()
             req_band = config.get("FREQ_BAND", "auto")
             if req_band not in ("auto", "2.4", "5"):
@@ -784,15 +884,20 @@ class WifiHotspotDaemon:
                 if not caps["ap_sta_concurrent"] or config.get("NO_VIRT", "0") == "1":
                     return json.dumps({"success": False, "error":
                         "This adapter/configuration cannot run Wi-Fi and a hotspot together. Use a second adapter."})
-                if not caps["current_sta_ap_allowed"] or (req_band == "2.4" and caps["current_sta_band"] != "2.4"):
-                    if not caps["ap_2ghz"]:
-                        return json.dumps({"success": False, "error": "No permitted 2.4 GHz hotspot channel is available."})
-                    print("[*] Switching upstream Wi-Fi to a permitted 2.4 GHz hotspot channel...")
-                    result = json.loads(self.switch_band_and_reconnect("2.4"))
+                target_band = req_band if req_band != "auto" else caps["current_sta_band"]
+                if req_band == "auto" and not caps["current_sta_ap_allowed"]:
+                    target_band = "2.4" if caps["ap_2ghz"] else "5"
+                if (not caps["current_sta_ap_allowed"]
+                        or (req_band != "auto" and caps["current_sta_band"] != req_band)):
+                    if not caps["ap_channels"].get(target_band):
+                        return json.dumps({"success": False, "error":
+                            f"No permitted {target_band} GHz hotspot channel is available."})
+                    print(f"[*] Switching upstream Wi-Fi to a permitted {target_band} GHz hotspot channel...")
+                    result = json.loads(self.switch_band_and_reconnect(target_band))
                     if not result["success"]:
                         return json.dumps(result)
                     caps = self.get_capabilities()
-                    if not caps["current_sta_ap_allowed"] or caps["current_sta_band"] != "2.4":
+                    if not caps["current_sta_ap_allowed"] or caps["current_sta_band"] != target_band:
                         return json.dumps({"success": False, "error": "Wi-Fi changed before hotspot startup; try again."})
                 resolved_band = caps["current_sta_band"]
                 channel = next(c["channel"] for c in caps["ap_channels"][resolved_band]

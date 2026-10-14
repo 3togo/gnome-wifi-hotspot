@@ -7,7 +7,7 @@ POLKIT_RULES := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.rules
 POLKIT_POLICY := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.policy
 SYSTEM_CONFIG := $(PWD)/data/wifi-hotspot.conf
 
-.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-smoke test-integration test-package-lifecycle validate test-nm-menu
+.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-smoke test-integration test-package-lifecycle validate smoke test-nm-menu
 
 test:
 	python3 -m unittest discover -s tests
@@ -25,6 +25,9 @@ test-package-lifecycle:
 validate:
 	python3 tools/validate.py $(VALIDATE_ARGS)
 
+smoke:
+	python3 tests/smoke_installed.py
+
 test-nm-menu:
 	integration/nm-applet/test.sh
 
@@ -41,6 +44,8 @@ all:
 	@echo "  dev-clean         - Remove dev symlinks and /etc configs"
 	@echo "  install           - Install standalone app to system (/usr/local or root)"
 	@echo "  uninstall         - Uninstall from system"
+	@echo "  test              - Unit tests (add WIFI_RELAY_DEB_DIR to check built packages)"
+	@echo "  smoke             - Read-only smoke test of the installed system (never starts sharing)"
 
 dev-setup:
 	@echo "==> Setting up GNOME Shell extension symlink..."

@@ -1,3 +1,42 @@
+gnome-wifi-hotspot (1.0.0-27) stonking; urgency=medium
+
+  * Clear orphaned Relay hostapd processes whose private create_ap runtime has
+    already been removed before starting a new hotspot.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sun, 11 Oct 2026 02:38:00 +0000
+
+gnome-wifi-hotspot (1.0.0-26) stonking; urgency=medium
+
+  * Honor an explicit 5 GHz hotspot band on a shared Wi-Fi adapter.
+  * Retry upstream band switching after a failed first activation when a
+    temporary NetworkManager profile band constraint can resolve it.
+  * Avoid reloading a host nm-applet when configuring a different dpkg root.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sun, 11 Oct 2026 01:00:00 +0000
+
+gnome-wifi-hotspot (1.0.0-25) stonking; urgency=medium
+
+  * Repair an absent legacy wlan0 adapter setting during package upgrade when
+    the machine has exactly one detected Wi-Fi adapter.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 20:40:00 +0000
+
+gnome-wifi-hotspot (1.0.0-24) stonking; urgency=medium
+
+  * Retry upstream band switching with a temporary profile band constraint
+    when NetworkManager ignores the requested BSSID, then restore the saved
+    profile preference.
+  * Reload an old running nm-applet from the patched applet deb after install.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 20:10:00 +0000
+
+gnome-wifi-hotspot (1.0.0-23) stonking; urgency=medium
+
+  * Select the sole detected Wi-Fi adapter in a fresh factory configuration.
+  * Build and include the patched XFCE network applet debs in CI artifacts.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Sat, 10 Oct 2026 19:40:24 +0000
+
 gnome-wifi-hotspot (1.0.0-22) stonking; urgency=medium
 
   * Wait for the logged-in user's tray restart after package installation.

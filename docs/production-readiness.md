@@ -105,10 +105,15 @@ Local non-destructive checks:
 make test
 make test-integration
 make test-smoke
+make smoke
 make validate
 # Optional wider validation, including disposable-container package operations:
 make validate VALIDATE_ARGS="--full --with-lifecycle"
 ```
+
+The installed-system smoke test reads service and network state and calls the
+read-only `GetStatus` method. It never starts, stops, or reconfigures a hotspot.
+Checks unavailable in the current environment are reported as skipped.
 
 Use xvfb-run in a headless environment. Desktop checks use isolated transport and
 real widgets; they do not start a hotspot or rewrite host preferences.

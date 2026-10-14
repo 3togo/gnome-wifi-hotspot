@@ -222,3 +222,27 @@ class OwnershipTests(unittest.TestCase):
         self.assertEqual(clients[0]['hostname'], '')
         self.assertEqual(clients[0]['ip'], '192.168.12.2')
         dns.assert_not_called()
+
+    def test_only_orphaned_relay_hostapd_is_selected_for_cleanup(self):
+        runtime = self.root / 'relay-runtime'
+        config = runtime / 'create-ap' / 'create_ap.wlo2.conf.abcdefgh' / 'hostapd.conf'
+        (self.process / 'exe').symlink_to('/usr/sbin/hostapd')
+        self.cmdline(['/usr/sbin/hostapd', str(config)])
+        self.assertEqual(module.stale_relay_hostapd_pids(self.process.parent, runtime), [123])
+        config.parent.mkdir(parents=True)
+        self.assertEqual(module.stale_relay_hostapd_pids(self.process.parent, runtime), [])
+        config.parent.rmdir()
+        self.cmdline(['/usr/sbin/hostapd', '/tmp/unrelated/hostapd.conf'])
+        self.assertEqual(module.stale_relay_hostapd_pids(self.process.parent, runtime), [])
+
+    def test_orphan_cleanup_uses_pidfd_and_waits_for_exit(self):
+        with (patch.object(module, 'stale_relay_hostapd_pids', side_effect=[[123], [123]]),
+              patch.object(module.os, 'pidfd_open', return_value=9),
+              patch.object(module.signal, 'pidfd_send_signal') as send,
+              patch.object(module.select, 'poll') as poll,
+              patch.object(module.os, 'close') as close):
+            poll.return_value.poll.return_value = [(9, module.select.POLLIN)]
+            self.daemon._reap_stale_hostapd()
+        send.assert_called_once_with(9, module.signal.SIGTERM)
+        poll.return_value.poll.assert_called_once_with(3000)
+        close.assert_called_once_with(9)
