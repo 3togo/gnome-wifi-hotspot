@@ -109,10 +109,11 @@ private-bus service authorization checks, and Debian source/binary builds.
 GitHub CI additionally checks isolated install, upgrade, removal, and purge.
 See the release's validation report for exact source and environment provenance.
 
-Live multi-adapter traffic, suspend/resume, extended operation, and enforced
-firewall/AppArmor fault testing are not certified by this release. Earlier
-single-driver hardware results are [historical evidence](docs/networkmanager-live-validation.md),
-not validation of the final build. The native NetworkManager backend and
+Installed revision-28 packages passed a two-client Intel AX200 regression with
+Wi-Fi-only egress, DNS/HTTPS, restart/rejoin, concurrent transfers, and cleanup;
+see [versioned hardware evidence](docs/evidence/hardware-release-1.0.0-28.json).
+Multi-adapter traffic, other drivers, suspend/resume, extended operation, and
+firewall/AppArmor fault injection remain outside the validated scope. The native NetworkManager backend and
 version-specific downstream integration patches remain experimental. RPM builds
 are not part of the validated release.
 

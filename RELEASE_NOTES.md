@@ -33,9 +33,13 @@ Artifacts are unsigned; this release does not establish a signed APT repository.
 
 The merged candidate passes 336 unit tests. Release validation reports record
 exact source hashes, executed checks, package hashes, and unperformed checks.
-Physical evidence from earlier fixed payloads is retained separately in
-[the hardware evidence](docs/evidence/hardware-fixes-2026-10-14.json); it does
-not automatically certify subsequent merged changes.
+The installed revision-28 packages also pass a two-client Intel AX200 physical
+regression: Wi-Fi-only forwarding, three create_ap restart/rejoin cycles, DNS
+comparison with the upstream resolver, HTTPS, invalid TLS rejection, and 448 MiB
+of concurrent integrity-checked transfers across both backends. Network and device
+power settings were restored. See [versioned physical evidence](docs/evidence/hardware-release-1.0.0-28.json)
+for exact payload hashes, the initial Android automation failure, and limits.
+Earlier fixed-payload evidence is retained separately.
 
 Hardware coverage is limited to the recorded Intel AX200 and Android 14 bench.
 Other drivers, multi-adapter routing, suspend/resume, long soaks, and RPM builds
