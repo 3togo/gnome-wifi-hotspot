@@ -22,6 +22,7 @@ def source_files():
                          if path.is_file() and '__pycache__' not in path.parts
                          and path.suffix not in {'.pyc', '.log'})
         names.update({'CMakeLists.txt', 'build.sh',
+                      'tools/select_test_mirrors.py',
                       'docs/releases/1.0.0-30-rc1.md',
                       'docs/production-readiness.md', 'docs/dependency-review.md',
                       'integration/gnome-settings/relay-entrypoint.patch',

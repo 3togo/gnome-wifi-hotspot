@@ -9,8 +9,10 @@ The bundle conflicts with and replaces the separate packages. Stop sharing befor
 switching package layouts or upgrading. APT still supplies system dependencies.
 Checksums are supplied alongside the candidate packages; artifacts are unsigned.
 
-Stable publication is pending container lifecycle checks, physical client traffic
-validation, and fresh-login checks on GNOME and a tray desktop. See
+Automated checks and disposable-container package lifecycle checks passed,
+including split/bundle transitions and credential preservation. Stable
+publication is pending physical client traffic validation and fresh-login checks
+on GNOME and a tray desktop. See
 [the candidate checklist](docs/releases/1.0.0-30-rc1.md). Earlier successful checks
 of revision 29 do not establish that these candidate checks passed.
 

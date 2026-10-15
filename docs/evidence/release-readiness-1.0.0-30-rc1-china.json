@@ -1,0 +1,127 @@
+{
+  "candidate": "1.0.0-30~rc1",
+  "recorded_at_utc": "2026-10-15T04:12:31.692528+00:00",
+  "release_decision": "not_ready_for_stable",
+  "automated_validation": {
+    "status": "pass",
+    "source_manifest_sha256": "37f2efba3d0d1354c26592411b400e4511e521bbf68b855de5fae903dbff0e07",
+    "source_unchanged_during_checks": true,
+    "checks": [
+      {
+        "name": "unit",
+        "status": "pass",
+        "test_count": 343
+      },
+      {
+        "name": "service-integration",
+        "status": "pass",
+        "test_count": 10
+      },
+      {
+        "name": "gtk-smoke",
+        "status": "pass",
+        "test_count": 8
+      },
+      {
+        "name": "syntax",
+        "status": "pass"
+      },
+      {
+        "name": "appstream",
+        "status": "pass"
+      },
+      {
+        "name": "sanitized-applet",
+        "status": "pass"
+      },
+      {
+        "name": "gnome-shell",
+        "status": "pass"
+      },
+      {
+        "name": "packages-build",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-gnome_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-tray_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "packaged-service-integration",
+        "status": "pass",
+        "test_count": 10
+      },
+      {
+        "name": "packaged-gtk-smoke",
+        "status": "pass",
+        "test_count": 8
+      }
+    ]
+  },
+  "package_lifecycle": {
+    "status": "pass",
+    "exit_code": 0,
+    "command": "WIFI_RELAY_COUNTRY=CN make test-package-lifecycle",
+    "image": "docker.1ms.run/library/ubuntu@sha256:ee126c2fa0249079a7e24ae3a3d29b04783ef93ab33c868751c9a1289d3fffff",
+    "apt_mirror": "http://mirrors.tuna.tsinghua.edu.cn/ubuntu",
+    "apt_signature_checks_enabled": true,
+    "log_sha256": "97aa01a48c062589eea1242de18117daea479ddbc8f528d7a3e3ecc9a8ffafda",
+    "coverage": [
+      "legacy-to-split upgrade",
+      "optional integration removal",
+      "main removal and purge",
+      "fresh secure configuration",
+      "coordinated split upgrade",
+      "split-to-bundle replacement",
+      "bundle upgrade",
+      "bundle-to-split rollback",
+      "bundle removal and purge",
+      "fresh bundle installation and purge"
+    ]
+  },
+  "final_packages": [
+    {
+      "name": "gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb",
+      "sha256": "afed720f79d239b45fdabeb19163473ab650627fffdf25805fc6734d61ea762e",
+      "non_documentation_payload_matches_validated_package": true
+    },
+    {
+      "name": "gnome-wifi-hotspot-gnome_1.0.0-30~rc1_all.deb",
+      "sha256": "c164210d3fc8350352b071f38edd2034827040b0905b9a820c2bb22e6add1bae",
+      "non_documentation_payload_matches_validated_package": true
+    },
+    {
+      "name": "gnome-wifi-hotspot-tray_1.0.0-30~rc1_all.deb",
+      "sha256": "a85af5230d6b2237c1f19274dcea8109473520c0b76701e59d99747b57b59e24",
+      "non_documentation_payload_matches_validated_package": true
+    },
+    {
+      "name": "gnome-wifi-hotspot_1.0.0-30~rc1_all.deb",
+      "sha256": "d2ff24606ac4cc23092db937308364ef654af4a6319f08b933ed83c3d0dd3ae3",
+      "non_documentation_payload_matches_validated_package": true
+    }
+  ],
+  "documentation_update": "After validation, release notes and candidate checklist were updated to record results; final CMake packages were rebuilt and all non-documentation payloads were verified identical to the validated packages.",
+  "remaining_gates": [
+    {
+      "name": "physical-client-traffic",
+      "status": "not_run"
+    },
+    {
+      "name": "fresh-login-gnome-and-tray-desktop",
+      "status": "not_run"
+    }
+  ]
+}
