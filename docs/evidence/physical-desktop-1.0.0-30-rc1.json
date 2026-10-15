@@ -1,0 +1,93 @@
+{
+  "candidate": "1.0.0-30~rc1",
+  "source_commit": "19d4b7128d1bc2e20f34f29f3650d98413f81a95",
+  "recorded_at_utc": "2026-10-15T04:21:14.923130+00:00",
+  "release_decision": "not_ready_for_stable",
+  "candidate_package_sha256": "afed720f79d239b45fdabeb19163473ab650627fffdf25805fc6734d61ea762e",
+  "installed_runtime_files_verified": 36,
+  "installed_runtime_mismatches": 0,
+  "platform": {
+    "kernel": "7.3.0-9-generic",
+    "desktop": "XFCE 4.20.4 / X11",
+    "gnome_shell_installed": "51.0-2ubuntu3",
+    "network_manager": "1.58.1-1ubuntu3 (stock package version)",
+    "wpa_supplicant": "2:2.11-2ubuntu2",
+    "radio": "Intel CNVi [8086:7a70]",
+    "client": "Android 15 phone"
+  },
+  "traffic_attempt": {
+    "started_at_utc": "2026-10-15T04:16:10.561127+00:00",
+    "candidate": "1.0.0-30~rc1",
+    "transport": "wireless ADB",
+    "backend": "create_ap",
+    "cycles": [
+      {
+        "cycle": 1,
+        "status": "blocked"
+      }
+    ],
+    "limitations": [
+      "One Android client and one Wi-Fi driver",
+      "Wireless ADB can disconnect during Wi-Fi changes",
+      "No fresh desktop login, reboot, suspend or extended soak"
+    ],
+    "original_power_value_recorded": true,
+    "package_sha256": "afed720f79d239b45fdabeb19163473ab650627fffdf25805fc6734d61ea762e",
+    "status": "blocked",
+    "error": "Wireless ADB control was lost; fresh hotspot association and traffic could not be verified.",
+    "sharing_stopped_after_test": true,
+    "phone_cleanup_incomplete": false,
+    "finished_at_utc": "2026-10-15T04:17:51.803143+00:00",
+    "stay_awake_setting_restored": true,
+    "temporary_helper_removed": true,
+    "phone_original_wifi_restored": true,
+    "cleanup_verified_at_utc": "2026-10-15T04:21:14.923130+00:00"
+  },
+  "existing_desktop_validation": {
+    "started_at_utc": "2026-10-15T04:17:22.432224+00:00",
+    "desktop": "XFCE/X11",
+    "scope": "Existing real desktop session; startup launcher exercised without logout/login",
+    "fresh_login_verified": false,
+    "cases": [
+      {
+        "name": "disabled startup does not launch tray",
+        "status": "pass"
+      },
+      {
+        "name": "enabled startup and repeat launcher calls retain one tray owner",
+        "status": "pass",
+        "repeat_calls": 3
+      }
+    ],
+    "indicator_registered": true,
+    "status": "pass",
+    "startup_preference_restored": true,
+    "original_service_state_restored": true,
+    "finished_at_utc": "2026-10-15T04:17:25.207408+00:00"
+  },
+  "host_cleanup": {
+    "sharing_inactive": true,
+    "ap0_removed": true,
+    "default_route_interfaces": [
+      "wlo1"
+    ],
+    "gnome_shell_process_count": 0
+  },
+  "unperformed": [
+    {
+      "name": "physical DHCP/DNS/HTTPS",
+      "status": "blocked",
+      "reason": "Wireless ADB control was lost during network switching; no client traffic pass established."
+    },
+    {
+      "name": "fresh XFCE login",
+      "status": "not_run",
+      "reason": "Only the existing desktop session was available; user requested recording remaining gaps."
+    },
+    {
+      "name": "fresh GNOME login",
+      "status": "not_run",
+      "reason": "GNOME is installed but no GNOME session is running; user requested recording remaining gaps."
+    }
+  ]
+}
