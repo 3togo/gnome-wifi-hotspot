@@ -1,0 +1,174 @@
+{
+  "started_at_utc": "2026-10-15T04:53:42.752455+00:00",
+  "scope": "Disposable Docker container, LightDM PAM autologin, virtual display, actual GNOME/XFCE sessions",
+  "host_login_tested": false,
+  "virtual_display_adaptations": [
+    "LightDM kernel-VT hints cleared before pam_systemd; real PAM and logind registration retained",
+    "GNOME headless Wayland compositor with software rendering; LightDM virtual X display"
+  ],
+  "cases": [
+    {
+      "desktop": "gnome",
+      "expected_startup_enabled": true,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": false,
+      "tray_process_count": 0,
+      "extension_state": 1.0,
+      "extension_error": false,
+      "enabled_extensions": [
+        "wifi-relay@3togo.github.io"
+      ],
+      "first_login_marker_exists": true,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10537848879",
+        "Service": "lightdm-autologin",
+        "Desktop": "relay-gnome",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c1"
+    },
+    {
+      "desktop": "gnome",
+      "expected_startup_enabled": false,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": false,
+      "tray_process_count": 0,
+      "extension_state": 6.0,
+      "extension_error": false,
+      "enabled_extensions": [],
+      "first_login_marker_exists": true,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10542820193",
+        "Service": "lightdm-autologin",
+        "Desktop": "relay-gnome",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c3"
+    },
+    {
+      "desktop": "gnome",
+      "expected_startup_enabled": true,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": false,
+      "tray_process_count": 0,
+      "extension_state": 1.0,
+      "extension_error": false,
+      "enabled_extensions": [
+        "wifi-relay@3togo.github.io"
+      ],
+      "first_login_marker_exists": true,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10547799443",
+        "Service": "lightdm-autologin",
+        "Desktop": "relay-gnome",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c5"
+    },
+    {
+      "desktop": "xfce",
+      "expected_startup_enabled": true,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": true,
+      "tray_process_count": 1,
+      "indicator_status": "Active",
+      "registered_with_panel": true,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10552818046",
+        "Service": "lightdm-autologin",
+        "Desktop": "xfce",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c7"
+    },
+    {
+      "desktop": "xfce",
+      "expected_startup_enabled": false,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": false,
+      "tray_process_count": 0,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10565249878",
+        "Service": "lightdm-autologin",
+        "Desktop": "xfce",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c9"
+    },
+    {
+      "desktop": "xfce",
+      "expected_startup_enabled": true,
+      "uid_is_unprivileged": true,
+      "tray_bus_owner": true,
+      "tray_process_count": 1,
+      "indicator_status": "Active",
+      "registered_with_panel": true,
+      "status": "pass",
+      "login": {
+        "TimestampMonotonic": "10568637595",
+        "Service": "lightdm-autologin",
+        "Desktop": "xfce",
+        "Type": "x11",
+        "State": "active"
+      },
+      "session_id": "c11"
+    }
+  ],
+  "image_id": "sha256:8795873891c727aadbb46ec2859cc16a8e497e53431bdbf05d1fd18a16cbac84",
+  "package_sha256": "ef5342aaaac637094e69ee7b99af15761d007c697e019b60cc7986ad352b158f",
+  "status": "pass",
+  "container_removed": true,
+  "finished_at_utc": "2026-10-15T04:54:25.818342+00:00",
+  "source_commit_at_test": "e40ef7e1f660ba319ec1491342ac25d41cd44ced",
+  "candidate": "1.0.0-30~rc1",
+  "runtime_files_matching_physical_test_installation": 36,
+  "desktop_packages": [
+    "gnome-session 51.0-0ubuntu1",
+    "gnome-shell 51.0-2ubuntu3",
+    "lightdm 1.32.0-6ubuntu4",
+    "xfce4-session 4.20.4-1"
+  ],
+  "limitations": [
+    "Virtual display only; no host graphics driver or physical seat coverage",
+    "LightDM PAM autologin, not GDM or interactive password authentication",
+    "GNOME headless Wayland compositor launched through LightDM virtual X session",
+    "Host fresh-login validation remains unperformed"
+  ],
+  "harness_files": [
+    {
+      "path": "tests/run_desktop_login.sh",
+      "sha256": "6bfa4716f04e9076d3c515166ffaf81427de88c6c6f6ee87f769ce7a1ba0c04d"
+    },
+    {
+      "path": "tests/desktop-login/Dockerfile",
+      "sha256": "2b8d18306ffc21b2106812f1318b221a052b161d75da096b9d6e2c30d059cb7b"
+    },
+    {
+      "path": "tests/desktop-login/probe.py",
+      "sha256": "0ac1ebb56c67cb3dcc6472f065205ecc84a051ad7fb3b9aea1c16b706a25ba33"
+    },
+    {
+      "path": "tests/desktop-login/run.py",
+      "sha256": "af8d1cc99ab1cb5474367137667f018d5da2a5a59cb0e415ddcbc06eecf98600"
+    },
+    {
+      "path": "tests/desktop-login/setup.sh",
+      "sha256": "366b60135ca9f59595d091d03cd4222d8fbe20573e8be7438fed3ebc435bc4e6"
+    }
+  ],
+  "final_documentation_rebuild": {
+    "package_sha256": "53ee470c81b68e7bb04f8fabb8d96e1133b4911fd8d72c6c42db0ffe3e45efd5",
+    "non_documentation_payload_identical_to_desktop_tested_package": true,
+    "checksums_verified_for_all_four_packages": true
+  }
+}

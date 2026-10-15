@@ -14,8 +14,10 @@ including split/bundle transitions and credential preservation.
 USB client validation completed four start/connect/traffic/stop cycles on one
 Android 15 phone, covering DHCP, fresh DNS, verified HTTPS and cleanup; invalid
 TLS was rejected separately. Earlier endpoint timeout and upstream DNS-answer
-variation observations remain recorded. Stable publication is pending fresh-login
-checks on GNOME and a tray desktop. See
+variation observations remain recorded. Six containerized LightDM fresh logins
+passed on GNOME and XFCE with startup enabled, disabled and re-enabled, including
+extension loading and tray registration. Host graphics and GDM logins remain
+outside this validation scope. See
 [the candidate checklist](docs/releases/1.0.0-30-rc1.md). Earlier successful checks
 of revision 29 do not establish that these candidate checks passed.
 

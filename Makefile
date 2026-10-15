@@ -7,7 +7,7 @@ POLKIT_RULES := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.rules
 POLKIT_POLICY := $(PWD)/data/io.github.erhanzeyrek.WifiHotspot.policy
 SYSTEM_CONFIG := $(PWD)/data/wifi-hotspot.conf
 
-.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-smoke test-integration test-package-lifecycle validate smoke test-nm-menu
+.PHONY: all dev-setup dev-run-daemon dev-run-shell dev-watch-shell dev-run-settings dev-test-dbus dev-monitor-dbus dev-clean install uninstall test test-smoke test-integration test-package-lifecycle test-desktop-login validate smoke test-nm-menu
 
 test:
 	python3 -m unittest discover -s tests
@@ -21,6 +21,9 @@ test-integration:
 
 test-package-lifecycle:
 	tests/run_package_lifecycle.sh
+
+test-desktop-login:
+	tests/run_desktop_login.sh
 
 validate:
 	python3 tools/validate.py $(VALIDATE_ARGS)
