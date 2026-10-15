@@ -1,0 +1,132 @@
+{
+  "candidate": "1.0.0-30~rc1",
+  "recorded_at_utc": "2026-10-15T03:59:50.218949+00:00",
+  "release_decision": "not_ready_for_stable",
+  "source_manifest_sha256": "3590f38e7ae4bd1ebce455ce7a5cf60e9fb49693f5038d6d8b3f8b6312ae0cc3",
+  "automated_validation": {
+    "status": "pass",
+    "source_unchanged_during_checks": true,
+    "checks": [
+      {
+        "name": "unit",
+        "status": "pass",
+        "test_count": 338
+      },
+      {
+        "name": "service-integration",
+        "status": "pass",
+        "test_count": 10
+      },
+      {
+        "name": "gtk-smoke",
+        "status": "pass",
+        "test_count": 8
+      },
+      {
+        "name": "syntax",
+        "status": "pass"
+      },
+      {
+        "name": "appstream",
+        "status": "pass"
+      },
+      {
+        "name": "sanitized-applet",
+        "status": "pass"
+      },
+      {
+        "name": "gnome-shell",
+        "status": "pass"
+      },
+      {
+        "name": "packages-build",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-gnome_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot-tray_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "extract-gnome-wifi-hotspot_1.0.0-30~rc1_all.deb",
+        "status": "pass"
+      },
+      {
+        "name": "packaged-service-integration",
+        "status": "pass",
+        "test_count": 10
+      },
+      {
+        "name": "packaged-gtk-smoke",
+        "status": "pass",
+        "test_count": 8
+      },
+      {
+        "name": "package-lifecycle",
+        "status": "not_run"
+      },
+      {
+        "name": "hardware-traffic",
+        "status": "not_run"
+      }
+    ]
+  },
+  "additional_checks": [
+    {
+      "name": "cmake-build",
+      "status": "pass"
+    },
+    {
+      "name": "exported-source-binary-build",
+      "status": "pass",
+      "note": "All four packages built and build-time tests passed. libjansson-dev was extracted locally and supplied through PKG_CONFIG_PATH; dpkg-buildpackage -d was used because that dependency was not registered as installed. LD_PRELOAD was unset as in the source builder."
+    },
+    {
+      "name": "source-bundle-lintian",
+      "status": "pass_with_warnings",
+      "note": "No errors; warnings remain for maintainer scripts, duplicate changelogs, long changelog line and missing helper manual pages."
+    }
+  ],
+  "remaining_gates": [
+    {
+      "name": "package-lifecycle",
+      "status": "not_run",
+      "reason": "Container attempt stopped; user requested validation without Docker. Destructive lifecycle checks were not run on the host."
+    },
+    {
+      "name": "candidate-physical-client-traffic",
+      "status": "not_run",
+      "reason": "Only wireless ADB was available; no new candidate traffic cycles were completed."
+    },
+    {
+      "name": "fresh-login-gnome-and-tray-desktop",
+      "status": "not_run",
+      "reason": "Fixture checks passed but fresh physical desktop sessions were not exercised."
+    }
+  ],
+  "source_built_packages": [
+    {
+      "name": "gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb",
+      "sha256": "fd56cf54a6f9b7f0114735b7bc35dead0d3297dbec60d09c65134269350e39d9"
+    },
+    {
+      "name": "gnome-wifi-hotspot-gnome_1.0.0-30~rc1_all.deb",
+      "sha256": "f68583144a20569a6a80ac206e87b7ec0a10e7001bc3a206cc7e7a9b8bd79dc4"
+    },
+    {
+      "name": "gnome-wifi-hotspot-tray_1.0.0-30~rc1_all.deb",
+      "sha256": "351213175d81c99eeae798e72ccaad9aabe9325914b00d6e1cbb20dceb081409"
+    },
+    {
+      "name": "gnome-wifi-hotspot_1.0.0-30~rc1_all.deb",
+      "sha256": "51e7a45433d05e4c4df1fd9717f18dc6ed6e05ff83197f348c5d08f28f9dcd6e"
+    }
+  ]
+}

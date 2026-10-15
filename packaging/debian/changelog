@@ -1,3 +1,11 @@
+gnome-wifi-hotspot (1.0.0-30~rc1) stonking; urgency=medium
+
+  * Add a single-file bundle with the service, settings and both desktop controls.
+  * Build separate and bundled packages through CMake and build.sh.
+  * Check bundled payloads, reproducibility and package transitions.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Thu, 15 Oct 2026 02:42:27 +0000
+
 gnome-wifi-hotspot (1.0.0-29) stonking; urgency=medium
 
   * Use native GTK themes, fonts, accents, and window-manager decorations on

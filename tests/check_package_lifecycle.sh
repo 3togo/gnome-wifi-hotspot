@@ -103,7 +103,9 @@ cp "$config" /tmp/expected-fresh-config
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     "$gnome" "$tray" > /tmp/wifi-relay-reinstall-integrations.log 2>&1
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    /tmp/relay-split-upgrade/gnome-wifi-hotspot*_"${next_version}"_all.deb \
+    "/tmp/relay-split-upgrade/gnome-wifi-hotspot_${next_version}_all.deb" \
+    "/tmp/relay-split-upgrade/gnome-wifi-hotspot-gnome_${next_version}_all.deb" \
+    "/tmp/relay-split-upgrade/gnome-wifi-hotspot-tray_${next_version}_all.deb" \
     > /tmp/wifi-relay-split-upgrade.log 2>&1
 cmp "$config" /tmp/expected-fresh-config
 for name in gnome-wifi-hotspot gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray; do
@@ -111,3 +113,4 @@ for name in gnome-wifi-hotspot gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray;
 done
 dpkg --audit
 echo 'Coordinated split-package upgrade keeps matching versions and existing credentials.'
+sh "$script_dir/check_bundle_lifecycle.sh" "$package"

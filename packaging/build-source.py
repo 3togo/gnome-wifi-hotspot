@@ -21,7 +21,9 @@ def source_files():
             names.update(str(path.relative_to(ROOT)) for path in (ROOT / directory).rglob('*')
                          if path.is_file() and '__pycache__' not in path.parts
                          and path.suffix not in {'.pyc', '.log'})
-        names.update({'docs/production-readiness.md', 'docs/dependency-review.md',
+        names.update({'CMakeLists.txt', 'build.sh',
+                      'docs/releases/1.0.0-30-rc1.md',
+                      'docs/production-readiness.md', 'docs/dependency-review.md',
                       'integration/gnome-settings/relay-entrypoint.patch',
                       'data/wifi-relay-gnome.desktop', 'data/wifi-relay-tray.desktop'})
     else:
@@ -70,7 +72,7 @@ def main():
         debian = source / 'debian'
         shutil.copytree(ROOT / 'packaging/source-debian', debian)
         controls = []
-        for template in ('control', 'control-gnome', 'control-tray'):
+        for template in ('control', 'control-gnome', 'control-tray', 'control-bundle'):
             control = (ROOT / 'packaging/debian' / template).read_text()
             control = '\n'.join(line for line in control.split('\n')
                                 if not line.startswith(('Version: ', 'Maintainer: ')))
@@ -103,8 +105,19 @@ def main():
             target = debian / f'gnome-wifi-hotspot-tray.{script}'
             target.write_text((ROOT / f'packaging/debian/{script}-tray').read_text() + '\n#DEBHELPER#\n')
             target.chmod(0o755)
-        (debian / 'gnome-wifi-hotspot.maintscript').write_text(
-            'rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot\n')
+        for script in ('preinst', 'postinst', 'prerm', 'postrm'):
+            content = (ROOT / f'packaging/debian/{script}').read_text()
+            content = ''.join(line for line in content.splitlines(True)
+                              if not line.startswith('dpkg-maintscript-helper rm_conffile '))
+            if script in ('postinst', 'prerm'):
+                content += '\n' + '\n'.join(
+                    (ROOT / f'packaging/debian/{script}-tray').read_text().splitlines()[2:]) + '\n'
+            target = debian / f'gnome-wifi-hotspot-bundle.{script}'
+            target.write_text(content + '\n#DEBHELPER#\n')
+            target.chmod(0o755)
+        for package in ('gnome-wifi-hotspot', 'gnome-wifi-hotspot-bundle'):
+            (debian / f'{package}.maintscript').write_text(
+                'rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot\n')
         with log_path.open('w') as log:
             subprocess.run(['dpkg-source', '-b', '.'], cwd=source, env=environment,
                            stdout=log, stderr=subprocess.STDOUT, check=True)

@@ -1,3 +1,21 @@
+# Wi-Fi Relay 1.0.0-30~rc1 — bundle release candidate
+
+This unpublished candidate adds a single downloadable Debian package containing
+settings, the daemon, GNOME controls and tray controls. The separate packages
+remain available. GNOME Shell is optional; supported GNOME versions remain 45–51.
+Build all four packages with `./build.sh`; output is in `build/dist/`.
+
+The bundle conflicts with and replaces the separate packages. Stop sharing before
+switching package layouts or upgrading. APT still supplies system dependencies.
+Checksums are supplied alongside the candidate packages; artifacts are unsigned.
+
+Stable publication is pending container lifecycle checks, physical client traffic
+validation, and fresh-login checks on GNOME and a tray desktop. See
+[the candidate checklist](docs/releases/1.0.0-30-rc1.md). Earlier successful checks
+of revision 29 do not establish that these candidate checks passed.
+
+---
+
 # Wi-Fi Relay 1.0.0 — Debian revision 29
 
 Desktop appearance maintenance release for Ubuntu 26.10 (Stonking), package

@@ -122,6 +122,42 @@ are not part of the validated release.
 Build without installing packages or changing host services:
 
 ```bash
+./build.sh
+```
+
+The script runs these CMake commands from the repository root:
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+Requires CMake 3.16 or later, a build tool such as Make or Ninja, Bash, Python 3,
+and `dpkg-dev` (with `dpkg`). The separate app, GNOME, and tray `.deb` packages
+and a combined `gnome-wifi-hotspot-bundle` package are written to `build/dist/`.
+The default build runs the `deb` target, which can also be selected with
+`cmake --build build --target deb`.
+To override the version or output directory, configure with
+`-DWIFI_RELAY_VERSION=1.0.0-30` or
+`-DWIFI_RELAY_BUILD_OUTPUT=/absolute/path/to/packages`. Otherwise the version
+comes from `packaging/debian/changelog`. Builds pick up changes to packaged files
+each time they run.
+
+The local revision `1.0.0-30~rc1` is a release candidate for the single-file
+bundle. It contains all three payloads:
+
+```bash
+sudo apt install ./build/dist/gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb
+```
+
+APT installs system dependencies from your distribution and replaces any installed
+separate Wi-Fi Relay packages. Install either the bundle or the separate packages,
+not all four together. GNOME Shell is optional; GNOME controls support versions
+45–51, and compatible non-GNOME desktops use the tray controls.
+
+The direct packaging commands remain available and write to `dist/`:
+
+```bash
 ./packaging/build-deb.sh
 python3 packaging/build-source.py --binary
 ```

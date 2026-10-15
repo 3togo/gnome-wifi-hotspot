@@ -16,13 +16,15 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	WIFI_RELAY_BUILD_OUTPUT=$(CURDIR)/debian/.build bash packaging/build-deb.sh $$(dpkg-parsechangelog -S Version)
-	for package in gnome-wifi-hotspot gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray; do \
+	for package in gnome-wifi-hotspot gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray gnome-wifi-hotspot-bundle; do \
 		dpkg-deb --extract debian/.build/$${package}_$$(dpkg-parsechangelog -S Version)_all.deb debian/$$package; \
 	done
 
 execute_after_dh_fixperms:
 	chmod 0644 debian/gnome-wifi-hotspot/usr/libexec/wifi-hotspot-daemon/configuration.py \
 		debian/gnome-wifi-hotspot/usr/libexec/wifi-hotspot-daemon/nm_client.py
+	chmod 0644 debian/gnome-wifi-hotspot-bundle/usr/libexec/wifi-hotspot-daemon/configuration.py \
+		debian/gnome-wifi-hotspot-bundle/usr/libexec/wifi-hotspot-daemon/nm_client.py
 
 override_dh_installsystemd:
 	dh_installsystemd --no-scripts

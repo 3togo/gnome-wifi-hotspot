@@ -60,6 +60,42 @@ class PackageSplitTests(unittest.TestCase):
         self.assertIn('gnome-shell', self.depends['-gnome'])
         self.assertIn('ayatana', self.depends['-tray'])
 
+    def test_bundle_contains_all_payloads_and_lifecycle_hooks(self):
+        deb = self.output / f'gnome-wifi-hotspot-bundle_{self.version}_all.deb'
+        bundle = self.output / 'bundle-payload'
+        control = self.output / 'bundle-control'
+        subprocess.run(['dpkg-deb', '-x', str(deb), str(bundle)], check=True)
+        subprocess.run(['dpkg-deb', '-e', str(deb), str(control)], check=True)
+        for root in self.roots.values():
+            for path in root.rglob('*'):
+                target = bundle / path.relative_to(root)
+                if path.is_symlink():
+                    self.assertEqual(os.readlink(path), os.readlink(target))
+                elif path.is_file():
+                    self.assertEqual(path.read_bytes(), target.read_bytes(), str(target))
+        metadata = subprocess.check_output(['dpkg-deb', '-f', str(deb)], text=True)
+        for field in ['Conflicts', 'Replaces', 'Provides']:
+            value = subprocess.check_output(['dpkg-deb', '-f', str(deb), field], text=True)
+            for package in ['gnome-wifi-hotspot', 'gnome-wifi-hotspot-gnome', 'gnome-wifi-hotspot-tray']:
+                self.assertIn(package, value)
+        depends = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Depends'], text=True)
+        for root_depends in self.depends.values():
+            for dependency in root_depends.strip().split(', '):
+                if not dependency.startswith(('gnome-wifi-hotspot', 'gnome-shell')):
+                    self.assertIn(dependency, depends)
+        self.assertNotIn('gnome-shell', depends)
+        self.assertIn('Package: gnome-wifi-hotspot-bundle', metadata)
+        self.assertIn('deb-systemd-invoke restart', (control / 'postinst').read_text())
+        self.assertIn('start-tray-sessions.py', (control / 'postinst').read_text())
+        self.assertIn('deb-systemd-invoke stop', (control / 'prerm').read_text())
+        self.assertIn('start-tray-sessions.py --stop', (control / 'prerm').read_text())
+        for script in ['preinst', 'postinst', 'prerm', 'postrm']:
+            subprocess.run(['sh', '-n', str(control / script)], check=True)
+        conffiles = (control / 'conffiles').read_text().splitlines()
+        self.assertIn('/etc/wifi-hotspot.conf', conffiles)
+        self.assertIn('/etc/xdg/autostart/wifi-relay-gnome.desktop', conffiles)
+        self.assertIn('/etc/xdg/autostart/wifi-relay-tray.desktop', conffiles)
+
     def test_standalone_launchers_import_outside_source_tree(self):
         root = self.roots['']
         environment = dict(os.environ)

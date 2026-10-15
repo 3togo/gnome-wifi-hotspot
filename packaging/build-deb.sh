@@ -22,6 +22,7 @@ for script in preinst postinst prerm postrm; do
     install_file "packaging/debian/$script" "DEBIAN/$script" 0755
 done
 
+
 install_file daemon/wifi-hotspot-daemon.py usr/libexec/wifi-hotspot-daemon/wifi-hotspot-daemon.py 0755
 install_file daemon/create_ap usr/libexec/wifi-hotspot-daemon/create_ap 0755
 install_file daemon/nm_backend.py usr/libexec/wifi-hotspot-daemon/nm_backend.py 0755
@@ -59,6 +60,7 @@ install_file docs/releases/1.0.0-18.md usr/share/doc/gnome-wifi-hotspot/releases
 install_file docs/releases/1.0.0-22.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-22.md 0644
 install_file docs/releases/1.0.0-28.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-28.md 0644
 install_file docs/releases/1.0.0-29.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-29.md 0644
+install_file docs/releases/1.0.0-30-rc1.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-30-rc1.md 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 
@@ -113,3 +115,17 @@ for integration in gnome tray; do
     fi
     finish_package "gnome-wifi-hotspot-$integration"
 done
+
+# Reuse the staged payloads so the bundle always matches the separate packages.
+stage_dir="$build_root/bundle"
+cp -a "$build_root/main" "$stage_dir"
+for integration in gnome tray; do
+    cp -a "$build_root/$integration/usr/." "$stage_dir/usr/"
+    cp -a "$build_root/$integration/etc/." "$stage_dir/etc/"
+done
+sed "s/@VERSION@/$version/g" "$repo_dir/packaging/debian/control-bundle" > "$stage_dir/DEBIAN/control"
+# Run both service and tray lifecycle hooks, preserving their existing guards.
+for script in postinst prerm; do
+    tail -n +3 "$repo_dir/packaging/debian/$script-tray" >> "$stage_dir/DEBIAN/$script"
+done
+finish_package gnome-wifi-hotspot-bundle
