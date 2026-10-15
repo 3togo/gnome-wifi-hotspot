@@ -37,6 +37,17 @@ class PackageSplitTests(unittest.TestCase):
             for original in self.output.glob('*.deb'):
                 self.assertEqual(original.read_bytes(), (Path(directory) / original.name).read_bytes())
 
+    def test_checksums_match_all_current_packages(self):
+        manifest = self.output / 'SHA256SUMS'
+        manifest.write_text('stale checksum manifest\n')
+        subprocess.run(['bash', str(ROOT / 'packaging/build-deb.sh'), self.version],
+                       env=dict(os.environ, WIFI_RELAY_BUILD_OUTPUT=str(self.output),
+                                SOURCE_DATE_EPOCH='4102444800'),
+                       capture_output=True, text=True, check=True)
+        self.assertEqual(len(manifest.read_text().splitlines()), 4)
+        subprocess.run(['sha256sum', '--check', str(manifest)],
+                       cwd=self.output, capture_output=True, text=True, check=True)
+
     def test_optional_files_have_single_owners(self):
         ownership = {}
         for suffix, root in self.roots.items():

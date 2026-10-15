@@ -129,3 +129,13 @@ for script in postinst prerm; do
     tail -n +3 "$repo_dir/packaging/debian/$script-tray" >> "$stage_dir/DEBIAN/$script"
 done
 finish_package gnome-wifi-hotspot-bundle
+
+# Refresh checksums after every successful build, including documentation edits.
+(
+    cd "$output_dir"
+    sha256sum "gnome-wifi-hotspot-bundle_${version}_all.deb" \
+        "gnome-wifi-hotspot-gnome_${version}_all.deb" \
+        "gnome-wifi-hotspot-tray_${version}_all.deb" \
+        "gnome-wifi-hotspot_${version}_all.deb" > SHA256SUMS.tmp
+    mv -f SHA256SUMS.tmp SHA256SUMS
+)
