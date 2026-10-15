@@ -10,9 +10,12 @@ switching package layouts or upgrading. APT still supplies system dependencies.
 Checksums are supplied alongside the candidate packages; artifacts are unsigned.
 
 Automated checks and disposable-container package lifecycle checks passed,
-including split/bundle transitions and credential preservation. Stable
-publication is pending physical client traffic validation and fresh-login checks
-on GNOME and a tray desktop. See
+including split/bundle transitions and credential preservation.
+USB client validation completed four start/connect/traffic/stop cycles on one
+Android 15 phone, covering DHCP, fresh DNS, verified HTTPS and cleanup; invalid
+TLS was rejected separately. Earlier endpoint timeout and upstream DNS-answer
+variation observations remain recorded. Stable publication is pending fresh-login
+checks on GNOME and a tray desktop. See
 [the candidate checklist](docs/releases/1.0.0-30-rc1.md). Earlier successful checks
 of revision 29 do not establish that these candidate checks passed.
 

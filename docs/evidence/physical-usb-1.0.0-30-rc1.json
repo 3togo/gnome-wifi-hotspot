@@ -1,0 +1,478 @@
+{
+  "candidate": "1.0.0-30~rc1",
+  "source_commit": "d0c3c49b52c3a90a49532ce7d7f4c19d952b9957",
+  "recorded_at_utc": "2026-10-15T04:34:51.054659+00:00",
+  "package_sha256": "afed720f79d239b45fdabeb19163473ab650627fffdf25805fc6734d61ea762e",
+  "physical_client_traffic_status": "pass_with_recorded_observations",
+  "scope": {
+    "transport": "USB ADB",
+    "backend": "create_ap",
+    "client": "Android 15 phone",
+    "client_count": 1,
+    "radio": "Intel CNVi [8086:7a70]",
+    "driver": "iwlwifi",
+    "desktop": "XFCE/X11",
+    "kernel": "7.3.0-9-generic",
+    "network_manager": "1.58.1-1ubuntu3 (stock package version)",
+    "completed_start_connect_traffic_stop_cycles": 4,
+    "phone_awake_verified_each_completed_cycle": true
+  },
+  "completed_cycles": [
+    {
+      "attempt": "initial",
+      "cycle": 1,
+      "status": "pass",
+      "phone_awake": true,
+      "association_and_dhcp": true,
+      "visible_bssid_octets_match": true,
+      "current_client_lease_match": true,
+      "android_wifi_network_bound": true,
+      "host_wifi_only_default_route": true,
+      "https_example": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      "https_kernel": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      "dns": {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      },
+      "invalid_tls": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException",
+        "socket_error": "unspecified"
+      },
+      "stop_acknowledged": true,
+      "owned_ap_interface_removed": true
+    },
+    {
+      "attempt": "reconnect",
+      "cycle": 1,
+      "status": "pass",
+      "phone_awake": true,
+      "association_and_dhcp": true,
+      "visible_bssid_octets_match": true,
+      "current_client_lease_match": true,
+      "android_wifi_network_bound": true,
+      "host_wifi_only_default_route": true,
+      "https_example": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      "https_kernel": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      "dns": {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      },
+      "invalid_tls": "Covered by successful first attempt; later pre-TLS endpoint timeout retained separately.",
+      "stop_acknowledged": true,
+      "owned_ap_interface_removed": true
+    },
+    {
+      "attempt": "reconnect",
+      "cycle": 2,
+      "status": "pass",
+      "phone_awake": true,
+      "association_and_dhcp": true,
+      "visible_bssid_octets_match": true,
+      "current_client_lease_match": true,
+      "android_wifi_network_bound": true,
+      "host_wifi_only_default_route": true,
+      "https_example": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      "https_kernel": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      "dns": {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      },
+      "invalid_tls": "Covered by successful first attempt; later pre-TLS endpoint timeout retained separately.",
+      "stop_acknowledged": true,
+      "owned_ap_interface_removed": true
+    },
+    {
+      "attempt": "final",
+      "cycle": 1,
+      "status": "pass",
+      "phone_awake": true,
+      "association_and_dhcp": true,
+      "visible_bssid_octets_match": true,
+      "current_client_lease_match": true,
+      "android_wifi_network_bound": true,
+      "host_wifi_only_default_route": true,
+      "https_example": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      },
+      "https_kernel": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19148,
+        "response_complete": true
+      },
+      "dns": {
+        "success": true,
+        "rcode": 3,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      },
+      "invalid_tls": "Covered by successful first attempt; later pre-TLS endpoint timeout retained separately.",
+      "stop_acknowledged": true,
+      "owned_ap_interface_removed": true
+    }
+  ],
+  "negative_tls_rejection": {
+    "success": false,
+    "stage": "tls",
+    "error_type": "SSLHandshakeException",
+    "socket_error": "unspecified"
+  },
+  "earlier_incomplete_attempts": [
+    {
+      "reason": "Negative-certificate endpoint timed out before TLS; DHCP, DNS and both positive HTTPS checks passed. Final cleanup succeeded.",
+      "negative_probe": {
+        "success": false,
+        "stage": "connect",
+        "error_type": "SocketTimeoutException",
+        "socket_error": "unspecified"
+      }
+    },
+    {
+      "reason": "Gateway negative DNS answer differed from a direct upstream comparison. DHCP and both positive HTTPS checks passed. Final cleanup succeeded. Host-only diagnostics subsequently reproduced changing negative answers without hotspot forwarding.",
+      "gateway_dns": {
+        "success": false,
+        "rcode": 0,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      },
+      "direct_upstream_comparison": {
+        "rcode": 3,
+        "answer_count": 0
+      }
+    }
+  ],
+  "host_only_dns_diagnostics": {
+    "query_count": 10,
+    "same_name_answer_variation_observed_queries": [
+      0,
+      4,
+      6,
+      8,
+      9
+    ],
+    "observations": [
+      {
+        "query": 0,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 1,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 0,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 2,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 3,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 4,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 0,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 5,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 6,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 0,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 7,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 8,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 0,
+            "answer_count": 0
+          }
+        ]
+      },
+      {
+        "query": 9,
+        "answers": [
+          {
+            "resolver": "system_stub",
+            "rcode": 3,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream",
+            "rcode": 0,
+            "answer_count": 0
+          },
+          {
+            "resolver": "upstream_repeat",
+            "rcode": 3,
+            "answer_count": 0
+          }
+        ]
+      }
+    ],
+    "interpretation": "Changing NXDOMAIN/NOERROR negative answers occur outside Relay. A strict NXDOMAIN assumption for every generated name is not reliable on this resolver path."
+  },
+  "cleanup": {
+    "sharing_stopped": true,
+    "owned_ap_interface_removed": true,
+    "phone_original_wifi_restored": true,
+    "phone_power_setting_restored": true,
+    "temporary_phone_helper_removed": true
+  },
+  "remaining_release_gates": [
+    {
+      "name": "fresh XFCE login",
+      "status": "not_run"
+    },
+    {
+      "name": "fresh GNOME login",
+      "status": "not_run"
+    }
+  ],
+  "limitations": [
+    "One client, one operating system family and one Wi-Fi driver",
+    "Four completed cycles do not establish the ten-cycle hardware matrix",
+    "No reboot, suspend, failure injection or extended soak",
+    "One negative TLS endpoint connection timeout retained; successful certificate rejection measured separately"
+  ]
+}
