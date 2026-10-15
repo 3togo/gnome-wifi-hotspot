@@ -15,49 +15,49 @@ compatibility, and how upstream changes are reviewed.
 
 ## Download and install
 
-**[Wi-Fi Relay 1.0.0](https://github.com/3togo/gnome-wifi-hotspot/releases/tag/v1.0.0-29)**
-is the stable release for **Ubuntu 26.10 (Stonking)**, Debian package version
-**1.0.0-29**. The packages contain architecture-independent application code;
-APT supplies platform-specific dependencies. Other distribution releases have
-not been validated. Older beta binary downloads have been retired.
+**[⬇ Download bundle.deb — recommended](https://github.com/3togo/gnome-wifi-hotspot/releases/latest/download/bundle.deb)**
 
-| Download | Contents |
-| :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot_1.0.0-29_all.deb) | Service and GTK settings; required |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-gnome_1.0.0-29_all.deb) | Optional GNOME Shell Quick Settings and top-bar controls |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/gnome-wifi-hotspot-tray_1.0.0-29_all.deb) | Optional StatusNotifier/AppIndicator controls for XFCE and compatible desktops |
-| [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-29/SHA256SUMS) | Checksums for release downloads |
+The bundle includes settings, the service, GNOME controls and tray controls in
+one download. Desktop detection chooses the appropriate controls; GNOME Shell
+is optional. The latest stable release is **1.0.0-30** for **Ubuntu 26.10
+(Stonking)**. APT installs the platform-specific dependencies.
 
-Download the standalone app and `SHA256SUMS` into one folder. Add the optional
-control package for your desktop, using the same version for all packages.
+Download `bundle.deb` and [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/SHA256SUMS)
+into the same folder, then run:
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
-sudo apt install ./gnome-wifi-hotspot_1.0.0-29_all.deb
+sudo apt install ./bundle.deb
 ```
 
-The checksum check must report `OK` for each downloaded package. To install
-GNOME controls, use:
+The checksum check must report `OK` for every downloaded package. Stop sharing
+before an upgrade. The bundle replaces the separate Wi-Fi Relay packages and
+preserves configuration and preferences. Install either the bundle or the
+separate packages, not both layouts together.
+
+### Separate packages (optional)
+
+Choose these if you want only the standalone app or selected desktop controls.
+Install matching versions of the standalone app and any controls you select.
+
+| Download | Contents |
+| :--- | :--- |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot_1.0.0-30_all.deb) | Service and GTK settings |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot-gnome_1.0.0-30_all.deb) | Optional GNOME Shell controls; requires standalone app |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot-tray_1.0.0-30_all.deb) | Optional XFCE and compatible desktop controls; requires standalone app |
+
+For example, install the standalone app and GNOME controls together:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-29_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-29_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-30_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-30_all.deb
 ```
 
-For XFCE or another desktop with a compatible tray, use:
-
-```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-29_all.deb ./gnome-wifi-hotspot-tray_1.0.0-29_all.deb
-```
-
-Log out and back in after installing GNOME controls. Starting with package
-revision 1.0.0-20, tray installation also starts controls in an eligible active
-local non-GNOME graphical session, respecting the startup preference. It runs
-as the desktop user and does not start sharing. Revision 22 waits for the restart,
-verifies that the tray stays running, and retries once if necessary. Otherwise
-login autostart applies. GNOME compatibility is
-declared for Shell 45–51; the automated Shell check covers version 51. The main
-package works without either optional integration. These downloads do not
-replace NetworkManager, GNOME Settings, or the distribution's network applet.
+Log out and back in after installing GNOME controls. Tray installation starts
+controls in an eligible active non-GNOME session, respecting the startup
+preference, without starting sharing. GNOME compatibility is declared for Shell
+45–51; Shell 51 is exercised by the automated checks. These packages do not
+replace your distribution's NetworkManager, GNOME Settings or network applet.
+Other distribution releases have not been validated.
 
 ## Start sharing
 
@@ -83,13 +83,12 @@ broadcasting. A reboot or daemon restart clears the sharing request.
 
 Stop sharing before an upgrade, especially when upgrading an older beta that
 used shared `/tmp` backend state. Upgrade the main package and every installed
-optional package together. Configuration and per-user preferences are retained;
-sharing must be enabled again afterward. Older bundled installations must
-explicitly select an optional control package. Fresh installs generate a random
+optional package together, or install the bundle. Configuration and per-user preferences are retained;
+sharing must be enabled again afterward. When using the separate layout, select the optional controls you need. Fresh installs generate a random
 password; upgrades preserve your existing password.
 
 ```bash
-sudo apt remove gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray gnome-wifi-hotspot
+sudo apt remove gnome-wifi-hotspot-bundle gnome-wifi-hotspot-gnome gnome-wifi-hotspot-tray gnome-wifi-hotspot
 ```
 
 Remove only the packages you installed. Use `apt purge` to remove their system
@@ -103,7 +102,7 @@ processes, bounds worker output and shutdown, and authorizes privileged changes
 through Polkit. Firewall rules are scoped to the hotspot interface; Relay leaves
 permanent firewalld configuration and AppArmor enforcement intact.
 
-Native Ubuntu 26.10 validation includes 336 unit tests with no skips, real GTK
+Native Ubuntu 26.10 validation includes 344 Python tests (one bench-dependent skip), real GTK
 settings/tray checks, 17 sanitized applet cases, GNOME Shell 51 extension loading,
 private-bus service authorization checks, and Debian source/binary builds.
 GitHub CI additionally checks isolated install, upgrade, removal, and purge.
@@ -143,11 +142,10 @@ To override the version or output directory, configure with
 comes from `packaging/debian/changelog`. Builds pick up changes to packaged files
 each time they run.
 
-The local revision `1.0.0-30~rc1` is a release candidate for the single-file
-bundle. It contains all three payloads:
+The single-file bundle contains all three payloads:
 
 ```bash
-sudo apt install ./build/dist/gnome-wifi-hotspot-bundle_1.0.0-30~rc1_all.deb
+sudo apt install ./build/dist/gnome-wifi-hotspot-bundle_1.0.0-30_all.deb
 ```
 
 APT installs system dependencies from your distribution and replaces any installed

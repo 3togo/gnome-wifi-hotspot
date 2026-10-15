@@ -1,13 +1,17 @@
-# Wi-Fi Relay 1.0.0-30~rc1 — bundle release candidate
+# Wi-Fi Relay 1.0.0-30 — all-in-one bundle
 
-This unpublished candidate adds a single downloadable Debian package containing
+**[Download bundle.deb — recommended](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/bundle.deb)**
+
+Install with `sudo apt install ./bundle.deb`. Stop sharing before upgrading.
+
+This release adds a single downloadable Debian package containing
 settings, the daemon, GNOME controls and tray controls. The separate packages
 remain available. GNOME Shell is optional; supported GNOME versions remain 45–51.
 Build all four packages with `./build.sh`; output is in `build/dist/`.
 
 The bundle conflicts with and replaces the separate packages. Stop sharing before
 switching package layouts or upgrading. APT still supplies system dependencies.
-Checksums are supplied alongside the candidate packages; artifacts are unsigned.
+Checksums are supplied alongside the release packages; artifacts are unsigned.
 
 Automated checks and disposable-container package lifecycle checks passed,
 including split/bundle transitions and credential preservation.
@@ -18,8 +22,10 @@ variation observations remain recorded. Six containerized LightDM fresh logins
 passed on GNOME and XFCE with startup enabled, disabled and re-enabled, including
 extension loading and tray registration. Host graphics and GDM logins remain
 outside this validation scope. See
-[the candidate checklist](docs/releases/1.0.0-30-rc1.md). Earlier successful checks
-of revision 29 do not establish that these candidate checks passed.
+[release scope and rollback](docs/releases/1.0.0-30.md) and the
+[candidate evidence](docs/releases/1.0.0-30-rc1.md). Final packages retain the
+validated candidate runtime payloads; release documentation and version metadata
+are updated.
 
 ---
 

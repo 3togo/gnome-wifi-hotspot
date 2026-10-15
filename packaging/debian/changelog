@@ -1,3 +1,12 @@
+gnome-wifi-hotspot (1.0.0-30) stonking; urgency=medium
+
+  * Publish the all-in-one bundle as the preferred release download.
+  * Add CMake builds, refreshed checksums and source-package bundle support.
+  * Validate package transitions, USB traffic and container desktop logins.
+  * Select regional download mirrors for disposable-container validation.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Thu, 15 Oct 2026 04:59:05 +0000
+
 gnome-wifi-hotspot (1.0.0-30~rc1) stonking; urgency=medium
 
   * Add a single-file bundle with the service, settings and both desktop controls.

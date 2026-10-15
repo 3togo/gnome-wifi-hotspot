@@ -24,6 +24,7 @@ def source_files():
         names.update({'CMakeLists.txt', 'build.sh',
                       'tools/select_test_mirrors.py',
                       'docs/releases/1.0.0-30-rc1.md',
+                      'docs/releases/1.0.0-30.md',
                       'docs/production-readiness.md', 'docs/dependency-review.md',
                       'integration/gnome-settings/relay-entrypoint.patch',
                       'data/wifi-relay-gnome.desktop', 'data/wifi-relay-tray.desktop'})
