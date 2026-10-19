@@ -1,0 +1,1097 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-19T13:42:20.390984+00:00",
+  "status": "Pass for final tested scope; earlier failed candidates retained",
+  "scope": {
+    "backend": "create_ap",
+    "controller": "Public production system D-Bus API, administrator caller for controlled installation and fault injection; no desktop-user authorization coverage claimed by this physical run",
+    "clients": [
+      "Android 14 phone over USB ADB",
+      "Android 14 tablet over USB ADB"
+    ],
+    "ap_modes": [
+      "physical Intel interface",
+      "virtual Intel interface"
+    ],
+    "upstream": "Separate mt7601u USB Wi-Fi client; Ethernet disconnected and USB Wi-Fi the only default route during traffic checks; existing Tailscale peer routes retained (no exit-node default route)",
+    "platform": {
+      "ap": {
+        "driver": "iwlwifi",
+        "pci_vendor": "0x8086",
+        "pci_device": "0x2723"
+      },
+      "upstream": {
+        "driver": "mt7601u"
+      },
+      "kernel": "7.2.6-070206-generic",
+      "packages": [
+        "dnsmasq-base 2.93-3ubuntu1",
+        "hostapd 2:2.11-2ubuntu2",
+        "network-manager 1.58.1-1ubuntu3+relay1+dev3",
+        "wpasupplicant 2:2.11-2ubuntu2"
+      ],
+      "os_release": "PRETTY_NAME=\"Ubuntu 26.10\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.10\"\nVERSION=\"26.10 (Stonking Stingray)\"\nVERSION_CODENAME=stonking\nRELEASE_TYPE=stable\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nDOCUMENTATION_URL=\"https://docs.ubuntu.com\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nLOGO=ubuntu-logo\nVENDOR_NAME=\"Canonical\"\nVENDOR_URL=\"https://canonical.com/\"\nUBUNTU_CODENAME=stonking\n",
+      "desktop": [
+        "xfce4-session 4.20.4 (Xfce 4.20)"
+      ]
+    },
+    "final_startup_cancellation_delays_seconds": [
+      0.0,
+      0.15,
+      0.6,
+      0.9,
+      1.2,
+      1.8
+    ]
+  },
+  "trials": [
+    {
+      "version": "1.0.0-31~fix5",
+      "source_commit": "7f0606f082f5d7d9ab9d3244c939eacd1d3a931c",
+      "status": "Fail",
+      "packages_installed": [
+        {
+          "filename": "gnome-wifi-hotspot_1.0.0-31~fix5_all.deb",
+          "sha256": "91c99d03c8f0e81d42918a3f31fe106eb0189fd4f19a850bb9d29d597faa996b"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-gnome_1.0.0-31~fix5_all.deb",
+          "sha256": "7ed7be2178180b654e12752de52444b1ca595ebe81eac7dd014d9c30bd20562d"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-tray_1.0.0-31~fix5_all.deb",
+          "sha256": "1d8268e5c241a36af57a943bea72160a2cf4e1594062e6836e73b47fe9d50f3f"
+        }
+      ],
+      "runtime_payloads": [
+        {
+          "name": "configuration.py",
+          "sha256": "c52a2d98f5bf0f10dc78769d380bd03e3f84b0d09c735dcbaf1ea36023777994"
+        },
+        {
+          "name": "create_ap",
+          "sha256": "67c993c4ea49a04fbea5a920608106280abe8d2685213b0a0ceb6dace966234c"
+        },
+        {
+          "name": "legacy_runtime.py",
+          "sha256": "ba90e2b88fe3b333da62097985ff7207b1d518c4d1fe6437e09e939aa00ad935"
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "92ba6d01eade28d1f4aba62bb7d05207d91b0b3dee9b2b1024b552dee6fa1ac8"
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6"
+        },
+        {
+          "name": "operations.py",
+          "sha256": "ccaa27fdae23db9ee486efb1d8c6b68eb391f6b503b9ee5b3b0876580efcc029"
+        },
+        {
+          "name": "nm_ap_sta_probe.py",
+          "sha256": "46d27158e43943ca5fa8ef947a7b8035cbb08cac48ee9cb111fa8ad0f382995d"
+        },
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "505450dd5f305f0705cc8b9dc31ca7cc70f08ff8105af0c5bbd7299b1835d863"
+        }
+      ],
+      "cases": [
+        {
+          "name": "Installed runtime matches committed source",
+          "files": {
+            "configuration.py": true,
+            "operations.py": true,
+            "nm_backend.py": true,
+            "nm_client.py": true,
+            "wifi-hotspot-daemon.py": true,
+            "legacy_runtime.py": true,
+            "create_ap": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "Host default route uses USB Wi-Fi only",
+          "status": "Pass"
+        },
+        {
+          "name": "physical AP start",
+          "status": "Pass"
+        },
+        {
+          "name": "physical phone current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "physical phone strict NXDOMAIN gateway DNS",
+          "status": "Fail",
+          "probe": {
+            "success": false,
+            "rcode": 0,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "physical phone gateway DNS matches upstream",
+          "comparison": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "same_unique_query": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "physical phone HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical phone invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "physical tablet current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "physical tablet strict NXDOMAIN gateway DNS",
+          "status": "Fail",
+          "probe": {
+            "success": false,
+            "rcode": 0,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "physical tablet gateway DNS matches upstream",
+          "comparison": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "same_unique_query": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "physical tablet HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical tablet invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "Physical AP Stop restores adapter management",
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "virtual AP start",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual phone current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual phone strict NXDOMAIN gateway DNS",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "rcode": 3,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "virtual phone HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual phone invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "virtual tablet current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual tablet strict NXDOMAIN gateway DNS",
+          "status": "Fail",
+          "probe": {
+            "success": false,
+            "rcode": 0,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "virtual tablet gateway DNS matches upstream",
+          "comparison": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "same_unique_query": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "virtual tablet HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual tablet invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "Injected create_ap shell termination",
+          "status": "Pass"
+        },
+        {
+          "name": "Stop recovers retained children, interfaces and firewall rules",
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop cancels in-progress physical startup",
+          "tagged_rules_remaining": 8,
+          "instance_directories_remaining": 1,
+          "adapter_managed": true,
+          "status": "Fail"
+        }
+      ],
+      "strict_dns_expectation_failures_retained": [
+        "physical phone strict NXDOMAIN gateway DNS",
+        "physical tablet strict NXDOMAIN gateway DNS",
+        "virtual tablet strict NXDOMAIN gateway DNS"
+      ],
+      "product_or_unresolved_failures": [
+        "Stop cancels in-progress physical startup"
+      ],
+      "restoration": {
+        "configuration_exact": true,
+        "original_installed_files": true,
+        "host_connections": true,
+        "phone_original_wifi": true,
+        "phone_helper_removed": true,
+        "tablet_original_wifi": true,
+        "tablet_helper_removed": true
+      },
+      "stopped_after_failure": "RuntimeError"
+    },
+    {
+      "version": "1.0.0-31~fix6",
+      "source_commit": "9c39d5ddb4eee39283b9373adac49b13d8f0b2a7",
+      "status": "Fail",
+      "packages_installed": [
+        {
+          "filename": "gnome-wifi-hotspot_1.0.0-31~fix6_all.deb",
+          "sha256": "d640c35e430b9dd02a12072a3c1dc1109bf9d247b6cdbe5cce75b5295487621b"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-gnome_1.0.0-31~fix6_all.deb",
+          "sha256": "4cb961ac9e7b9f2733f8608c4639f3bf14b6cd29251ee7d64432d2d1bdca85c8"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-tray_1.0.0-31~fix6_all.deb",
+          "sha256": "398db91e1413fef25823bd7b8e34360d75dbdbad39959c86a07fd907f27d7ee7"
+        }
+      ],
+      "runtime_payloads": [
+        {
+          "name": "configuration.py",
+          "sha256": "c52a2d98f5bf0f10dc78769d380bd03e3f84b0d09c735dcbaf1ea36023777994"
+        },
+        {
+          "name": "create_ap",
+          "sha256": "67c993c4ea49a04fbea5a920608106280abe8d2685213b0a0ceb6dace966234c"
+        },
+        {
+          "name": "legacy_runtime.py",
+          "sha256": "ba90e2b88fe3b333da62097985ff7207b1d518c4d1fe6437e09e939aa00ad935"
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "92ba6d01eade28d1f4aba62bb7d05207d91b0b3dee9b2b1024b552dee6fa1ac8"
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6"
+        },
+        {
+          "name": "operations.py",
+          "sha256": "ccaa27fdae23db9ee486efb1d8c6b68eb391f6b503b9ee5b3b0876580efcc029"
+        },
+        {
+          "name": "nm_ap_sta_probe.py",
+          "sha256": "39a2d9988ca3616dd30427f0f9e1e3c49af8b7318f0a61b48c8a84b1126bd596"
+        },
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a55e37f7af84a8d90a82fb2da2fd3fce1e21ec4371e66096f78cd8a2ae8e996c"
+        }
+      ],
+      "cases": [
+        {
+          "name": "Installed runtime matches committed source",
+          "files": {
+            "configuration.py": true,
+            "operations.py": true,
+            "nm_backend.py": true,
+            "nm_client.py": true,
+            "wifi-hotspot-daemon.py": true,
+            "legacy_runtime.py": true,
+            "create_ap": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "Host default route uses USB Wi-Fi only",
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.0 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.0",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.15 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.15",
+          "latency_seconds": 0.003,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.6 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.6",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.9 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 1,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 1,
+          "adapter_managed": true,
+          "status": "Fail"
+        }
+      ],
+      "strict_dns_expectation_failures_retained": [],
+      "product_or_unresolved_failures": [
+        "Stop during startup at 0.9 seconds"
+      ],
+      "restoration": {
+        "configuration_exact": true,
+        "original_installed_files": true,
+        "host_connections": true,
+        "phone_original_wifi": true,
+        "phone_helper_removed": true,
+        "tablet_original_wifi": true,
+        "tablet_helper_removed": true
+      },
+      "started_at_utc": "2026-10-19T13:31:21.748640+00:00",
+      "finished_at_utc": "2026-10-19T13:32:53.427055+00:00",
+      "stopped_after_failure": "RuntimeError"
+    },
+    {
+      "version": "1.0.0-31~fix7",
+      "source_commit": "39df66564b6638bfd72a4bc0f0e0f93c8af85d63",
+      "status": "Pass for tested scope",
+      "packages_installed": [
+        {
+          "filename": "gnome-wifi-hotspot_1.0.0-31~fix7_all.deb",
+          "sha256": "fabfc73b54d7bff7df13fbe94c8095a095181abf2c12a72af5aa8f610c7764d9"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-gnome_1.0.0-31~fix7_all.deb",
+          "sha256": "9b588138aad6ed53ae513de51c1d40032b21327e0c0b99e1689ae790e1893737"
+        },
+        {
+          "filename": "gnome-wifi-hotspot-tray_1.0.0-31~fix7_all.deb",
+          "sha256": "c9fcdaa3d7a7a6b7628a2ebd329892f389dacad2bce1dcd46bd58cc9718ccb23"
+        }
+      ],
+      "runtime_payloads": [
+        {
+          "name": "configuration.py",
+          "sha256": "c52a2d98f5bf0f10dc78769d380bd03e3f84b0d09c735dcbaf1ea36023777994"
+        },
+        {
+          "name": "create_ap",
+          "sha256": "4ffa6e2d002a0ab3d2fb2b02973c46c4039260a6305e31a56fd98c653c3291c4"
+        },
+        {
+          "name": "legacy_runtime.py",
+          "sha256": "ba90e2b88fe3b333da62097985ff7207b1d518c4d1fe6437e09e939aa00ad935"
+        },
+        {
+          "name": "nm_backend.py",
+          "sha256": "92ba6d01eade28d1f4aba62bb7d05207d91b0b3dee9b2b1024b552dee6fa1ac8"
+        },
+        {
+          "name": "nm_client.py",
+          "sha256": "b544b543ae53a866a12f034cdf0b9cab30ea6dbde635c710dad70722ef7775c6"
+        },
+        {
+          "name": "operations.py",
+          "sha256": "ccaa27fdae23db9ee486efb1d8c6b68eb391f6b503b9ee5b3b0876580efcc029"
+        },
+        {
+          "name": "nm_ap_sta_probe.py",
+          "sha256": "39a2d9988ca3616dd30427f0f9e1e3c49af8b7318f0a61b48c8a84b1126bd596"
+        },
+        {
+          "name": "wifi-hotspot-daemon.py",
+          "sha256": "a55e37f7af84a8d90a82fb2da2fd3fce1e21ec4371e66096f78cd8a2ae8e996c"
+        }
+      ],
+      "cases": [
+        {
+          "name": "Installed runtime matches committed source",
+          "files": {
+            "configuration.py": true,
+            "operations.py": true,
+            "nm_backend.py": true,
+            "nm_client.py": true,
+            "wifi-hotspot-daemon.py": true,
+            "legacy_runtime.py": true,
+            "create_ap": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "Host default route uses USB Wi-Fi only",
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.0 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.0",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.15 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.15",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.6 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.6",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 0.9 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 0.9",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 1.2 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 1.2",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Stop during startup at 1.8 seconds",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "D-Bus responsive at startup delay 1.8",
+          "latency_seconds": 0.001,
+          "start_succeeded": false,
+          "cancelled": true,
+          "status": "Pass"
+        },
+        {
+          "name": "physical AP start",
+          "status": "Pass"
+        },
+        {
+          "name": "physical phone current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "physical phone strict NXDOMAIN gateway DNS",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "rcode": 3,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "physical phone HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical phone invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "physical tablet current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "physical tablet strict NXDOMAIN gateway DNS",
+          "status": "Fail",
+          "probe": {
+            "success": false,
+            "rcode": 0,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "physical tablet gateway DNS matches upstream",
+          "comparison": {
+            "success": true,
+            "gateway_rcode": 0,
+            "upstream_rcode": 0,
+            "same_unique_query": true
+          },
+          "status": "Pass"
+        },
+        {
+          "name": "physical tablet HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "physical tablet invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "Physical AP Stop restores adapter management",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "virtual AP start",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual phone current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual phone strict NXDOMAIN gateway DNS",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "rcode": 3,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "virtual phone HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual phone HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual phone invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "virtual tablet current BSSID and fresh DHCP",
+          "status": "Pass"
+        },
+        {
+          "name": "virtual tablet strict NXDOMAIN gateway DNS",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "rcode": 3,
+            "answer_count": 0,
+            "authority_count": 1,
+            "additional_count": 0,
+            "response_bytes": 130,
+            "gateway_queried": true,
+            "source_bound": true,
+            "wifi_network_bound": true
+          }
+        },
+        {
+          "name": "virtual tablet HTTPS example.com",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 577,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual tablet HTTPS www.kernel.org",
+          "status": "Pass",
+          "probe": {
+            "success": true,
+            "https_status": 200,
+            "certificate_and_hostname_verified": true,
+            "source_bound": true,
+            "wifi_network_bound": true,
+            "tls_protocol": "TLSv1.3",
+            "body_bytes_received": 19152,
+            "response_complete": true
+          }
+        },
+        {
+          "name": "virtual tablet invalid TLS rejected",
+          "status": "Pass",
+          "probe": {
+            "success": false,
+            "stage": "tls",
+            "error_type": "SSLHandshakeException",
+            "socket_error": "unspecified"
+          }
+        },
+        {
+          "name": "Injected create_ap shell termination",
+          "status": "Pass"
+        },
+        {
+          "name": "Stop recovers retained children, interfaces and firewall rules",
+          "owned_children_remaining": 0,
+          "extra_wifi_interfaces_remaining": 0,
+          "tagged_rules_remaining": 0,
+          "instance_directories_remaining": 0,
+          "adapter_managed": true,
+          "status": "Pass"
+        },
+        {
+          "name": "Existing firewall rules retained",
+          "baseline_rule_count": 63,
+          "status": "Pass"
+        },
+        {
+          "name": "IP forwarding setting restored",
+          "status": "Pass"
+        }
+      ],
+      "strict_dns_expectation_failures_retained": [
+        "physical tablet strict NXDOMAIN gateway DNS"
+      ],
+      "product_or_unresolved_failures": [],
+      "restoration": {
+        "configuration_exact": true,
+        "original_installed_files": true,
+        "host_connections": true,
+        "phone_original_wifi": true,
+        "phone_helper_removed": true,
+        "tablet_original_wifi": true,
+        "tablet_helper_removed": true
+      },
+      "started_at_utc": "2026-10-19T13:37:19.007512+00:00",
+      "finished_at_utc": "2026-10-19T13:39:16.909632+00:00"
+    }
+  ],
+  "diagnoses": [
+    {
+      "candidate": "1.0.0-31~fix5",
+      "observation": "Stop during startup left eight owned firewall rules and one instance directory. Both clients had passed physical and virtual AP traffic checks.",
+      "cause": "The --stop helper searches only registered running instances and can miss a starting shell.",
+      "fix_commit": "9c39d5ddb4eee39283b9373adac49b13d8f0b2a7",
+      "change": "Launch and track the shell directly before PID publication; signal the verified owner through a pidfd."
+    },
+    {
+      "candidate": "1.0.0-31~fix6",
+      "observation": "Early Stop timings passed; the 0.9-second Stop left one virtual interface and one instance directory, with no remaining owned children or firewall rules.",
+      "cause": "A signal can interrupt mutex counter bookkeeping; EXIT cleanup then deadlocks opening that same counter lock.",
+      "fix_commit": "39df66564b6638bfd72a4bc0f0e0f93c8af85d63",
+      "change": "Defer stop and failure exits until mutex bookkeeping releases its descriptor; avoid interrupting cleanup."
+    }
+  ],
+  "dns_interpretation": "Strict NXDOMAIN assertions remain Fail when the gateway returns NOERROR/NODATA. A separate same-name query bound to the upstream Wi-Fi address independently matched that result. Those matching comparisons establish forwarding behavior without rewriting the failed strict assertions.",
+  "maintenance_observations": [
+    "The first service-stop attempt was canceled by desktop D-Bus autoactivation; no candidate had been installed.",
+    "A temporary runtime service mask during package swaps produced a tray activation dialog. The mask was removed. Later swaps paused tray startup, restored its preference exactly, and restarted the tray.",
+    "Tablet Wi-Fi UI automation needed a refreshed scan after the virtual AP restart; previous interrupted association attempts were retained privately, and final traffic required the current BSSID and a fresh lease."
+  ],
+  "automated_validation_for_final_runtime": {
+    "python_unit_tests": 375,
+    "python_unit_tests_result": "Pass",
+    "node_tray_tests": "Pass",
+    "private_dbus_integration_tests": 11,
+    "private_dbus_result": "Pass",
+    "binary_package_build": "All four Debian packages built; matching three split packages installed for testing"
+  },
+  "final_restoration": {
+    "original_package_files_exact": true,
+    "original_file_count_verified": 57,
+    "owned_firewall_rules_absent": true,
+    "owned_instance_directories_absent": true,
+    "virtual_ap_interface_absent": true,
+    "owned_children_absent": true,
+    "daemon_active_enabled_unmasked": true,
+    "original_package_versions_restored": true,
+    "original_host_connection_uuids_restored": true,
+    "phone_power_settings_restored": true,
+    "phone_temporary_helpers_absent": true,
+    "phone_awake_and_unlocked_at_finish": true,
+    "tablet_power_settings_restored": true,
+    "tablet_temporary_helpers_absent": true,
+    "tablet_awake_and_unlocked_at_finish": true,
+    "startup_preference_exact": true,
+    "tray_service_active": true,
+    "ethernet_default_restored": true,
+    "original_wifi_route_preference_restored": true,
+    "android_power_restore_verified": {
+      "phone": true,
+      "tablet": true
+    }
+  },
+  "limitations": [
+    "One AP driver and two clients from the same OS family; mt7601u was tested only as upstream.",
+    "Two complete final traffic sessions and six cancellation timings; not the ten-cycle release matrix or an extended soak.",
+    "Native NetworkManager backend, desktop login, reboot, suspend, upstream interruption, roaming and unavailable-NetworkManager recovery were not physically exercised.",
+    "This development binary test does not certify a future release or differently built artifacts.",
+    "Root credentials, wireless SSIDs/BSSIDs, device identifiers, addresses, connection UUIDs, unique DNS names and raw logs remain private. Historical published evidence was not edited."
+  ]
+}

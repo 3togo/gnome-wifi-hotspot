@@ -16,6 +16,10 @@ earlier [development results](networkmanager-live-validation.md) retain their
 original builds, hashes, failures, and limits. Do not copy their passes, or the
 revision-30 candidate passes, into a new candidate's checklist.
 
+The unpublished [19 October development trial](releases/1.0.0-31-development.md)
+records two failed candidates and the final limited physical pass after their
+fixes. It does not complete this release checklist or change the published baseline.
+
 ## Candidate and test bench
 
 Record the exact candidate before testing. If runtime code or installed package
