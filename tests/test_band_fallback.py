@@ -58,6 +58,7 @@ class BandFallbackTests(unittest.TestCase):
         self.daemon._reap_stale_hostapd = Mock()
         self.daemon._recover_legacy = Mock()
         self.daemon._run_cmd = Mock(return_value=(0, "", ""))
+        self.daemon._launch_create_ap = Mock(return_value=(0, "", ""))
 
     def test_regulatory_restrictions(self):
         channels, concurrent = Daemon._parse_phy_capabilities(PHY)
@@ -230,7 +231,7 @@ class BandFallbackTests(unittest.TestCase):
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
         self.daemon._reap_stale_hostapd.assert_called_once_with()
-        cmd = self.daemon._run_cmd.call_args.args[0]
+        cmd = self.daemon._launch_create_ap.call_args.args[0]
         self.assertEqual(cmd[-4:], ['--freq-band', '2.4', '-c', '6'])
 
     def test_permitted_5ghz_stays_connected(self):
@@ -238,7 +239,7 @@ class BandFallbackTests(unittest.TestCase):
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
         self.daemon.switch_band_and_reconnect.assert_not_called()
-        self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
+        self.assertEqual(self.daemon._launch_create_ap.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
 
     def test_start_waits_through_unready_worker(self):
         self.start_setup(capabilities(5745))
@@ -262,7 +263,7 @@ class BandFallbackTests(unittest.TestCase):
 
     def test_nonzero_launcher_exit_cannot_be_acknowledged_as_success(self):
         self.start_setup(capabilities(5745))
-        self.daemon._run_cmd.return_value = (1, '', 'launch failed')
+        self.daemon._launch_create_ap.return_value = (1, '', 'launch failed')
         self.daemon.method_stop = Mock()
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             result = json.loads(self.daemon.method_start())
@@ -329,7 +330,7 @@ class BandFallbackTests(unittest.TestCase):
         self.daemon.switch_band_and_reconnect.return_value = json.dumps({'success': True})
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
-        self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:],
+        self.assertEqual(self.daemon._launch_create_ap.call_args.args[0][-4:],
                          ['--freq-band', '5', '-c', '149'])
 
     def test_invalid_dedicated_channel_is_rejected(self):
@@ -347,7 +348,7 @@ class BandFallbackTests(unittest.TestCase):
         self.daemon._read_config_dict.return_value['INTERNET_IFACE'] = 'eth0'
         with patch.object(module.GLib, 'usleep'), patch.object(module, 'get_config_path', return_value='/config'):
             self.assertTrue(json.loads(self.daemon.method_start())['success'])
-        self.assertEqual(self.daemon._run_cmd.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
+        self.assertEqual(self.daemon._launch_create_ap.call_args.args[0][-4:], ['--freq-band', '5', '-c', '149'])
 
 
 if __name__ == '__main__':

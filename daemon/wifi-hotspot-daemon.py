@@ -207,6 +207,7 @@ class WifiHotspotDaemon:
     def __init__(self, connection):
         self.connection = connection
         self.create_ap_bin = find_create_ap()
+        self._legacy_process = None
         self.cached_clients = []
         self.cached_status_active = False
         self.is_starting = False
@@ -404,11 +405,16 @@ class WifiHotspotDaemon:
     def _owned_create_ap_pid(self):
         """Never adopt or stop a separately launched hotspot or a reused PID."""
         try:
-            with CREATE_AP_PIDFILE.open("rb") as stream:
-                value = stream.read(32).strip()
-            if not re.fullmatch(rb"[1-9][0-9]{0,9}", value):
-                return None
-            pid = int(value)
+            child = getattr(self, '_legacy_process', None)
+            if child is not None and child.poll() is None:
+                # Cancellation can arrive before the shell publishes its PID.
+                pid = child.pid
+            else:
+                with CREATE_AP_PIDFILE.open("rb") as stream:
+                    value = stream.read(32).strip()
+                if not re.fullmatch(rb"[1-9][0-9]{0,9}", value):
+                    return None
+                pid = int(value)
             process = PROC_DIRECTORY / str(pid)
             if process.stat().st_uid != os.geteuid():
                 return None
@@ -421,6 +427,33 @@ class WifiHotspotDaemon:
             return pid
         except (OSError, ValueError, IndexError, UnicodeError):
             return None
+
+    def _launch_create_ap(self, args, log_path):
+        """Own the shell directly, including the interval before PID publication."""
+        self._check_cancelled()
+        with open(log_path, 'ab') as output:
+            self._legacy_process = subprocess.Popen(
+                args, stdout=output, stderr=subprocess.STDOUT, start_new_session=True,
+                env={**os.environ, 'LC_ALL': 'C', 'RUNNING_AS_DAEMON': '1'})
+        return 0, '', ''
+
+    def _signal_create_ap_stop(self, pid):
+        # --stop searches the running-instance list. A starting shell is not
+        # listed yet, so that command can silently miss an authorized Stop.
+        try:
+            identity = legacy_runtime.process_identity(pid)
+            descriptor = os.pidfd_open(pid)
+        except (FileNotFoundError, ProcessLookupError):
+            return False
+        try:
+            if self._owned_create_ap_pid() == pid and legacy_runtime.same_process(identity):
+                signal.pidfd_send_signal(descriptor, signal.SIGUSR1)
+                return True
+        except ProcessLookupError:
+            pass
+        finally:
+            os.close(descriptor)
+        return False
 
     def _reap_stale_hostapd(self):
         """Release only orphaned hostapd processes from Relay's private runtime."""
@@ -1042,7 +1075,7 @@ class WifiHotspotDaemon:
             log_path = prepare_startup_log()
             cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--pidfile", str(CREATE_AP_PIDFILE), "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
-            code, out, err = self._run_cmd(cmd)
+            code, out, err = self._launch_create_ap(cmd, log_path)
 
             # The shell exists before DHCP and hostapd start. Wait for its
             # readiness acknowledgement, rather than treating its PID as an AP.
@@ -1104,17 +1137,20 @@ class WifiHotspotDaemon:
             self._reap_stale_hostapd()
             return True
 
-        iface_to_stop = str(pid)
-        print(f"[*] Stopping hotspot for: {iface_to_stop}")
-        code, out, err = self._run_cmd([self.create_ap_bin, "--stop", iface_to_stop])
+        print(f"[*] Stopping hotspot for: {pid}")
+        signalled = self._signal_create_ap_stop(pid)
 
         # Cleanup may wait for child termination and NetworkManager. Do not
         # contend on create_ap's global mutex by polling --list-running here.
         # This wait runs on the operation worker, leaving D-Bus responsive.
         for _ in range(300):
             GLib.usleep(100000)
-            if self._owned_create_ap_pid() is None:
+            remaining = self._owned_create_ap_pid()
+            if remaining is None:
                 break
+            if not signalled:
+                # The new child may have exec'd between identity checks.
+                signalled = self._signal_create_ap_stop(remaining)
         new_status = self._get_status_dict()
         self.cached_clients = []
         self._emit_signal("StatusChanged", json.dumps(new_status))

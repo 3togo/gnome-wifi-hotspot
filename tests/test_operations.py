@@ -2,6 +2,8 @@
 import json
 import sys
 import threading
+import tempfile
+from pathlib import Path
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -105,6 +107,54 @@ class OperationTests(unittest.TestCase):
         self.assertEqual(code, -1)
         self.assertIn('cancelled', error)
         self.assertLess(time.monotonic() - started, 2)
+
+    def test_stop_owns_starting_shell_before_pid_or_running_instance_is_published(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / 'create_ap.py'
+            pidfile = root / 'create-ap.pid'
+            started = root / 'started'
+            script.write_text('import os, pathlib, time\n'
+                              'assert os.environ["RUNNING_AS_DAEMON"] == "1"\n'
+                              f'pathlib.Path({str(started)!r}).touch()\n'
+                              'time.sleep(30)\n')
+            daemon = Daemon.__new__(Daemon)
+            daemon.create_ap_bin = str(script)
+            daemon._operations = self.operations
+            daemon._stopping = False
+            daemon._get_status_dict = Mock(return_value={'active': False})
+            daemon._recover_legacy = Mock()
+            daemon._read_config_dict = Mock(return_value={'BACKEND': 'create_ap'})
+            daemon._emit_signal = Mock()
+            daemon.cached_clients = []
+            with patch.object(module, 'CREATE_AP_PIDFILE', pidfile):
+                daemon._launch_create_ap([sys.executable, str(script), '--pidfile', str(pidfile)], root / 'log')
+                child = daemon._legacy_process
+                try:
+                    wait_until(started.exists)
+                    self.assertFalse(pidfile.exists())
+                    self.assertEqual(daemon._owned_create_ap_pid(), child.pid)
+                    begin = time.monotonic()
+                    self.assertTrue(daemon.method_stop())
+                    self.assertLess(time.monotonic() - begin, 2)
+                    self.assertIsNotNone(child.poll())
+                    daemon._recover_legacy.assert_called_once()
+                finally:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait(timeout=3)
+
+    def test_stop_does_not_signal_a_process_whose_identity_changed(self):
+        daemon = Daemon.__new__(Daemon)
+        daemon._owned_create_ap_pid = Mock(return_value=123)
+        with (patch.object(module.legacy_runtime, 'process_identity', return_value={'pid': 123}),
+              patch.object(module.legacy_runtime, 'same_process', return_value=False),
+              patch.object(module.os, 'pidfd_open', return_value=9),
+              patch.object(module.os, 'close') as close,
+              patch.object(module.signal, 'pidfd_send_signal') as send):
+            daemon._signal_create_ap_stop(123)
+        send.assert_not_called()
+        close.assert_called_once_with(9)
 
     def test_stop_precedes_deferred_reads_and_saves(self):
         release = threading.Event()

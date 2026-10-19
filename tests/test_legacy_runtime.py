@@ -147,6 +147,7 @@ class OwnershipTests(unittest.TestCase):
         self.daemon._emit_signal = Mock()
         self.daemon._recover_legacy = Mock()
         self.daemon._reap_stale_hostapd = Mock()
+        self.daemon._signal_create_ap_stop = Mock()
         self.argv = ['bash', self.daemon.create_ap_bin, '--pidfile', str(self.pidfile)]
         self.cmdline(self.argv)
         for name, value in [('CREATE_AP_PIDFILE', self.pidfile), ('PROC_DIRECTORY', self.process.parent)]:
@@ -193,7 +194,8 @@ class OwnershipTests(unittest.TestCase):
         with patch.object(module.GLib, 'usleep'), \
                 patch.object(self.daemon, '_owned_create_ap_pid', side_effect=[123, None, None]):
             self.assertTrue(self.daemon.method_stop())
-        self.daemon._run_cmd.assert_called_once_with([self.daemon.create_ap_bin, '--stop', '123'])
+        self.daemon._signal_create_ap_stop.assert_called_once_with(123)
+        self.daemon._run_cmd.assert_not_called()
 
     def test_marker_cannot_adopt_a_process_from_another_user(self):
         with patch.object(module.os, 'geteuid', return_value=os.geteuid() + 1):
@@ -207,7 +209,8 @@ class OwnershipTests(unittest.TestCase):
         with patch.object(module.GLib, 'usleep'), \
                 patch.object(self.daemon, '_owned_create_ap_pid', side_effect=[123, None, None]):
             self.assertTrue(self.daemon.method_stop())
-        self.daemon._run_cmd.assert_called_once_with([self.daemon.create_ap_bin, '--stop', '123'])
+        self.daemon._signal_create_ap_stop.assert_called_once_with(123)
+        self.daemon._run_cmd.assert_not_called()
 
     def test_firewall_compatibility_call_does_not_change_global_policy(self):
         self.daemon._run_cmd = Mock()
