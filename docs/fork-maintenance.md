@@ -9,18 +9,19 @@ count describes ancestry; it does not establish compatibility or release quality
 
 ## Supported scope
 
-The published baseline is [Debian revision 1.0.0-30](releases/1.0.0-30.md) for
+The published baseline is [Debian revision 1.0.0-31](releases/1.0.0-31.md) for
 Ubuntu 26.10. Its default backend is create_ap. The recommended all-in-one
-`bundle.deb` includes settings, the service, GNOME Shell controls, and tray
-controls. Matching separate packages remain available for selected components;
-install either layout. GNOME Shell is optional for the app and bundle.
+`bundle.deb` includes settings, the service, GNOME Shell controls and tray
+controls. Matching separate packages remain available; install either layout.
+GNOME Shell is optional for the app and bundle.
 
-Revision-30 validation includes four USB-controlled traffic/cleanup cycles on
-one Android 15 phone and Intel CNVi/iwlwifi adapter, plus six containerized
-LightDM PAM/logind sessions covering startup enabled, disabled, and re-enabled
-on GNOME 51 and XFCE 4.20. These checks do not establish host GDM, physical-seat
-or hardware graphics behavior, other client/driver cohorts, or an extended soak.
-Historical revision-22, revision-28, and development-build records retain their
+Revision-31 runtime matches the physically tested `~fix7` candidate. Two Android
+14 clients on one Intel/iwlwifi AP driver exercised physical/virtual AP traffic,
+startup cancellation and crash cleanup; a separate installed cohort verified
+2.4 GHz channel 12 with Ethernet egress. The host used downstream NetworkManager.
+The ten-cycle matrix, other drivers/client OSes, reboot/suspend and extended
+soaks remain incomplete. Final package/source checks and hashes accompany the
+release. Earlier revision-22, revision-28 and revision-30 records retain their
 original scope; see [production readiness](production-readiness.md).
 
 Native NetworkManager AP+STA and patches under `integration/` remain experimental.
@@ -106,7 +107,7 @@ a newer Debian revision; install the bundle or the main and selected optional
 packages at the same version. Stop sharing before upgrading; configuration and
 preferences are retained, but sharing does not resume automatically. Keep the
 previous matching packages and a private configuration backup for the
-[documented rollback](releases/1.0.0-30.md#upgrade-and-rollback).
+[documented rollback](releases/1.0.0-31.md#downloads-upgrade-and-rollback).
 Main may contain prospective maintenance documentation without
 changing the source or assets attached to an existing tag. Use an explicit new
 release tag and mark the intended stable release as GitHub Latest.

@@ -1,7 +1,15 @@
 # Hardware validation for the next release
 
 This is a procedure and blank evidence checklist, not completed validation.
-The latest published baseline is [revision 1.0.0-30](releases/1.0.0-30.md).
+The latest published baseline is [revision 1.0.0-31](releases/1.0.0-31.md).
+Its runtime matches the tested `~fix7` candidate; the
+[development fault trials](releases/1.0.0-31-development.md) and
+[installed 2.4 GHz record](evidence/physical-installed-2.4ghz-2026-10-19.json)
+retain their exact packages and failures. Final packaging validation is separate.
+Two Android 14 clients and one AP driver do not complete this checklist; native
+NetworkManager remains experimental.
+
+The preceding [revision 1.0.0-30](releases/1.0.0-30.md) retains its own evidence.
 Its candidate completed four USB-controlled DHCP/DNS/HTTPS and cleanup cycles
 on one Android 15 phone and Intel CNVi/iwlwifi adapter, plus six containerized
 GNOME 51/XFCE 4.20 startup sessions. See the
@@ -16,9 +24,10 @@ earlier [development results](networkmanager-live-validation.md) retain their
 original builds, hashes, failures, and limits. Do not copy their passes, or the
 revision-30 candidate passes, into a new candidate's checklist.
 
-The unpublished [19 October development trial](releases/1.0.0-31-development.md)
+The [19 October development trial](releases/1.0.0-31-development.md)
 records two failed candidates and the final limited physical pass after their
-fixes. It does not complete this release checklist or change the published baseline.
+fixes. It does not complete this release checklist; its tested runtime was
+subsequently retained for revision 31.
 
 ## Candidate and test bench
 

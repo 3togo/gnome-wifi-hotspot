@@ -1,3 +1,29 @@
+# Wi-Fi Relay 1.0.0-31 — daemon recovery and cleanup
+
+**[Download bundle.deb — recommended](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-31/bundle.deb)**
+
+Revision 31 fixes privileged-operation serialization, startup cancellation,
+crash recovery, resource ownership checks, physical adapter restoration, stale
+asynchronous settings loads, and offline package lifecycle hooks. The final
+runtime matches the physically tested `1.0.0-31~fix7` candidate.
+
+Ubuntu 26.10 remains the validated distribution. create_ap is the stable default;
+native NetworkManager AP+STA and downstream integration patches remain experimental.
+Physical checks used two Android 14 clients and one Intel/iwlwifi AP driver,
+including a permanent 2.4 GHz installation check. Other drivers and client OSes,
+reboot/suspend fault trials, the full ten-cycle matrix, and extended soaks remain
+untested for this revision. The host used a downstream NetworkManager build;
+stock networking is covered by automated CI rather than this physical cohort.
+Earlier failed candidates and strict NXDOMAIN failures with matching upstream
+NOERROR/NODATA responses remain recorded.
+
+Stop sharing before upgrading. Install either the bundle or matching separate
+packages; configuration and credentials are preserved. Downloads include source
+artifacts, checksums and validation provenance; artifacts are unsigned. See the
+[complete release notes and rollback instructions](docs/releases/1.0.0-31.md).
+
+---
+
 # Wi-Fi Relay 1.0.0-30 — all-in-one bundle
 
 **[Download bundle.deb — recommended](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/bundle.deb)**

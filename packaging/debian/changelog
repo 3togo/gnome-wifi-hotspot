@@ -1,3 +1,14 @@
+gnome-wifi-hotspot (1.0.0-31) stonking; urgency=medium
+
+  * Serialize privileged operations and cancel hotspot startup promptly.
+  * Recover owned processes, interfaces and firewall rules after crashes.
+  * Restore physical adapter management and guard process identity before signals.
+  * Defer AP stop signals during mutex bookkeeping to avoid cleanup deadlocks.
+  * Ignore stale asynchronous settings loads and support offline package hooks.
+  * Retain failed and passing physical trials and document release coverage limits.
+
+ -- Wi-Fi Relay <3togo@users.noreply.github.com>  Mon, 19 Oct 2026 14:20:53 +0000
+
 gnome-wifi-hotspot (1.0.0-30) stonking; urgency=medium
 
   * Publish the all-in-one bundle as the preferred release download.

@@ -1,12 +1,12 @@
-# Wi-Fi Relay revision 30: community announcement and PPA assessment
+# Wi-Fi Relay revision 31: community announcement and PPA assessment
 
 Assessment updated: 19 October 2026; originally assessed on 7 October 2026.
-Status: revision 30 is published on GitHub; a community announcement and PPA
+Status: revision 31 is the GitHub release baseline; a community announcement and PPA
 upload remain pending decisions.
 
 ## Recommendation
 
-Use the published [revision 1.0.0-30](releases/1.0.0-30.md) for a community call
+Use [revision 1.0.0-31](releases/1.0.0-31.md) for a community call
 for testers. The recommended download is the all-in-one `bundle.deb`; matching
 separate packages remain available. Ubuntu 26.10 is the validated distribution,
 create_ap is the stable default, and native NetworkManager AP+STA and downstream
@@ -17,14 +17,37 @@ Recommended sequence:
 
 1. Agree the audience, feedback channel, target Ubuntu versions, and maintenance
    commitment.
-2. If approved, announce revision 30 with release, user-guide, and rollback links.
+2. If approved, announce revision 31 with release, user-guide, and rollback links.
 3. Use the existing source packaging to prepare signed uploads and validate a
    testing PPA.
 4. Keep replacement NetworkManager and desktop packages separately opt-in.
 
 No forum post or PPA upload is authorized by this document.
 
-## Revision-30 evidence supporting a testing announcement
+## Revision-31 evidence supporting a testing announcement
+
+- 383 Python tests, Node tray checks, service integration, real GTK widgets,
+  extracted-package checks, sanitized applet and isolated GNOME Shell checks.
+- Debian source/binary builds and disposable-container package lifecycle checks,
+  including split/bundle transitions, secure defaults and credential preservation.
+- Two Android 14 clients on one Intel/iwlwifi AP driver: physical and virtual AP
+  traffic, verified HTTPS, invalid-TLS rejection, six startup cancellation timings
+  and shell-crash cleanup on the `~fix7` candidate. Final runtime payloads match
+  that candidate; final packaging checks identify the release source separately.
+- A separate installed `~fix7` cohort verified 2.4 GHz channel 12 with both
+  clients and Ethernet egress. One administrator session covered installation,
+  retries and audit; device power settings and temporary helpers were restored.
+
+See [release scope and rollback](releases/1.0.0-31.md),
+[development trial](releases/1.0.0-31-development.md),
+[physical fault evidence](evidence/physical-wifi-daemon-fixes-2026-10-19.json),
+[installed 2.4 GHz evidence](evidence/physical-installed-2.4ghz-2026-10-19.json),
+and the release's `VALIDATION.json` and `SHA256SUMS`.
+
+## Historical revision-30 evidence
+
+The following results retain their original revision-30 build and environment;
+they are not new revision-31 tests.
 
 - Candidate validation ran 344 Python tests with one bench-dependent skip;
   tray, real GTK widgets, service integration, 17 sanitized applet cases, and
@@ -55,21 +78,22 @@ Detailed local references:
 
 ## Limits to disclose
 
-Revision-30 candidate traffic coverage is one client and one Wi-Fi driver; four
-cycles do not complete the ten-cycle hardware matrix. Container logins establish
-autostart behavior, but host GDM, interactive password authentication, physical
-seats, and hardware graphics remain untested. Other client/driver cohorts,
-multi-adapter routing, suspend/reboot fault trials, extended multi-client soaks,
-natural roaming, distribution integration upgrades, and RPM installation still
-need coverage.
+Revision-31 physical traffic used two Android 14 clients and one AP driver on a
+host with downstream NetworkManager `1.58.1-1ubuntu3+relay1+dev3`; stock networking
+is exercised in automated Ubuntu 26.10 CI, not this physical cohort. Strict
+NXDOMAIN failures and same-query upstream NOERROR/NODATA comparisons remain
+separate. Channel 12 requires compatible clients and local regulatory permission.
 
-Earlier two-client, recovery, and suspend results apply to their recorded builds;
-they do not fill gaps in the revision-30 matrix. See the
-[hardware checklist](release-hardware-validation.md) for the next candidate.
+The ten-cycle matrix, other AP drivers and client OS families, natural roaming,
+multi-adapter failover, reboot/suspend fault trials, native-backend physical
+recovery and extended soaks remain incomplete. Administrator fault injection
+does not establish physical desktop-user authorization. Host GDM, physical
+seats, hardware graphics, RPM installation and other distributions need coverage.
 
-Revision 30 is the stable release marked Latest on GitHub. This does not establish
-support for untested hardware, Ubuntu endorsement, or an upstream NetworkManager
-merge. Release artifacts are unsigned; a signed APT repository is a separate step.
+Earlier desktop-login, recovery, transfer and suspend results apply to their
+recorded builds; they do not fill gaps in the current matrix. Keep native
+NetworkManager and integration patches experimental. GitHub distribution does
+not establish Ubuntu endorsement, an upstream merge, or signed APT delivery.
 
 ## Historical Beta-2 evidence, 7 October 2026
 
@@ -87,7 +111,7 @@ Earlier combined upgrade/restart trials lost sharing intent. A later combined ru
 passed after desktop controls were restarted, but the cancellation source was not
 conclusively identified. This remains a historical compatibility observation,
 not a proven root-cause fix or a revision-30 recovery result. Beta 2 was marked
-Latest at the time; revision 30 now supersedes that distribution baseline.
+Latest at the time; revision 31 now supersedes that distribution baseline.
 
 ## Community announcement
 
@@ -98,7 +122,7 @@ Confirm the category's posting guidance before submitting.
 Frame the post as an introduction and call for testers. Include:
 
 - The purpose: concurrent Wi-Fi hotspot sharing through supported adapters.
-- Revision-30 bundle and separate downloads, the user guide, and setup/rollback
+- Revision-31 bundle and separate downloads, the user guide, and setup/rollback
   instructions.
 - The distinction between Relay's GNOME extension, standalone desktop tray,
   optional XFCE applet patch, and experimental NetworkManager backend.
@@ -113,7 +137,7 @@ community testing announcement.
 
 - `packaging/build-source.py` generates unsigned Debian quilt source artifacts
   with declared build dependencies; `--binary` also builds packages and runs
-  package build tests. Revision-30 source artifacts are published with the release.
+  package build tests. Revision-31 source artifacts accompany the release.
 - Source and direct binary builds share payload templates for the standalone app,
   GNOME controls, tray controls, and all-in-one bundle. Source exports rebuild
   without Git metadata; archive timestamp normalization and reproducibility
@@ -159,5 +183,5 @@ Primary references:
 - Keep patched applet distribution limited to separate GitHub downloads, or plan
   a separately opt-in testing archive?
 
-Until these decisions are made, retain the current GitHub revision-30 distribution
+Until these decisions are made, retain the current GitHub revision-31 distribution
 and leave the community announcement and PPA unpublished.

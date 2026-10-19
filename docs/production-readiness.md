@@ -4,40 +4,40 @@ This refactor preserves the native NetworkManager and create_ap backends and the
 existing desktop controls. It improves the application around those backends;
 the native AP+STA integration remains a hardware-dependent prototype.
 
-## Current release baseline: revision 30
+## Current release baseline: revision 31
 
-The stable release is [v1.0.0-30](releases/1.0.0-30.md), published on
-15 October 2026 for Ubuntu 26.10. The recommended `bundle.deb` includes settings,
-the daemon, GNOME controls, and tray controls; matching separate packages remain
-available. Install either layout. GNOME Shell is optional, create_ap is the stable
-default, and native NetworkManager AP+STA remains experimental.
+[v1.0.0-31](releases/1.0.0-31.md) is the 19 October 2026 reliability release
+for Ubuntu 26.10. The recommended `bundle.deb` contains the daemon, settings,
+GNOME and tray controls; matching separate packages remain available. GNOME
+Shell is optional. create_ap remains the stable default and native
+NetworkManager AP+STA remains experimental.
 
-The [candidate validation record](releases/1.0.0-30-rc1.md) records 344 Python
-tests with one bench-dependent skip, plus passing tray, GTK widget, service
-integration, 17 sanitized applet cases, and isolated GNOME Shell checks.
-Disposable-container package checks covered legacy and split upgrades,
-split-to-bundle replacement, bundle upgrade, switching back to separate packages,
-removal, purge, and fresh installation, including credential preservation.
-The [release-source CI](https://github.com/3togo/gnome-wifi-hotspot/actions/runs/38684574384)
-also passed on 15 October 2026.
+Final source validation covers 383 Python tests, Node tray checks, private
+D-Bus and GTK checks, extracted packages, sanitized applet checks and isolated
+GNOME Shell checks. Source/binary builds and disposable-container package
+lifecycle checks cover installation, upgrades, split/bundle transitions,
+removal, purge, credential preservation and secure fresh-install defaults.
+The release asset `VALIDATION.json` identifies final source, checks, CI and
+package hashes; the final runtime matches the physically tested `~fix7` packages.
 
-[USB-controlled traffic evidence](evidence/physical-usb-1.0.0-30-rc1.json) records
-four DHCP/DNS/HTTPS and cleanup cycles on one Android 15 phone and Intel
-CNVi/iwlwifi adapter with stock NetworkManager, plus rejection of invalid TLS.
-An earlier connection timeout and independently reproduced upstream negative-DNS
-variation remain recorded. The
-[desktop-login evidence](evidence/desktop-login-container-1.0.0-30-rc1.json)
-records six distinct LightDM PAM/logind sessions with startup enabled, disabled,
-and re-enabled on GNOME 51 and XFCE 4.20 in a software-rendered container.
-Host GDM, interactive password authentication, physical-seat, and hardware
-graphics behavior were not exercised.
+The [development fault trials](releases/1.0.0-31-development.md) retain earlier
+failed candidates and the successful `~fix7` physical/virtual AP, two-client
+traffic, six cancellation timings and shell-crash cleanup results. A separate
+[installed 2.4 GHz record](evidence/physical-installed-2.4ghz-2026-10-19.json)
+verifies channel 12 with the Android 14 phone and tablet and Ethernet egress.
+The physical host used a downstream NetworkManager build, not stock networking.
+Strict NXDOMAIN failures with matching upstream NOERROR/NODATA responses remain
+recorded. Other drivers/client OSes, reboot/suspend, native-backend physical
+recovery, the ten-cycle matrix and extended soaks remain untested for this build.
 
-The release notes record matching candidate runtime files, with final changes
-limited to version metadata and release documentation. Candidate evidence keeps
-its original version and hashes; it is not rewritten as a new revision-30 run.
-See the [current release notes](releases/1.0.0-30.md) for upgrade and rollback,
-and [distribution readiness](distribution-readiness.md) for completed packaging
-work and remaining announcement/PPA decisions.
+Historical revision-30 [candidate](releases/1.0.0-30-rc1.md),
+[USB traffic](evidence/physical-usb-1.0.0-30-rc1.json),
+[container login](evidence/desktop-login-container-1.0.0-30-rc1.json) and
+[release-source CI](https://github.com/3togo/gnome-wifi-hotspot/actions/runs/38684574384)
+records retain their original build and scope. They are not reclassified as new
+revision-31 results. See [release notes](releases/1.0.0-31.md) for upgrade,
+rollback and testing limits, and [distribution readiness](distribution-readiness.md)
+for announcement/PPA decisions.
 
 ## Runtime boundaries
 
@@ -200,7 +200,7 @@ not the previously published package payloads.
 records two Android 14 clients on Intel AX200, Wi-Fi-only egress, restart/rejoin,
 concurrent transfers, and cleanup. Earlier
 [live validation](networkmanager-live-validation.md) retains its own recovery and
-suspend results. These dated records do not complete the revision-30 hardware
+suspend results. These dated records do not complete the revision-31 hardware
 matrix or certify a newly built candidate.
 
 ## Supported scope and remaining validation
@@ -218,7 +218,7 @@ native-core, nm-applet, and GNOME Settings patches against their exact supported
 package versions. Existing configurations may retain the old factory password;
 users should choose a strong password before broadcasting.
 
-Revision-30 traffic coverage does not complete the ten-cycle matrix, other
+Revision-31 traffic coverage does not complete the ten-cycle matrix, other
 client/driver cohorts, multi-adapter routing, suspend/reboot fault trials, or
 extended multi-client soaks. RPM installation and physical interactive GNOME
 coverage also require platform validation. Headless GNOME Shell 51 loading and

@@ -64,6 +64,10 @@ install_file docs/releases/1.0.0-28.md usr/share/doc/gnome-wifi-hotspot/releases
 install_file docs/releases/1.0.0-29.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-29.md 0644
 install_file docs/releases/1.0.0-30-rc1.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-30-rc1.md 0644
 install_file docs/releases/1.0.0-30.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-30.md 0644
+install_file docs/releases/1.0.0-31.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-31.md 0644
+install_file docs/releases/1.0.0-31-development.md usr/share/doc/gnome-wifi-hotspot/releases/1.0.0-31-development.md 0644
+install_file docs/evidence/physical-wifi-daemon-fixes-2026-10-19.json usr/share/doc/gnome-wifi-hotspot/evidence/physical-wifi-daemon-fixes-2026-10-19.json 0644
+install_file docs/evidence/physical-installed-2.4ghz-2026-10-19.json usr/share/doc/gnome-wifi-hotspot/evidence/physical-installed-2.4ghz-2026-10-19.json 0644
 install_file docs/networkmanager-prototype.md usr/share/doc/gnome-wifi-hotspot/networkmanager-prototype.md 0644
 install_file docs/networkmanager-upstream-proposal.md usr/share/doc/gnome-wifi-hotspot/networkmanager-upstream-proposal.md 0644
 
