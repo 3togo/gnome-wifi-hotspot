@@ -45,6 +45,11 @@ network settings before those cases. Do not run destructive package lifecycle
 tests on an everyday workstation. Back up credentials privately using the
 [rollback procedure](releases/1.0.0-30.md#upgrade-and-rollback).
 
+Prepare privileged test and restoration scripts before authentication, then use
+[one bounded administrator session](../tools/PHYSICAL_TESTING.md) for trials,
+rebuild retries and the final audit. Keep ordinary builds and ADB in the user
+session. Do not ask the operator to authenticate separately for every attempt.
+
 Keep raw evidence in an ignored, owner-only local directory. Public reports must
 exclude passwords, credential-bearing configuration, SSIDs, MAC addresses,
 connection UUIDs, and identifying client details. Record chipset and software
