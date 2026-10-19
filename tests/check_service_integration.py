@@ -1,7 +1,9 @@
 """Real desktop transport and production daemon authorization on a private bus."""
 import json
+import threading
 import unittest
 from private_service import PrivateService, ServiceClient, wait_until, GLib, Gio, BUS_NAME, POLKIT_NAME
+from daemon.operations import Operations
 
 
 class ServiceIntegrationTests(unittest.TestCase):
@@ -35,6 +37,33 @@ class ServiceIntegrationTests(unittest.TestCase):
         self.assertEqual(subject, ('system-bus-name', {'name': self.client.proxy.get_connection().get_unique_name()}))
         self.assertEqual(action, BUS_NAME + '.manage')
         self.assertEqual(flags, 1)
+
+    def test_authorized_stop_cancels_slow_start_without_blocking_status(self):
+        operations = Operations()
+        self.addCleanup(operations.close)
+        self.service.daemon._operations = operations
+        self.service.daemon._status_snapshot = {'active': False}
+        started = threading.Event()
+
+        def slow_start():
+            started.set()
+            if not operations.cancelled.wait(2):
+                raise AssertionError('Authorized Stop did not cancel Start')
+            return json.dumps({'success': False, 'error': 'cancelled'})
+
+        self.service.daemon.method_start = slow_start
+        starts = []
+        self.client.call('Start', lambda *args: starts.append(args), timeout=3000)
+        wait_until(started.is_set)
+        status, error = self.call('GetStatus')
+        self.assertIsNone(error)
+        self.assertEqual(status['state'], 'connecting')
+        stopped, error = self.call('Stop', timeout=3000)
+        self.assertTrue(stopped)
+        self.assertIsNone(error)
+        wait_until(lambda: starts and not operations.busy)
+        self.assertFalse(starts[0][0]['success'])
+        self.assertEqual(len(self.service.authorizations), 2)
 
     def test_denied_mutations_never_change_configuration_or_start_hardware(self):
         original = self.service.config_path.read_bytes()

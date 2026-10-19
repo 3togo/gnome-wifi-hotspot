@@ -143,6 +143,8 @@ install:
 	install -m 0755 daemon/wifi-hotspot-daemon.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/create_ap $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0755 daemon/nm_backend.py $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -m 0755 daemon/legacy_runtime.py $(PREFIX)/libexec/wifi-hotspot-daemon/
+	install -m 0644 daemon/operations.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -m 0644 daemon/configuration.py daemon/nm_client.py $(PREFIX)/libexec/wifi-hotspot-daemon/
 	install -d -m 0755 $(PREFIX)/libexec/wifi-hotspot-daemon/tools
 	install -m 0755 tools/nm_ap_sta_probe.py $(PREFIX)/libexec/wifi-hotspot-daemon/tools/

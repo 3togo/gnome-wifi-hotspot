@@ -44,6 +44,8 @@ install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon
 install -m 0755 daemon/wifi-hotspot-daemon.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/create_ap %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0755 daemon/nm_backend.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
+install -m 0755 daemon/legacy_runtime.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
+install -m 0644 daemon/operations.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -m 0644 daemon/configuration.py daemon/nm_client.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/
 install -d -m 0755 %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools
 install -m 0755 tools/nm_ap_sta_probe.py %{buildroot}%{_libexecdir}/wifi-hotspot-daemon/tools/

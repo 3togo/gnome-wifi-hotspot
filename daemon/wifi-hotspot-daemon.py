@@ -16,6 +16,7 @@ import importlib.util
 import signal
 import select
 import stat
+import time
 from pathlib import Path
 import gi
 
@@ -33,6 +34,12 @@ try:
     from configuration import CONFIG_DEFAULTS, CONFIG_FLAGS, validate_config
 except ModuleNotFoundError:
     from daemon.configuration import CONFIG_DEFAULTS, CONFIG_FLAGS, validate_config
+try:
+    import legacy_runtime
+    from operations import Operations
+except ModuleNotFoundError:
+    from daemon import legacy_runtime
+    from daemon.operations import Operations
 
 # Config file paths
 SYSTEM_CONFIG = "/etc/wifi-hotspot.conf"
@@ -200,14 +207,19 @@ class WifiHotspotDaemon:
     def __init__(self, connection):
         self.connection = connection
         self.create_ap_bin = find_create_ap()
+        self._legacy_process = None
         self.cached_clients = []
         self.cached_status_active = False
         self.is_starting = False
+        self._operations = Operations()
+        self._status_snapshot = {"active": False, "client_count": 0}
+        self._stopping = False
         backend_spec = importlib.util.spec_from_file_location(
             "relay_nm_backend", Path(__file__).resolve().with_name("nm_backend.py"))
         backend_module = importlib.util.module_from_spec(backend_spec)
         backend_spec.loader.exec_module(backend_module)
-        self.nm_backend = backend_module.Backend()
+        self.nm_backend = backend_module.Backend(recover_on_init=False)
+        self.nm_backend.cancelled = self._operations.cancelled.is_set
         print(f"[*] WifiHotspotDaemon initialized. Using create_ap: {self.create_ap_bin}")
 
         # Subscribe to NetworkManager WirelessEnabled property changes
@@ -227,7 +239,7 @@ class WifiHotspotDaemon:
             print(f"[!] Warning: Could not subscribe to NM signals: {e}")
 
         # Periodic check for status, Wi-Fi radio & connected clients (every 2s)
-        GLib.timeout_add_seconds(2, self._periodic_poll)
+        GLib.timeout_add_seconds(2, self._queue_poll)
         self._suspending = False
         self.connection.signal_subscribe(
             "org.freedesktop.login1", "org.freedesktop.login1.Manager",
@@ -237,10 +249,15 @@ class WifiHotspotDaemon:
     def _on_prepare_for_sleep(self, connection, sender_name, object_path, interface_name, signal_name, parameters, user_data):
         sleeping = bool(parameters.unpack()[0])
         self._suspending = sleeping
-        self.nm_backend.prepare_for_sleep(sleeping)
+        if getattr(self, '_operations', None) is not None:
+            self._operations.submit(lambda: self.nm_backend.prepare_for_sleep(sleeping),
+                                   self._background_finished, urgent=True, cancel=sleeping)
+        else:
+            self.nm_backend.prepare_for_sleep(sleeping)
 
     def _on_nm_properties_changed(self, connection, sender_name, object_path, interface_name, signal_name, parameters, user_data):
-        if self.is_starting:
+        operations = getattr(self, '_operations', None)
+        if self.is_starting and operations is None:
             return
         try:
             interface, changed_props, _ = parameters.unpack()
@@ -248,6 +265,10 @@ class WifiHotspotDaemon:
                 wireless_enabled = bool(changed_props["WirelessEnabled"])
                 print(f"[*] NetworkManager WirelessEnabled changed: {wireless_enabled}")
                 if not wireless_enabled and not getattr(self, "_suspending", False):
+                    if operations is not None:
+                        operations.submit(self.method_stop, self._background_finished,
+                                          urgent=True, cancel=True)
+                        return
                     status = self._get_status_dict()
                     if status["active"] or status.get("desired_active"):
                         print("[*] Wi-Fi turned off. Automatically stopping hotspot...", flush=True)
@@ -256,6 +277,8 @@ class WifiHotspotDaemon:
             print(f"[!] Error handling NM property change: {e}")
 
     def _emit_signal(self, signal_name, json_str):
+        if signal_name == "StatusChanged":
+            self._status_snapshot = json.loads(json_str)
         try:
             self.connection.emit_signal(
                 None,
@@ -267,12 +290,23 @@ class WifiHotspotDaemon:
         except Exception as e:
             print(f"[!] Error emitting signal {signal_name}: {e}")
 
+    def _background_finished(self, value, error):
+        if error:
+            print(f"[!] Background hotspot operation failed: {error}", flush=True)
+
+    def _queue_poll(self):
+        self._operations.submit(self._periodic_poll, self._background_finished)
+        return GLib.SOURCE_CONTINUE
+
     def _periodic_poll(self):
         try:
             config = self._read_config_dict()
+            if self._owned_create_ap_pid() is None:
+                self._recover_legacy()
             if config.get("BACKEND") == "networkmanager":
                 self.nm_backend.poll(config)
             status = self._get_status_dict()
+            self._status_snapshot = dict(status)
             if status.get("error") and status["error"] != getattr(self, "_last_nm_error", None):
                 self._last_nm_error = status["error"]
                 self._emit_signal("UserActionRequired", json.dumps({
@@ -320,21 +354,67 @@ class WifiHotspotDaemon:
 
     def _run_cmd(self, args, timeout=10):
         try:
-            res = subprocess.run(
-                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout, env={**os.environ, "LC_ALL": "C"}
-            )
-            return res.returncode, res.stdout.strip(), res.stderr.strip()
+            self._check_cancelled()
+            with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  text=True, env={**os.environ, "LC_ALL": "C"}) as process:
+                deadline = time.monotonic() + timeout
+                while True:
+                    try:
+                        self._check_cancelled()
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise TimeoutError(f'{args[0]} timed out')
+                        out, err = process.communicate(timeout=min(.2, remaining))
+                        return process.returncode, out.strip(), err.strip()
+                    except subprocess.TimeoutExpired:
+                        continue
+                    except Exception:
+                        process.terminate()
+                        try:
+                            process.communicate(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.communicate()
+                        raise
         except Exception as e:
             return -1, "", str(e)
+
+    def _check_cancelled(self):
+        operations = getattr(self, '_operations', None)
+        if operations is not None and operations.cancelled.is_set() and not self._stopping:
+            raise RuntimeError('Hotspot operation cancelled.')
+
+    def _recover_legacy(self):
+        try:
+            legacy_runtime.recover_owned(CREATE_AP_PIDFILE, self.create_ap_bin)
+        except Exception as exc:
+            self._legacy_error = str(exc)
+            self._emit_signal('StatusChanged', json.dumps({
+                **getattr(self, '_status_snapshot', {'active': False}), 'error': str(exc)}))
+            raise
+        self._legacy_error = None
+
+    def request_shutdown(self, finished):
+        def stopped(value, error):
+            self._background_finished(value, error)
+            self._shutdown_complete = True
+            self._operations.close()
+            finished()
+        self._operations.submit(self.method_stop, stopped, urgent=True, cancel=True)
 
     def _owned_create_ap_pid(self):
         """Never adopt or stop a separately launched hotspot or a reused PID."""
         try:
-            with CREATE_AP_PIDFILE.open("rb") as stream:
-                value = stream.read(32).strip()
-            if not re.fullmatch(rb"[1-9][0-9]{0,9}", value):
-                return None
-            pid = int(value)
+            child = getattr(self, '_legacy_process', None)
+            if child is not None and child.poll() is None:
+                # Cancellation can arrive before the shell publishes its PID.
+                pid = child.pid
+            else:
+                with CREATE_AP_PIDFILE.open("rb") as stream:
+                    value = stream.read(32).strip()
+                if not re.fullmatch(rb"[1-9][0-9]{0,9}", value):
+                    return None
+                pid = int(value)
             process = PROC_DIRECTORY / str(pid)
             if process.stat().st_uid != os.geteuid():
                 return None
@@ -347,6 +427,33 @@ class WifiHotspotDaemon:
             return pid
         except (OSError, ValueError, IndexError, UnicodeError):
             return None
+
+    def _launch_create_ap(self, args, log_path):
+        """Own the shell directly, including the interval before PID publication."""
+        self._check_cancelled()
+        with open(log_path, 'ab') as output:
+            self._legacy_process = subprocess.Popen(
+                args, stdout=output, stderr=subprocess.STDOUT, start_new_session=True,
+                env={**os.environ, 'LC_ALL': 'C', 'RUNNING_AS_DAEMON': '1'})
+        return 0, '', ''
+
+    def _signal_create_ap_stop(self, pid):
+        # --stop searches the running-instance list. A starting shell is not
+        # listed yet, so that command can silently miss an authorized Stop.
+        try:
+            identity = legacy_runtime.process_identity(pid)
+            descriptor = os.pidfd_open(pid)
+        except (FileNotFoundError, ProcessLookupError):
+            return False
+        try:
+            if self._owned_create_ap_pid() == pid and legacy_runtime.same_process(identity):
+                signal.pidfd_send_signal(descriptor, signal.SIGUSR1)
+                return True
+        except ProcessLookupError:
+            pass
+        finally:
+            os.close(descriptor)
+        return False
 
     def _reap_stale_hostapd(self):
         """Release only orphaned hostapd processes from Relay's private runtime."""
@@ -417,6 +524,7 @@ class WifiHotspotDaemon:
             "ssid": "",
             "band": "",
             "client_count": 0,
+            **({'error': self._legacy_error} if getattr(self, '_legacy_error', None) else {}),
         }
 
     def _get_clients_list(self, iface):
@@ -779,6 +887,45 @@ class WifiHotspotDaemon:
         self._authorize(sender, authorized)
 
     def _dispatch_method_call(self, method_name, parameters, invocation):
+        operations = getattr(self, '_operations', None)
+        if operations is None:
+            return self._dispatch_sync(method_name, parameters, invocation)
+        if method_name in {'GetStatus', 'GetClients'}:
+            if method_name == 'GetStatus':
+                value = dict(self._status_snapshot)
+                if operations.busy and operations.cancelled.is_set():
+                    value['state'] = 'stopping'
+            else:
+                value = list(self.cached_clients)
+            invocation.return_value(GLib.Variant('(s)', (json.dumps(value),)))
+            return
+
+        class Reply:
+            def return_value(self, value):
+                self.result = ('value', value)
+
+            def return_error_literal(self, *error):
+                self.result = ('error', error)
+
+        def work():
+            reply = Reply()
+            self._dispatch_sync(method_name, parameters, reply)
+            return reply.result
+
+        def completed(reply, error):
+            if error:
+                invocation.return_error_literal(Gio.DBusError.quark(), Gio.DBusError.FAILED, str(error))
+            elif reply[0] == 'value':
+                invocation.return_value(reply[1])
+            else:
+                invocation.return_error_literal(*reply[1])
+
+        if not operations.submit(work, completed, urgent=method_name == 'Stop', cancel=method_name == 'Stop',
+                                 defer=method_name in {'GetConfig', 'GetInterfaces', 'GetCapabilities', 'SetConfig'}):
+            invocation.return_error_literal(Gio.DBusError.quark(), Gio.DBusError.FAILED,
+                                            'Another hotspot operation is in progress; retry shortly.')
+
+    def _dispatch_sync(self, method_name, parameters, invocation):
         transition = {"Start": "connecting", "Stop": "stopping",
                       "SwitchBandAndReconnect": "connecting"}.get(method_name)
         try:
@@ -856,6 +1003,8 @@ class WifiHotspotDaemon:
     def method_start(self):
         self.is_starting = True
         try:
+            self._check_cancelled()
+            self._recover_legacy()
             status = self._get_status_dict()
             if status["active"]:
                 return json.dumps({"success": True, "message": "Already running", "active": True})
@@ -876,6 +1025,7 @@ class WifiHotspotDaemon:
             except RuntimeError as exc:
                 return json.dumps({"success": False, "error": str(exc)})
             caps = self.get_capabilities()
+            self._check_cancelled()
             req_band = config.get("FREQ_BAND", "auto")
             if req_band not in ("auto", "2.4", "5"):
                 return json.dumps({"success": False, "error": "Unsupported hotspot band."})
@@ -921,14 +1071,16 @@ class WifiHotspotDaemon:
 
             # 4. Start create_ap process with logfile
             config_path = get_config_path(for_write=False)
+            self._check_cancelled()
             log_path = prepare_startup_log()
             cmd = [self.create_ap_bin, "--config", config_path, "--logfile", log_path, "--pidfile", str(CREATE_AP_PIDFILE), "--daemon", "--freq-band", resolved_band, "-c", str(channel)]
             print(f"[*] Starting hotspot with: {' '.join(cmd)}")
-            code, out, err = self._run_cmd(cmd)
+            code, out, err = self._launch_create_ap(cmd, log_path)
 
             # The shell exists before DHCP and hostapd start. Wait for its
             # readiness acknowledgement, rather than treating its PID as an AP.
             for _ in range(40) if code == 0 else ():
+                self._check_cancelled()
                 GLib.usleep(500000) # 0.5s
                 status = self._get_status_dict()
                 if status["active"]:
@@ -964,6 +1116,13 @@ class WifiHotspotDaemon:
             self.is_starting = False
 
     def method_stop(self):
+        self._stopping = True
+        try:
+            return self._stop_backends()
+        finally:
+            self._stopping = False
+
+    def _stop_backends(self):
         nm = getattr(self, "nm_backend", None)
         if nm is not None and (nm.process or self._read_config_dict().get("BACKEND", "create_ap") == "networkmanager"):
             result = nm.stop()
@@ -974,22 +1133,32 @@ class WifiHotspotDaemon:
             return result
         pid = self._owned_create_ap_pid()
         if pid is None:
+            self._recover_legacy()
+            self._reap_stale_hostapd()
             return True
 
-        iface_to_stop = str(pid)
-        print(f"[*] Stopping hotspot for: {iface_to_stop}")
-        code, out, err = self._run_cmd([self.create_ap_bin, "--stop", iface_to_stop])
+        print(f"[*] Stopping hotspot for: {pid}")
+        signalled = self._signal_create_ap_stop(pid)
 
-        # Wait up to 4 seconds for status to become inactive
-        for _ in range(8):
-            GLib.usleep(500000)
-            new_status = self._get_status_dict()
-            if self._owned_create_ap_pid() is None:
+        # Cleanup may wait for child termination and NetworkManager. Do not
+        # contend on create_ap's global mutex by polling --list-running here.
+        # This wait runs on the operation worker, leaving D-Bus responsive.
+        for _ in range(300):
+            GLib.usleep(100000)
+            remaining = self._owned_create_ap_pid()
+            if remaining is None:
                 break
+            if not signalled:
+                # The new child may have exec'd between identity checks.
+                signalled = self._signal_create_ap_stop(remaining)
+        new_status = self._get_status_dict()
         self.cached_clients = []
         self._emit_signal("StatusChanged", json.dumps(new_status))
         self._emit_signal("ClientsChanged", json.dumps([]))
-        return self._owned_create_ap_pid() is None
+        if self._owned_create_ap_pid() is not None:
+            return False
+        self._recover_legacy()
+        return True
 
     def method_get_interfaces(self):
         wifi_ifaces = []
@@ -1021,6 +1190,8 @@ class WifiHotspotDaemon:
 
 
 _daemon_instance = None
+_main_loop = None
+_exit_status = 0
 
 
 def on_bus_acquired(connection, name):
@@ -1046,13 +1217,19 @@ def on_name_acquired(connection, name):
 
 
 def on_name_lost(connection, name):
+    global _exit_status
+    _exit_status = 1
     print(f"[!] Name lost on D-Bus: {name}. Exiting.")
     if _daemon_instance:
-        _daemon_instance.method_stop()
-    sys.exit(1)
+        _daemon_instance.request_shutdown(_main_loop.quit)
+    elif _main_loop:
+        _main_loop.quit()
 
 
 def main():
+    global _main_loop
+    loop = GLib.MainLoop()
+    _main_loop = loop
     Gio.bus_own_name(
         Gio.BusType.SYSTEM,
         BUS_NAME,
@@ -1062,11 +1239,11 @@ def main():
         on_name_lost,
     )
 
-    loop = GLib.MainLoop()
     def shutdown(signum, frame):
         if _daemon_instance:
-            _daemon_instance.method_stop()
-        loop.quit()
+            _daemon_instance.request_shutdown(loop.quit)
+        else:
+            loop.quit()
     signal.signal(signal.SIGTERM, shutdown)
     try:
         print("[*] WifiHotspot D-Bus service loop running...")
@@ -1076,8 +1253,15 @@ def main():
         loop.quit()
     finally:
         if _daemon_instance:
-            _daemon_instance.method_stop()
+            if not getattr(_daemon_instance, '_shutdown_complete', False):
+                operations = _daemon_instance._operations
+                operations.cancelled.set()
+                try:
+                    operations.executor.submit(_daemon_instance.method_stop).result(timeout=45)
+                finally:
+                    operations.close()
+    return _exit_status
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

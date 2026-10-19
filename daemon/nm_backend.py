@@ -11,6 +11,10 @@ import subprocess
 import sys
 import time
 import uuid
+try:
+    import legacy_runtime
+except ModuleNotFoundError:
+    from daemon import legacy_runtime
 
 ROOT = Path(__file__).resolve().parent
 probe_path = ROOT / "tools/nm_ap_sta_probe.py"
@@ -117,8 +121,21 @@ def recover():
     STATE_FILE.unlink()
 
 
+def recover_all():
+    """Service teardown attempts both backends even if one recovery fails."""
+    errors = []
+    for cleanup in (recover, lambda: legacy_runtime.recover_owned(
+            Path('/run/wifi-relay/create-ap.pid'), ROOT / 'create_ap')):
+        try:
+            cleanup()
+        except Exception as exc:
+            errors.append(str(exc))
+    if errors:
+        raise RuntimeError('; '.join(errors))
+
+
 class Backend:
-    def __init__(self):
+    def __init__(self, *, recover_on_init=True):
         self.process = None
         self.buffer = b""
         self._protocol_error = False
@@ -132,11 +149,13 @@ class Backend:
         self._candidate = None
         self._candidate_since = 0
         self._sleeping = False
+        self.cancelled = lambda: False
         self.status = {"active": False, "backend": "networkmanager", "client_count": 0}
-        try:
-            self._recover_owned()
-        except Exception as exc:
-            self.status["error"] = str(exc)
+        if recover_on_init:
+            try:
+                self._recover_owned()
+            except Exception as exc:
+                self.status["error"] = str(exc)
 
     def _recover_owned(self):
         # A worker can exit while NetworkManager itself is restarting. Keep
@@ -270,6 +289,8 @@ class Backend:
         return status
 
     def start(self, config, *, automatic=False):
+        if self.cancelled():
+            raise RuntimeError('Hotspot operation cancelled.')
         config = validate_options(config)
         if self.process:
             raise RuntimeError("A NetworkManager session is already running or stopping.")
@@ -297,6 +318,8 @@ class Backend:
                 return self.get_status()
             deadline = time.monotonic() + STARTUP_TIMEOUT
             while self.process and time.monotonic() < deadline:
+                if self.cancelled():
+                    raise RuntimeError('Hotspot operation cancelled.')
                 status = self.get_status()
                 if status["active"]:
                     self._desired_config = dict(config)
@@ -436,5 +459,7 @@ if __name__ == "__main__":
         sys.exit(worker())
     if sys.argv[1:] == ["--recover"]:
         recover()
+    elif sys.argv[1:] == ["--recover-all"]:
+        recover_all()
     else:
         sys.exit("This helper is controlled by the Wi-Fi Relay service.")

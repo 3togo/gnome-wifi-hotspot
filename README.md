@@ -19,10 +19,10 @@ compatibility, and how upstream changes are reviewed.
 
 The bundle includes settings, the service, GNOME controls and tray controls in
 one download. Desktop detection chooses the appropriate controls; GNOME Shell
-is optional. The latest stable release is **1.0.0-30** for **Ubuntu 26.10
+is optional. The latest stable release is **1.0.0-31** for **Ubuntu 26.10
 (Stonking)**. APT installs the platform-specific dependencies.
 
-Download `bundle.deb` and [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/SHA256SUMS)
+Download `bundle.deb` and [SHA256SUMS](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-31/SHA256SUMS)
 into the same folder, then run:
 
 ```bash
@@ -42,14 +42,14 @@ Install matching versions of the standalone app and any controls you select.
 
 | Download | Contents |
 | :--- | :--- |
-| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot_1.0.0-30_all.deb) | Service and GTK settings |
-| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot-gnome_1.0.0-30_all.deb) | Optional GNOME Shell controls; requires standalone app |
-| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-30/gnome-wifi-hotspot-tray_1.0.0-30_all.deb) | Optional XFCE and compatible desktop controls; requires standalone app |
+| [Standalone app](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-31/gnome-wifi-hotspot_1.0.0-31_all.deb) | Service and GTK settings |
+| [GNOME controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-31/gnome-wifi-hotspot-gnome_1.0.0-31_all.deb) | Optional GNOME Shell controls; requires standalone app |
+| [Tray controls](https://github.com/3togo/gnome-wifi-hotspot/releases/download/v1.0.0-31/gnome-wifi-hotspot-tray_1.0.0-31_all.deb) | Optional XFCE and compatible desktop controls; requires standalone app |
 
 For example, install the standalone app and GNOME controls together:
 
 ```bash
-sudo apt install ./gnome-wifi-hotspot_1.0.0-30_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-30_all.deb
+sudo apt install ./gnome-wifi-hotspot_1.0.0-31_all.deb ./gnome-wifi-hotspot-gnome_1.0.0-31_all.deb
 ```
 
 Log out and back in after installing GNOME controls. Tray installation starts
@@ -102,11 +102,18 @@ processes, bounds worker output and shutdown, and authorizes privileged changes
 through Polkit. Firewall rules are scoped to the hotspot interface; Relay leaves
 permanent firewalld configuration and AppArmor enforcement intact.
 
-Native Ubuntu 26.10 validation includes 344 Python tests (one bench-dependent skip), real GTK
+Revision 31 validation includes 383 Python tests, real GTK
 settings/tray checks, 17 sanitized applet cases, GNOME Shell 51 extension loading,
 private-bus service authorization checks, and Debian source/binary builds.
 GitHub CI additionally checks isolated install, upgrade, removal, and purge.
-See the release's validation report for exact source and environment provenance.
+Two Android 14 clients exercised physical and virtual AP modes, startup cancellation,
+and crash cleanup on one Intel/iwlwifi AP driver. A separate installed-build check
+verified 2.4 GHz channel 12 with both clients. The physical host used a downstream
+NetworkManager build; stock networking is covered by automated CI, not this
+revision's physical cohort. The ten-cycle matrix, other AP drivers/client OSes,
+reboot/suspend trials and extended soaks remain untested. Native NetworkManager
+remains experimental. See the [release notes](docs/releases/1.0.0-31.md) and the
+release's `VALIDATION.json` for exact source and environment provenance.
 
 Installed revision-28 packages passed a two-client Intel AX200 regression with
 Wi-Fi-only egress, DNS/HTTPS, restart/rejoin, concurrent transfers, and cleanup;
@@ -137,7 +144,7 @@ and a combined `gnome-wifi-hotspot-bundle` package are written to `build/dist/`.
 The default build runs the `deb` target, which can also be selected with
 `cmake --build build --target deb`.
 To override the version or output directory, configure with
-`-DWIFI_RELAY_VERSION=1.0.0-30` or
+`-DWIFI_RELAY_VERSION=1.0.0-31` or
 `-DWIFI_RELAY_BUILD_OUTPUT=/absolute/path/to/packages`. Otherwise the version
 comes from `packaging/debian/changelog`. Builds pick up changes to packaged files
 each time they run.
@@ -145,7 +152,7 @@ each time they run.
 The single-file bundle contains all three payloads:
 
 ```bash
-sudo apt install ./build/dist/gnome-wifi-hotspot-bundle_1.0.0-30_all.deb
+sudo apt install ./build/dist/gnome-wifi-hotspot-bundle_1.0.0-31_all.deb
 ```
 
 APT installs system dependencies from your distribution and replaces any installed

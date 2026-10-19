@@ -87,7 +87,7 @@ def detect_wifi_interface(sys_class_net="/sys/class/net"):
     return interfaces[0] if len(interfaces) == 1 else None
 
 
-def initialize_factory_password(path, factory_path, ssid=None, wifi_interface=None):
+def initialize_factory_password(path, factory_path, ssid=None, wifi_interface=None, *, detect_interface=True):
     """Initialize a factory config once; preserve every customized config."""
     import os
     from pathlib import Path
@@ -107,7 +107,7 @@ def initialize_factory_password(path, factory_path, ssid=None, wifi_interface=No
         ssid = ssid.encode('utf-8')[:32].decode('utf-8', errors='ignore')
         validate_config({'SSID': ssid})
         updated = updated.replace(b'SSID=Hotspot\n', b'SSID=' + ssid.encode('utf-8') + b'\n', 1)
-    interface = wifi_interface if wifi_interface is not None else detect_wifi_interface()
+    interface = wifi_interface if wifi_interface is not None else (detect_wifi_interface() if detect_interface else None)
     if interface is not None:
         validate_config({'WIFI_IFACE': interface, 'INTERNET_IFACE': interface})
         for key in (b'WIFI_IFACE', b'INTERNET_IFACE'):
@@ -184,8 +184,11 @@ if __name__ == '__main__':
     parser.add_argument('--ssid', help='Use this SSID only when initializing a factory config')
     parser.add_argument('--repair-interface', action='store_true',
                         help='Repair an absent legacy wlan0 default during package upgrade')
+    parser.add_argument('--offline', action='store_true',
+                        help='Initialize credentials without inspecting host hardware')
     args = parser.parse_args()
+    # Image assembly uses the target's files but must not detect host adapters.
     if args.repair_interface:
         repair_legacy_wifi_interface(args.config)
     else:
-        initialize_factory_password(args.config, args.factory, args.ssid)
+        initialize_factory_password(args.config, args.factory, args.ssid, detect_interface=not args.offline)

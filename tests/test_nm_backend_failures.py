@@ -26,6 +26,23 @@ class WorkerFailureTests(unittest.TestCase):
     def send(self, value):
         os.write(self.writer, value if isinstance(value, bytes) else json.dumps(value).encode() + b'\n')
 
+    def test_cancelled_manual_start_reaps_its_worker(self):
+        self.backend.cancelled = Mock(side_effect=[False, True])
+        self.process.poll.side_effect = [None, 0]
+        with patch.object(module.subprocess, 'Popen', return_value=self.process):
+            with self.assertRaisesRegex(RuntimeError, 'cancelled'):
+                self.backend.start(CONFIG)
+        self.process.terminate.assert_called_once()
+        self.assertIsNone(self.backend.process)
+        self.assertIsNone(self.backend._desired_config)
+
+    def test_teardown_attempts_legacy_recovery_after_native_recovery_failure(self):
+        self.recovery.side_effect = RuntimeError('NetworkManager unavailable')
+        with patch.object(module.legacy_runtime, 'recover_owned') as legacy:
+            with self.assertRaisesRegex(RuntimeError, 'NetworkManager unavailable'):
+                module.recover_all()
+            legacy.assert_called_once()
+
     def test_automatic_start_is_nonblocking_and_pins_worker_profile(self):
         self.backend._desired_config = dict(CONFIG)
         self.backend._upstream_uuid = PROFILE

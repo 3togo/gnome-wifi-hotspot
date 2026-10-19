@@ -1,0 +1,255 @@
+{
+  "installed_version": "1.0.0-31~fix7",
+  "hotspot_active": true,
+  "band": "2.4",
+  "channel": 12,
+  "internet_uplink": "Ethernet",
+  "credentials_preserved": true,
+  "administrator_sessions": 1,
+  "cleanup_complete": true,
+  "completed_at_utc": "2026-10-19T14:09:45.649642+00:00",
+  "status": "Pass for installed 2.4 GHz cohort",
+  "recorded_at_utc": "2026-10-19T14:12:03.831782+00:00",
+  "runtime_source_commit": "39df66564b6638bfd72a4bc0f0e0f93c8af85d63",
+  "packages": [
+    {
+      "filename": "gnome-wifi-hotspot_1.0.0-31~fix7_all.deb",
+      "sha256": "fabfc73b54d7bff7df13fbe94c8095a095181abf2c12a72af5aa8f610c7764d9"
+    },
+    {
+      "filename": "gnome-wifi-hotspot-gnome_1.0.0-31~fix7_all.deb",
+      "sha256": "9b588138aad6ed53ae513de51c1d40032b21327e0c0b99e1689ae790e1893737"
+    },
+    {
+      "filename": "gnome-wifi-hotspot-tray_1.0.0-31~fix7_all.deb",
+      "sha256": "c9fcdaa3d7a7a6b7628a2ebd329892f389dacad2bce1dcd46bd58cc9718ccb23"
+    }
+  ],
+  "backend": "create_ap",
+  "station_configuration": "Persistent 2.4 GHz Intel station profile; virtual AP on the same adapter",
+  "clients": [
+    "Android 14 phone",
+    "Android 14 tablet"
+  ],
+  "administrator_session_closed": true,
+  "installation_audit": {
+    "tested_version_installed": true,
+    "runtime_matches_tested_build": true,
+    "configuration_persisted": true,
+    "original_credentials_preserved": true,
+    "daemon_active_enabled_unmasked": true,
+    "hotspot_active_with_two_clients": true,
+    "hotspot_is_2_4ghz": true,
+    "station_is_permanent_2_4ghz_profile": true,
+    "unrelated_firewall_rules_retained": true,
+    "config_private": true
+  },
+  "user_cleanup": {
+    "phone_power_restored": true,
+    "phone_helper_removed": true,
+    "tablet_power_restored": true,
+    "tablet_helper_removed": true,
+    "desktop_preference_exact": true,
+    "tray_active": true
+  },
+  "power_restore_verification": {
+    "phone": true,
+    "tablet": true
+  },
+  "clients_at_completion": {
+    "phone": {
+      "awake": true,
+      "unlocked": true
+    },
+    "tablet": {
+      "awake": true,
+      "unlocked": true
+    }
+  },
+  "clients_left_connected_to_hotspot": true,
+  "cases": [
+    {
+      "name": "Installed packages and runtime match the tested build",
+      "passed": true
+    },
+    {
+      "name": "Intel upstream connected on 2.4 GHz",
+      "passed": true,
+      "frequency_mhz": 2467
+    },
+    {
+      "name": "Existing hotspot credentials retained",
+      "passed": true
+    },
+    {
+      "name": "Hotspot operational on 2.4 GHz, start 1",
+      "passed": true,
+      "channel": 12,
+      "frequency_mhz": 2467
+    },
+    {
+      "name": "Stop removes AP and retains the 2.4 GHz station",
+      "passed": true
+    },
+    {
+      "name": "Hotspot operational on 2.4 GHz, start 2",
+      "passed": true,
+      "channel": 12,
+      "frequency_mhz": 2467
+    },
+    {
+      "name": "Installed 2.4 GHz phone current BSSID and fresh DHCP",
+      "passed": true
+    },
+    {
+      "name": "Installed 2.4 GHz phone strict NXDOMAIN gateway DNS",
+      "passed": false,
+      "probe": {
+        "success": false,
+        "rcode": 0,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz phone gateway DNS matches upstream",
+      "passed": true,
+      "comparison": {
+        "success": true,
+        "gateway_rcode": 0,
+        "upstream_rcode": 0,
+        "same_unique_query": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz phone HTTPS example.com",
+      "passed": true,
+      "probe": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz phone HTTPS www.kernel.org",
+      "passed": true,
+      "probe": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19152,
+        "response_complete": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz phone invalid TLS rejected",
+      "passed": true,
+      "probe": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException",
+        "socket_error": "unspecified"
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz tablet current BSSID and fresh DHCP",
+      "passed": true
+    },
+    {
+      "name": "Installed 2.4 GHz tablet strict NXDOMAIN gateway DNS",
+      "passed": false,
+      "probe": {
+        "success": false,
+        "rcode": 0,
+        "answer_count": 0,
+        "authority_count": 1,
+        "additional_count": 0,
+        "response_bytes": 130,
+        "gateway_queried": true,
+        "source_bound": true,
+        "wifi_network_bound": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz tablet gateway DNS matches upstream",
+      "passed": true,
+      "comparison": {
+        "success": true,
+        "gateway_rcode": 0,
+        "upstream_rcode": 0,
+        "same_unique_query": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz tablet HTTPS example.com",
+      "passed": true,
+      "probe": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 577,
+        "response_complete": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz tablet HTTPS www.kernel.org",
+      "passed": true,
+      "probe": {
+        "success": true,
+        "https_status": 200,
+        "certificate_and_hostname_verified": true,
+        "source_bound": true,
+        "wifi_network_bound": true,
+        "tls_protocol": "TLSv1.3",
+        "body_bytes_received": 19152,
+        "response_complete": true
+      }
+    },
+    {
+      "name": "Installed 2.4 GHz tablet invalid TLS rejected",
+      "passed": true,
+      "probe": {
+        "success": false,
+        "stage": "tls",
+        "error_type": "SSLHandshakeException",
+        "socket_error": "unspecified"
+      }
+    },
+    {
+      "name": "Permanent 2.4 GHz installation audited",
+      "passed": true,
+      "tested_version_installed": true,
+      "runtime_matches_tested_build": true,
+      "configuration_persisted": true,
+      "original_credentials_preserved": true,
+      "daemon_active_enabled_unmasked": true,
+      "hotspot_active_with_two_clients": true,
+      "hotspot_is_2_4ghz": true,
+      "station_is_permanent_2_4ghz_profile": true,
+      "unrelated_firewall_rules_retained": true,
+      "config_private": true
+    }
+  ],
+  "dns_observation": "Strict NXDOMAIN expectations returned NOERROR/NODATA. Independent same-name queries bound to the upstream address matched. Failed expectations and passing comparisons remain separate.",
+  "setup_retries": [
+    "Corrected the verification path for the nested probe tool.",
+    "Reset the cloned station channel with an empty value after NetworkManager rejected numeric zero."
+  ],
+  "scope": "One Intel AP driver and two Android 14 clients. Ethernet remains the Internet uplink. No reboot, suspend or extended soak validation claimed."
+}

@@ -12,7 +12,7 @@ RuntimeDirectory=wifi-relay
 RuntimeDirectoryMode=0700
 RuntimeDirectoryPreserve=restart
 TimeoutStopSec=50
-ExecStopPost=/usr/libexec/wifi-hotspot-daemon/nm_backend.py --recover
+ExecStopPost=/usr/libexec/wifi-hotspot-daemon/nm_backend.py --recover-all
 
 [Install]
 WantedBy=multi-user.target

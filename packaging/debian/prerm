@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+[ -z "${DPKG_ROOT:-}" ] || exit 0
 case "$1" in
     remove|deconfigure)
         if [ -d /run/systemd/system ]; then

@@ -162,6 +162,28 @@ class SettingsServiceTests(unittest.TestCase):
         self.assertEqual(self.service.calls.count('SetConfig'), 2)
         self.assertEqual(self.service.daemon._read_config_dict()['SSID'], 'Latest edit')
 
+    def test_old_failed_load_cannot_replace_a_new_successful_load(self):
+        window = self.window()
+        self.service.hold_methods.add('GetConfig')
+        window._load_data()
+        wait_until(lambda: len(self.service.held.get('GetConfig', [])) == 1)
+        window._load_data()
+        wait_until(lambda: len(self.service.held.get('GetConfig', [])) == 2)
+        old, latest = self.service.held['GetConfig']
+        self.service.held['GetConfig'] = []
+        latest.return_value(GLib.Variant('(s)', (json.dumps({'SSID': 'Latest load',
+                                                          'PASSPHRASE': 'private-password'}),)))
+        wait_until(lambda: window.entry_ssid.get_text() == 'Latest load')
+        with patch.object(window, '_load_fallback_config') as fallback:
+            old.return_dbus_error('org.freedesktop.DBus.Error.Failed', 'Previous owner vanished')
+            delivered = []
+            GLib.timeout_add(100, lambda: (delivered.append(True), GLib.SOURCE_REMOVE)[1])
+            wait_until(lambda: delivered)
+            fallback.assert_not_called()
+        self.assertTrue(window._loaded)
+        self.assertTrue(window.entry_ssid.get_sensitive())
+        self.assertEqual(window.entry_ssid.get_text(), 'Latest load')
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
