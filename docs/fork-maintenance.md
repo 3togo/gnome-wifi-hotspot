@@ -9,11 +9,19 @@ count describes ancestry; it does not establish compatibility or release quality
 
 ## Supported scope
 
-The published baseline is [Debian revision 1.0.0-22](releases/1.0.0-22.md) for
-Ubuntu 26.10. Its default backend is create_ap. Standalone settings are separate
-from optional GNOME Shell and StatusNotifier/AppIndicator controls. XFCE and
-headless GNOME Shell 51 have recorded checks; declared Shell compatibility
-does not mean every interactive desktop or wireless driver has been validated.
+The published baseline is [Debian revision 1.0.0-30](releases/1.0.0-30.md) for
+Ubuntu 26.10. Its default backend is create_ap. The recommended all-in-one
+`bundle.deb` includes settings, the service, GNOME Shell controls, and tray
+controls. Matching separate packages remain available for selected components;
+install either layout. GNOME Shell is optional for the app and bundle.
+
+Revision-30 validation includes four USB-controlled traffic/cleanup cycles on
+one Android 15 phone and Intel CNVi/iwlwifi adapter, plus six containerized
+LightDM PAM/logind sessions covering startup enabled, disabled, and re-enabled
+on GNOME 51 and XFCE 4.20. These checks do not establish host GDM, physical-seat
+or hardware graphics behavior, other client/driver cohorts, or an extended soak.
+Historical revision-22, revision-28, and development-build records retain their
+original scope; see [production readiness](production-readiness.md).
 
 Native NetworkManager AP+STA and patches under `integration/` remain experimental.
 Stable downloads use the installed distribution networking components and do
@@ -94,8 +102,12 @@ submission is a separate action from publishing a release in this fork.
 ## Releases and validation
 
 Published tags and release assets are immutable baselines. A newer binary gets
-a newer Debian revision; install the main and selected optional packages at the
-same version. Main may contain prospective maintenance documentation without
+a newer Debian revision; install the bundle or the main and selected optional
+packages at the same version. Stop sharing before upgrading; configuration and
+preferences are retained, but sharing does not resume automatically. Keep the
+previous matching packages and a private configuration backup for the
+[documented rollback](releases/1.0.0-30.md#upgrade-and-rollback).
+Main may contain prospective maintenance documentation without
 changing the source or assets attached to an existing tag. Use an explicit new
 release tag and mark the intended stable release as GitHub Latest.
 

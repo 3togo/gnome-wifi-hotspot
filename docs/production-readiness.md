@@ -4,6 +4,41 @@ This refactor preserves the native NetworkManager and create_ap backends and the
 existing desktop controls. It improves the application around those backends;
 the native AP+STA integration remains a hardware-dependent prototype.
 
+## Current release baseline: revision 30
+
+The stable release is [v1.0.0-30](releases/1.0.0-30.md), published on
+15 October 2026 for Ubuntu 26.10. The recommended `bundle.deb` includes settings,
+the daemon, GNOME controls, and tray controls; matching separate packages remain
+available. Install either layout. GNOME Shell is optional, create_ap is the stable
+default, and native NetworkManager AP+STA remains experimental.
+
+The [candidate validation record](releases/1.0.0-30-rc1.md) records 344 Python
+tests with one bench-dependent skip, plus passing tray, GTK widget, service
+integration, 17 sanitized applet cases, and isolated GNOME Shell checks.
+Disposable-container package checks covered legacy and split upgrades,
+split-to-bundle replacement, bundle upgrade, switching back to separate packages,
+removal, purge, and fresh installation, including credential preservation.
+The [release-source CI](https://github.com/3togo/gnome-wifi-hotspot/actions/runs/38684574384)
+also passed on 15 October 2026.
+
+[USB-controlled traffic evidence](evidence/physical-usb-1.0.0-30-rc1.json) records
+four DHCP/DNS/HTTPS and cleanup cycles on one Android 15 phone and Intel
+CNVi/iwlwifi adapter with stock NetworkManager, plus rejection of invalid TLS.
+An earlier connection timeout and independently reproduced upstream negative-DNS
+variation remain recorded. The
+[desktop-login evidence](evidence/desktop-login-container-1.0.0-30-rc1.json)
+records six distinct LightDM PAM/logind sessions with startup enabled, disabled,
+and re-enabled on GNOME 51 and XFCE 4.20 in a software-rendered container.
+Host GDM, interactive password authentication, physical-seat, and hardware
+graphics behavior were not exercised.
+
+The release notes record matching candidate runtime files, with final changes
+limited to version metadata and release documentation. Candidate evidence keeps
+its original version and hashes; it is not rewritten as a new revision-30 run.
+See the [current release notes](releases/1.0.0-30.md) for upgrade and rollback,
+and [distribution readiness](distribution-readiness.md) for completed packaging
+work and remaining announcement/PPA decisions.
+
 ## Runtime boundaries
 
 `daemon/configuration.py` owns configuration defaults and validation without
@@ -73,11 +108,15 @@ suspend/resume, and extended traffic testing remain outside automated coverage.
 
 ## Build and verification
 
-Build the standalone binary without installing or restarting anything:
+Build the bundle and separate binary packages without installing or restarting
+anything:
 
 ```
-./packaging/build-deb.sh
+./build.sh
 ```
+
+The CMake entry point writes packages and checksums under `build/dist/`.
+`./packaging/build-deb.sh` remains available for direct builds under `dist/`.
 
 Build unsigned Debian source artifacts, or source and binaries with package
 build tests, on native Stonking:
@@ -96,8 +135,8 @@ timestamps; the direct builder normalizes every staged archive member to that
 epoch, including future epochs. Repeated builds are compared byte for byte.
 Debian attribution includes both create_ap copyright notices; RPM
 and Make installation include the shared modules. GNOME Shell is optional for
-the standalone desktop app. CI additionally exercises install, upgrade, remove,
-and purge inside its disposable Stonking environment.
+the standalone desktop app and bundle. CI additionally exercises install,
+upgrade, remove, and purge inside its disposable Stonking environment.
 
 Local non-destructive checks:
 
@@ -136,6 +175,14 @@ checks. The full run tests extracted package contents as well as source.
 `--with-lifecycle` builds and installs packages exclusively inside a disposable
 Ubuntu 26.10 Docker container; it needs Docker and network access.
 
+## Historical validation
+
+Revision 22 passed 283 unit tests with no skips, real GTK4/GTK3 widgets, 17
+sanitized applet cases, and private-bus daemon authorization on Ubuntu 26.10.
+Source exports retained nested `packaging/debian` templates and rebuilt without
+Git metadata; a regression test covers this path. Its
+[release maintenance record](releases/1.0.0-22.md) remains unchanged.
+
 The October 14 correction passed 322 unit tests, private D-Bus and GTK checks,
 sanitized applet tests, isolated headless GNOME checks, package builds, and
 container install/upgrade/remove/purge checks. The
@@ -148,6 +195,13 @@ Android fixtures validate the current BSSID and refresh DHCP addresses; the
 headless GNOME check isolates its system bus so disabling the extension cannot
 stop a workstation hotspot. These results identify the worktree's daemon hashes,
 not the previously published package payloads.
+
+[Installed revision-28 evidence](evidence/hardware-release-1.0.0-28.json) separately
+records two Android 14 clients on Intel AX200, Wi-Fi-only egress, restart/rejoin,
+concurrent transfers, and cleanup. Earlier
+[live validation](networkmanager-live-validation.md) retains its own recovery and
+suspend results. These dated records do not complete the revision-30 hardware
+matrix or certify a newly built candidate.
 
 ## Supported scope and remaining validation
 
@@ -164,15 +218,10 @@ native-core, nm-applet, and GNOME Settings patches against their exact supported
 package versions. Existing configurations may retain the old factory password;
 users should choose a strong password before broadcasting.
 
-RPM installation and full interactive GNOME Shell coverage require platform validation.
-Headless GNOME Shell 51 extension loading and disable/re-enable are checked.
+Revision-30 traffic coverage does not complete the ten-cycle matrix, other
+client/driver cohorts, multi-adapter routing, suspend/reboot fault trials, or
+extended multi-client soaks. RPM installation and physical interactive GNOME
+coverage also require platform validation. Headless GNOME Shell 51 loading and
+disable/re-enable, plus containerized GNOME/XFCE fresh logins, have recorded checks.
 Source artifacts are unsigned; repository publication and signing are separate
 release steps. Publication does not certify untested hardware combinations.
-
-The stable release is `v1.0.0-22`, package `1.0.0-22`. Native Ubuntu 26.10 checks
-passed 283 unit tests with no skips, real GTK4/GTK3 widgets, 17 sanitized applet
-cases, and private-bus daemon authorization. Source exports retain nested
-`packaging/debian` templates and rebuild without Git metadata; a regression test
-covers this path. Exact provenance and CI results accompany release downloads.
-
-Release maintenance and rollback are documented in [the stable release notes](releases/1.0.0-22.md).

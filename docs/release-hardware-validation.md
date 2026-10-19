@@ -1,9 +1,20 @@
 # Hardware validation for the next release
 
 This is a procedure and blank evidence checklist, not completed validation.
-The latest published baseline is [revision 1.0.0-22](releases/1.0.0-22.md).
-Earlier [hardware results](networkmanager-live-validation.md) describe their
-recorded development builds; do not copy their passes into a new candidate.
+The latest published baseline is [revision 1.0.0-30](releases/1.0.0-30.md).
+Its candidate completed four USB-controlled DHCP/DNS/HTTPS and cleanup cycles
+on one Android 15 phone and Intel CNVi/iwlwifi adapter, plus six containerized
+GNOME 51/XFCE 4.20 startup sessions. See the
+[candidate record](releases/1.0.0-30-rc1.md),
+[USB evidence](evidence/physical-usb-1.0.0-30-rc1.json), and
+[desktop-login evidence](evidence/desktop-login-container-1.0.0-30-rc1.json).
+This does not complete the ten-cycle matrix, physical host login, other
+client/driver cohorts, suspend/reboot fault trials, or extended soaks.
+
+[Revision-28 hardware evidence](evidence/hardware-release-1.0.0-28.json) and
+earlier [development results](networkmanager-live-validation.md) retain their
+original builds, hashes, failures, and limits. Do not copy their passes, or the
+revision-30 candidate passes, into a new candidate's checklist.
 
 ## Candidate and test bench
 
@@ -28,7 +39,7 @@ NetworkManager/daemon restarts, package removal, and injected crashes interrupt
 connectivity. Arrange an independent way to restore the machine and client
 network settings before those cases. Do not run destructive package lifecycle
 tests on an everyday workstation. Back up credentials privately using the
-[rollback procedure](releases/1.0.0-22.md).
+[rollback procedure](releases/1.0.0-30.md#upgrade-and-rollback).
 
 Keep raw evidence in an ignored, owner-only local directory. Public reports must
 exclude passwords, credential-bearing configuration, SSIDs, MAC addresses,
@@ -60,7 +71,7 @@ results in a published report. All cases below initially have status **Not run**
 | ID | Procedure | Required observation |
 | :--- | :--- | :--- |
 | D1 | Install matching candidate packages on a fresh test system | Fresh credentials are generated; no unsolicited sharing starts; optional controls match the selected desktop |
-| D2 | Upgrade from revision 22 three times, returning to the previous packages using the documented rollback between trials | Credentials/preferences remain; versions match; active-session tray startup is verified; one tray process and one icon appear without checkbox toggling or nm-applet restart |
+| D2 | Upgrade from revision 30 three times, returning to the previous packages using the documented rollback between trials; cover bundle and separate layouts, including switches | Credentials/preferences remain; versions match; active-session tray startup is verified; one tray process and one icon appear without checkbox toggling or nm-applet restart |
 | D3 | Repeat D2 with a hidden icon and with startup disabled | Hidden icons stay hidden; disabled startup is not overridden; a manually opened tray is not forcibly replaced when startup is disabled |
 | D4 | Log out/in and reboot, three cycles each | Desktop controls follow preferences; no duplicates; reboot clears the sharing request |
 | D5 | Exercise About, Settings close, Start, Stop, and tray Quit | About is accurate; closing Settings leaves sharing running; Quit stops sharing before closing; GNOME extension lifecycle remains Shell-managed |
@@ -68,7 +79,9 @@ results in a published report. All cases below initially have status **Not run**
 | D7 | Remove/reinstall optional controls on a disposable test system | The standalone service/settings remain available; reinstall respects preferences; removed controls do not keep running |
 
 Document how each version was installed and whether old desktop processes were
-present. Store timing and user-service journal evidence for D2, including whether
+present. Retain revision-22 and legacy-layout upgrade cases as additional
+compatibility checks where those upgrade paths are claimed. Store timing and
+user-service journal evidence for D2, including whether
 the first startup attempt failed and a retry was needed. User service restarts
 refresh controls; they do not themselves stop or start hotspot broadcasting.
 
