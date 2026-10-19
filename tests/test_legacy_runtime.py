@@ -58,6 +58,34 @@ class RuntimeTests(unittest.TestCase):
         body += '\nif has_running_instance; then exit 2; fi; test "$counter" = 0'
         self.assertEqual(self.shell(body).returncode, 0)
 
+    def test_stop_signal_during_mutex_bookkeeping_does_not_deadlock_cleanup(self):
+        definitions = '\n'.join(function(name) for name in (
+            'init_runtime', 'get_avail_fd', 'init_lock', 'mutex_lock',
+            'mutex_unlock', 'clean_exit', 'request_stop'))
+        for interrupted in ('lock', 'unlock'):
+            with self.subTest(interrupted=interrupted):
+                body = 'set +e; ' + definitions + '''
+LOCK_FD=0; COUNTER_LOCK_FILE="$CREATE_AP_RUNTIME/counter"; init_lock
+INJECT=0; INJECTED=0
+flock() {
+    command flock "$@" || exit 90
+    if [[ $INJECT -eq 1 && $INJECTED -eq 0 ]]; then
+        INJECTED=1
+        kill -USR1 $$
+    fi
+}
+trap 'request_stop' USR1
+trap 'STOP_REQUESTED=0; mutex_lock; mutex_unlock; echo cleanup-finished' EXIT
+'''
+                if interrupted == 'lock':
+                    body += '\nINJECT=1; mutex_lock'
+                else:
+                    body += '\nmutex_lock; INJECT=1; mutex_unlock'
+                result = self.shell(body + '\necho unexpected-startup-continuation')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('cleanup-finished', result.stdout)
+                self.assertNotIn('unexpected-startup-continuation', result.stdout)
+
     def test_unused_descriptor_search_does_not_expand_entire_limit(self):
         body = 'seq() { exit 99; };\n' + function('get_avail_fd')
         body += '\nfd=$(get_avail_fd); test "$fd" -ge 3; test "$fd" -lt "$(ulimit -n)"'

@@ -177,6 +177,7 @@ init_lock() {
 mutex_lock() {
     local counter_mutex_fd
     local counter
+    MUTEX_BUSY=1
 
     # lock local mutex and read counter
     counter_mutex_fd=$(get_avail_fd)
@@ -186,6 +187,8 @@ mutex_lock() {
         read -u $counter_mutex_fd counter
     else
         echo "Failed to lock mutex counter" >&2
+        MUTEX_BUSY=0
+        [[ ${STOP_REQUESTED:-0} -eq 1 ]] && clean_exit
         return 1
     fi
 
@@ -196,6 +199,8 @@ mutex_lock() {
     # write counter and unlock local mutex
     echo $counter > /proc/$BASHPID/fd/$counter_mutex_fd
     eval "exec ${counter_mutex_fd}<&-"
+    MUTEX_BUSY=0
+    [[ ${STOP_REQUESTED:-0} -eq 1 ]] && clean_exit
     return 0
 }
 
@@ -203,6 +208,7 @@ mutex_lock() {
 mutex_unlock() {
     local counter_mutex_fd
     local counter
+    MUTEX_BUSY=1
 
     # lock local mutex and read counter
     counter_mutex_fd=$(get_avail_fd)
@@ -212,6 +218,8 @@ mutex_unlock() {
         read -u $counter_mutex_fd counter
     else
         echo "Failed to lock mutex counter" >&2
+        MUTEX_BUSY=0
+        [[ ${STOP_REQUESTED:-0} -eq 1 ]] && clean_exit
         return 1
     fi
 
@@ -224,6 +232,8 @@ mutex_unlock() {
     # write counter and unlock local mutex
     echo $counter > /proc/$BASHPID/fd/$counter_mutex_fd
     eval "exec ${counter_mutex_fd}<&-"
+    MUTEX_BUSY=0
+    [[ ${STOP_REQUESTED:-0} -eq 1 ]] && clean_exit
     return 0
 }
 
@@ -672,7 +682,8 @@ _cleanup() {
     local PID x
     local failed=0
 
-    trap "" SIGINT SIGUSR1 SIGUSR2 EXIT
+    trap "" SIGINT SIGTERM SIGUSR1 SIGUSR2 EXIT
+    STOP_REQUESTED=0
     mutex_lock
     disown -a
 
@@ -853,7 +864,15 @@ clean_exit() {
     # send clean_exit signal to the main process
     [[ $BASHPID -ne $$ ]] && kill -USR1 $$
     # we don't need to call cleanup because it's traped on EXIT
-    exit 0
+    exit "${STOP_EXIT_STATUS:-0}"
+}
+
+request_stop() {
+    STOP_REQUESTED=1
+    [[ ${1:-0} -eq 1 ]] && STOP_EXIT_STATUS=1
+    # An EXIT cleanup must not open the counter lock while this shell still
+    # holds another descriptor for it. Bash runs signal traps between commands.
+    [[ ${MUTEX_BUSY:-0} -eq 1 ]] || clean_exit
 }
 
 list_running_conf() {
@@ -1367,9 +1386,9 @@ fi
 
 # if the user press ctrl+c or we get USR1 signal
 # then run clean_exit()
-trap "clean_exit" SIGINT SIGTERM SIGUSR1
+trap "request_stop" SIGINT SIGTERM SIGUSR1
 # if we get USR2 signal then run die().
-trap "die" SIGUSR2
+trap "request_stop 1" SIGUSR2
 
 [[ -n "$STORE_CONFIG" ]] && write_config "$@"
 
