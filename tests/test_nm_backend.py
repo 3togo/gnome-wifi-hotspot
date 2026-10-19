@@ -26,6 +26,7 @@ class BackendTests(unittest.TestCase):
     def test_daemon_routes_start_stop_to_selected_backend(self):
         from test_band_fallback import Daemon
         daemon = Daemon.__new__(Daemon)
+        daemon._recover_legacy = Mock()
         daemon.nm_backend = Mock()
         daemon.nm_backend.process = None
         daemon.nm_backend.start.return_value = {"active": True, "backend": "networkmanager"}

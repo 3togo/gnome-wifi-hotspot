@@ -78,6 +78,7 @@ class RuntimeTests(unittest.TestCase):
         body = ('SHARE_METHOD=nat; NO_DNS=0; NO_DNSMASQ=0; WIFI_IFACE=ap0; '
                 'GATEWAY=192.168.12.1; CONFDIR="$CREATE_AP_RUNTIME"; SCRIPT_UMASK=0077; '
                 'iptables() { printf "%s\\n" "$*"; }; dnsmasq() { :; }; '
+                'save_recovery_state() { :; }; record_child() { :; }; RULE_COMMENT=wifi-relay-test; '
                 'complain() { exit 99; }; aa-complain() { exit 99; }; die() { exit 98; };\n')
         result = self.shell(body + SCRIPT[start:end])
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -106,7 +107,7 @@ class RuntimeTests(unittest.TestCase):
         start = SCRIPT.index('# Start hostapd directly')
         end = SCRIPT.index('\nwait_for_ap ||', start)
         body = ('CONFDIR="$CREATE_AP_RUNTIME"; HOSTAPD="$CONFDIR/hostapd"; '
-                'HOSTAPD_DEBUG_ARGS=; stdbuf() { exit 99; };\n')
+                'HOSTAPD_DEBUG_ARGS=; stdbuf() { exit 99; }; record_child() { :; };\n')
         body += SCRIPT[start:end]
         body += '''
 trap 'kill "$HOSTAPD_PID" 2>/dev/null || true; wait "$HOSTAPD_PID" 2>/dev/null || true' EXIT
@@ -144,6 +145,8 @@ class OwnershipTests(unittest.TestCase):
         self.daemon.cached_clients = []
         self.daemon._read_config_dict = Mock(return_value={'SSID': 'owned'})
         self.daemon._emit_signal = Mock()
+        self.daemon._recover_legacy = Mock()
+        self.daemon._reap_stale_hostapd = Mock()
         self.argv = ['bash', self.daemon.create_ap_bin, '--pidfile', str(self.pidfile)]
         self.cmdline(self.argv)
         for name, value in [('CREATE_AP_PIDFILE', self.pidfile), ('PROC_DIRECTORY', self.process.parent)]:
@@ -242,7 +245,7 @@ class OwnershipTests(unittest.TestCase):
               patch.object(module.select, 'poll') as poll,
               patch.object(module.os, 'close') as close):
             poll.return_value.poll.return_value = [(9, module.select.POLLIN)]
-            self.daemon._reap_stale_hostapd()
+            Daemon._reap_stale_hostapd(self.daemon)
         send.assert_called_once_with(9, module.signal.SIGTERM)
         poll.return_value.poll.assert_called_once_with(3000)
         close.assert_called_once_with(9)

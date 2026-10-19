@@ -26,6 +26,8 @@ done
 install_file daemon/wifi-hotspot-daemon.py usr/libexec/wifi-hotspot-daemon/wifi-hotspot-daemon.py 0755
 install_file daemon/create_ap usr/libexec/wifi-hotspot-daemon/create_ap 0755
 install_file daemon/nm_backend.py usr/libexec/wifi-hotspot-daemon/nm_backend.py 0755
+install_file daemon/legacy_runtime.py usr/libexec/wifi-hotspot-daemon/legacy_runtime.py 0755
+install_file daemon/operations.py usr/libexec/wifi-hotspot-daemon/operations.py 0644
 install_file daemon/nm_client.py usr/libexec/wifi-hotspot-daemon/nm_client.py 0644
 install_file daemon/configuration.py usr/libexec/wifi-hotspot-daemon/configuration.py 0644
 install_file tools/nm_ap_sta_probe.py usr/libexec/wifi-hotspot-daemon/tools/nm_ap_sta_probe.py 0755

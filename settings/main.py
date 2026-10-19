@@ -241,6 +241,7 @@ class HotspotSettingsWindow(WindowBase):
 
         self._closed = False
         self._loaded = False
+        self._load_generation = 0
         self._status_pending = False
         self._clients_pending = False
         self._status_revision = 0
@@ -567,7 +568,15 @@ class HotspotSettingsWindow(WindowBase):
             dialog.present()
 
     def _load_data(self):
+        self._load_generation += 1
+        generation = self._load_generation
+        self._loading_fields = True
+        self._set_form_sensitive(False)
+        def current():
+            return not self._closed and generation == self._load_generation
         def interfaces_loaded(data, error):
+            if not current():
+                return
             if not error:
                 self.interfaces = data
                 self.combo_wifi_iface.set_model(Gtk.StringList.new(data["wifi_interfaces"] or ["wlan0"]))
@@ -577,6 +586,8 @@ class HotspotSettingsWindow(WindowBase):
             self.client.call("GetCapabilities", capabilities_loaded)
 
         def capabilities_loaded(data, error):
+            if not current():
+                return
             if not error:
                 self.capabilities = data
                 ap_5g = "Yes" if data.get("ap_5ghz") else "No"
@@ -585,6 +596,8 @@ class HotspotSettingsWindow(WindowBase):
             self.client.call("GetConfig", config_loaded, timeout=60000)
 
         def config_loaded(data, error):
+            if not current():
+                return
             if error:
                 self._load_fallback_config()
             else:

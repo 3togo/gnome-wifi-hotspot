@@ -2,6 +2,21 @@
 set -e
 dpkg-maintscript-helper rm_conffile /etc/xdg/autostart/wifi-hotspot-autostart.desktop 1.0.0-16~ gnome-wifi-hotspot -- "$@"
 
+# Chrootless image assembly must not run the host helper or manage host services.
+# Initialize target credentials without inspecting host interfaces. Existing
+# target configurations and live host services remain untouched.
+if [ -n "${DPKG_ROOT:-}" ]; then
+    if [ -f "${DPKG_ROOT}/etc/wifi-hotspot.conf" ] && [ ! -L "${DPKG_ROOT}/etc/wifi-hotspot.conf" ]; then
+        chmod 0600 "${DPKG_ROOT}/etc/wifi-hotspot.conf"
+    fi
+    if [ "$1" = configure ] && [ -z "${2:-}" ]; then
+        python3 -I "${DPKG_ROOT}/usr/libexec/wifi-hotspot-daemon/configuration.py" \
+            "${DPKG_ROOT}/etc/wifi-hotspot.conf" \
+            "${DPKG_ROOT}/usr/share/wifi-hotspot/default.conf" --offline
+    fi
+    exit 0
+fi
+
 # Sessions that are already logged in when the tray controls are installed or
 # upgraded never run the autostart entry, so show the icon there as well. Every
 # step is best effort: an unusable display, missing tool, or refused launch must
