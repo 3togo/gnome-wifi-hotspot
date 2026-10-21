@@ -1,6 +1,7 @@
 # Wi-Fi Relay revision 31: community announcement and PPA assessment
 
 Assessment updated: 19 October 2026; originally assessed on 7 October 2026.
+PPA preparation procedure updated: 21 October 2026.
 Status: revision 31 is the GitHub release baseline; a community announcement and PPA
 upload remain pending decisions.
 
@@ -18,8 +19,8 @@ Recommended sequence:
 1. Agree the audience, feedback channel, target Ubuntu versions, and maintenance
    commitment.
 2. If approved, announce revision 31 with release, user-guide, and rollback links.
-3. Use the existing source packaging to prepare signed uploads and validate a
-   testing PPA.
+3. Use the existing source packaging to prepare a source recipe or signed source
+   uploads and validate a testing PPA.
 4. Keep replacement NetworkManager and desktop packages separately opt-in.
 
 No forum post or PPA upload is authorized by this document.
@@ -152,15 +153,101 @@ community testing announcement.
 
 ## Remaining PPA preparation
 
-Before uploading:
+Use the following procedure for future PPA work. These are preparation and
+verification requirements, not completed publication results. A successful build,
+an upload marked `Done`, or a downloadable `.deb` does not establish availability
+through APT.
 
-- Choose supported Ubuntu target series, use suitable changelog distributions
-  and PPA versioning, and validate build/install behavior for each claimed series.
-  Current source packaging targets Stonking; other series need explicit review.
-- Confirm the Launchpad account/PPA and upload-signing key, review maintainer
-  and source metadata for the intended uploader, then produce signed source uploads.
-- Confirm Launchpad builds, installation, upgrade, removal, and rollback before
-  distributing the PPA installation command.
+### 1. Record the destination and support matrix
+
+- Verify the exact Launchpad owner, PPA name and URL, public visibility, enabled
+  publication, quota, signing-key fingerprint, and supported architectures/series.
+- Record the source commit, intended source and binary versions, Ubuntu targets,
+  architectures, maintainer, and rollback destination before submitting anything.
+- Start with a clearly identified testing PPA. Current documented validation is
+  for Ubuntu 26.10; additional series require explicit dependency and lifecycle
+  validation. An `Architecture: all` package still needs release-specific testing.
+
+### 2. Choose one source publication workflow
+
+- Prefer a source recipe for recurring builds. Keep all supported releases on
+  the same workflow: update recipe targets, external trigger, publication monitor,
+  tests, and documentation together. Use supported recipe version substitutions;
+  Launchpad appends release-specific version suffixes automatically.
+- Disable Launchpad daily builds when an external scheduler owns the cadence.
+- For manual uploads, prepare signed source packages. PPAs build binaries from
+  source; locally compiled `.deb` files are not PPA upload inputs.
+- Distinguish Launchpad's repository-signing key from the uploader's registered
+  OpenPGP key, SSH keys, and OAuth credentials. Recipes do not require a personal
+  GPG key. Manual uploads require signed source packages and a registered key
+  whose encrypted-email confirmation has been completed.
+- Keep private keys, passphrases, tokens, and temporary login sessions out of
+  repositories and logs.
+
+### 3. Audit and validate the exact source
+
+- Review `packaging/build-source.py`: it currently generates unsigned artifacts,
+  hardcodes `stonking` in the generated changelog, and embeds a maintainer identity
+  that must be reviewed for the intended uploader. Review copyright and source
+  metadata, build/runtime dependencies, and version ordering as well.
+- Build from a clean, recorded commit in isolated environments for every claimed
+  series. Verify source exports build without Git metadata and retain artifact
+  checksums, logs, and provenance. Never publish the legacy package test fixture.
+- Check source and binary packaging, installation, upgrade, split/bundle
+  transitions, removal, purge, credential preservation, and rollback. Keep
+  hardware and desktop claims within the recorded validation scope.
+- Verify CI for the published commit separately from local checks. Record pending,
+  cancelled, or unstarted checks as such; runner-allocation failures do not prove
+  a code failure. Keep using the required local analyzer versions and inspect
+  the analyzer version and exact diagnostics used by CI.
+
+### 4. Follow publication through every stage
+
+- Track recipe source assembly, build-output upload, source acceptance, binary
+  compilation, binary-upload processing, archive publication, and APT index
+  availability separately for each target. Record UTC timestamps, exact versions,
+  build URLs, publication records, and meaningful status changes.
+- Diagnose source/binary build logs, upload-error logs, publication records, and
+  each release's upload queue before changing anything. `Uploading build`,
+  `Pending`, and binary uploads awaiting processing are waiting states.
+- Avoid duplicate manual uploads or rebuilds merely because processing is slow.
+  Check whether the original recipe succeeded before attempting a fallback.
+  If removal is requested, remove only the specified source versions, cancel their
+  cancellable builds, and monitor the retained builds.
+- A new or unpublished PPA may return HTTP 403 for repository paths. Compare a
+  known public PPA over the same connection and inspect publication records and
+  actual `InRelease`/`Release` and package-index URLs before blaming credentials.
+  Keep TLS verification enabled; change proxy routing only on specific evidence.
+- `archive.markSuiteDirty` requests index regeneration on a later publisher run
+  when permitted. It does not process uploads or prove publication. Do not toggle
+  unrelated settings or status fields to simulate a fix. Distinguish observed
+  facts from suspected server delays; backend failures may require Launchpad
+  operators, and contacting support remains the user's decision.
+
+### 5. Verify signed APT delivery before announcing availability
+
+- Verify the PPA signing-key fingerprint against its Launchpad metadata. Use an
+  isolated APT configuration, sources, keyring, and state to perform a signed
+  `apt update`; do not modify the host's package sources for publication checks.
+- For every supported release and architecture, require the expected candidate
+  from `apt-cache policy` for each published binary package. Confirm installation,
+  upgrade, removal, and rollback using the Launchpad-built packages in disposable
+  environments before distributing the PPA installation command.
+- Record the exact source/binary versions, APT candidates, verification times,
+  and logs. Announcements must identify supported releases/architectures,
+  stable or development-snapshot status, known limits, and any replacement of
+  distribution packages.
+- When ongoing monitoring is requested, run it in GitHub Actions if it must
+  survive the user's computer being off. Verify actual scheduled runs, persist
+  build URLs and meaningful changes, stop network polling when all targets
+  publish, and resume automatically for new scheduled requests. Preparing this
+  procedure does not itself create a recurring schedule.
+
+For each publication attempt, retain a record with the destination, workflow,
+commit, expected versions, target matrix, signing fingerprint, validation results,
+build and upload URLs/statuses, publication records, signed APT results, lifecycle
+results, rollback instructions, and remaining failures or untested cases. Mark
+availability verified only after every claimed target passes the APT checks.
 
 Start with a clearly identified testing PPA for Relay. Treat the downstream
 NetworkManager Applet replacements as a separate opt-in distribution decision:
@@ -174,6 +261,8 @@ Primary references:
 - [Launchpad PPA requirements](https://ubuntu.com/docs/launchpad/user/reference/packaging/ppas/ppa/)
 - [Building a source package](https://ubuntu.com/docs/launchpad/user/reference/packaging/ppas/building-a-source-package/)
 - [Ubuntu PPA upload guide](https://ubuntu.com/project/docs/contributors/new-package/upload-packages-to-a-ppa/)
+- [Source package recipes](https://ubuntu.com/docs/launchpad/user/how-to/source-package-recipe/)
+- [Ubuntu package publishing stages](https://ubuntu.com/docs/launchpad/developer/explanation/core-components-and-set-up/publisher/ubuntu-package-publishing/)
 
 ## Decisions for the next review
 
